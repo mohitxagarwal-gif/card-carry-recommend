@@ -342,7 +342,7 @@ const Results = () => {
                     <div className="flex justify-between items-baseline">
                       <span className="font-sans text-foreground">{category.name}</span>
                       <span className="font-sans text-sm text-muted-foreground">
-                        {category.percentage}%
+                        {category.percentage.toFixed(1)}%
                       </span>
                     </div>
                     <div className="relative h-2 bg-secondary/30 rounded-full overflow-hidden">
