@@ -1,7 +1,10 @@
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ArrowRight } from "lucide-react";
 
 const CTASection = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="container mx-auto px-6 lg:px-12 py-24 md:py-32">
       <div className="max-w-4xl mx-auto text-center">
@@ -12,7 +15,8 @@ const CTASection = () => {
           let's analyze your spending and discover cards that work as hard as you do
         </p>
         <Button 
-          size="lg" 
+          size="lg"
+          onClick={() => navigate("/auth")}
           className="group bg-primary text-primary-foreground hover:bg-primary/90 font-sans transition-all duration-300 px-8 py-6 text-base"
         >
           start your analysis

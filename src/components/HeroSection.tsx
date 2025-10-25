@@ -1,7 +1,10 @@
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ArrowRight } from "lucide-react";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="container mx-auto px-6 lg:px-12 pt-20 pb-32 md:pt-32 md:pb-40">
       <div className="max-w-4xl mx-auto text-center">
@@ -13,6 +16,7 @@ const HeroSection = () => {
         </p>
         <Button 
           size="lg" 
+          onClick={() => navigate("/auth")}
           className="group bg-primary text-primary-foreground hover:bg-primary/90 font-sans transition-all duration-300 animate-fade-in px-8 py-6 text-base"
           style={{ animationDelay: '0.2s' }}
         >

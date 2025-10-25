@@ -1,6 +1,9 @@
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 
 const Header = () => {
+  const navigate = useNavigate();
+
   return (
     <header className="border-b border-border/30 bg-background/80 backdrop-blur-md sticky top-0 z-50">
       <div className="container mx-auto px-6 lg:px-12 py-6">
@@ -26,6 +29,7 @@ const Header = () => {
             <Button 
               variant="outline" 
               size="sm"
+              onClick={() => navigate("/auth")}
               className="border-foreground/20 hover:bg-foreground/5 transition-all duration-300"
             >
               get started
