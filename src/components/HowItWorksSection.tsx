@@ -1,56 +1,63 @@
-import { Upload, BarChart3, Sparkles } from "lucide-react";
-import { Card } from "./ui/card";
-
 const steps = [
   {
-    icon: Upload,
-    title: "Upload Your Statements",
-    description: "Securely upload your bank or credit card statements. We support all major Indian banks and formats.",
-    step: "01"
+    number: "01",
+    title: "upload",
+    description: "share your bank or credit card statements securely. we support all major indian banks."
   },
   {
-    icon: BarChart3,
-    title: "Analyze & Categorize",
-    description: "Our system analyzes your spending patterns and categorizes your expenses automatically.",
-    step: "02"
+    number: "02",
+    title: "analyze",
+    description: "our system categorizes your spending patterns across lifestyle, travel, dining, and more."
   },
   {
-    icon: Sparkles,
-    title: "Get Recommendations",
-    description: "Receive personalized credit card recommendations optimized for your spending categories.",
-    step: "03"
+    number: "03",
+    title: "discover",
+    description: "receive curated recommendations that maximize rewards for your unique spending profile."
   }
 ];
 
 const HowItWorksSection = () => {
   return (
-    <section id="how-it-works" className="container mx-auto px-6 py-20 md:py-28">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            How it works
+    <section id="how-it-works" className="container mx-auto px-6 lg:px-12 py-24 md:py-32">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-20">
+          <h2 className="text-4xl md:text-5xl font-playfair italic font-medium text-foreground mb-6">
+            three simple steps
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Three simple steps to discover credit cards that maximize your rewards
+          <p className="text-lg font-sans text-muted-foreground max-w-2xl mx-auto">
+            a refined approach to finding your perfect credit card match
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-12 md:gap-16">
           {steps.map((step, index) => (
-            <Card key={index} className="p-8 border border-border hover:border-primary/50 transition-colors">
-              <div className="flex flex-col items-start">
-                <span className="text-5xl font-bold text-primary/20 mb-4">{step.step}</span>
-                <div className="bg-primary/10 p-3 rounded-lg mb-6">
-                  <step.icon className="h-6 w-6 text-primary" />
+            <div 
+              key={index} 
+              className="group relative"
+              style={{ 
+                animation: 'fade-in 0.6s ease-out',
+                animationDelay: `${index * 0.15}s`,
+                animationFillMode: 'both'
+              }}
+            >
+              <div className="text-center space-y-6">
+                <div className="relative inline-block">
+                  <span className="text-7xl md:text-8xl font-playfair italic font-light text-foreground/10 group-hover:text-foreground/20 transition-colors duration-500">
+                    {step.number}
+                  </span>
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-3">
+                <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground">
                   {step.title}
                 </h3>
-                <p className="text-muted-foreground leading-relaxed">
+                <p className="text-base font-sans text-muted-foreground leading-relaxed">
                   {step.description}
                 </p>
               </div>
-            </Card>
+              
+              {index < steps.length - 1 && (
+                <div className="hidden md:block absolute top-1/4 -right-8 w-16 h-[1px] bg-border" />
+              )}
+            </div>
           ))}
         </div>
       </div>
