@@ -98,16 +98,15 @@ export const PasswordInputModal = ({ open, encryptedFiles, onSubmit, onCancel }:
         </Alert>
 
         <div className="space-y-6 py-4">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             <Checkbox 
               id="same-password" 
               checked={useSamePassword}
               onCheckedChange={(checked) => setUseSamePassword(checked as boolean)}
-              className="h-5 w-5 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
             />
             <label
               htmlFor="same-password"
-              className="text-sm font-sans font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              className="text-sm font-sans font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
               use the same password for all statements
             </label>

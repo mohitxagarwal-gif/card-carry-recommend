@@ -15,13 +15,10 @@ export async function checkPDFEncryption(file: File): Promise<PDFProcessingResul
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     
     try {
-      // Try to load WITHOUT password first
       await loadingTask.promise;
-      // Success - PDF is NOT password protected
       return { isEncrypted: false, needsPassword: false };
     } catch (error: any) {
       if (error.name === 'PasswordException') {
-        // PDF IS password protected
         return { isEncrypted: true, needsPassword: true };
       }
       throw error;
@@ -91,18 +88,15 @@ export function extractTransactions(text: string, fileName: string): Transaction
   // Amount pattern (with optional currency symbol)
   const amountPattern = /[\$]?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
 
-  // Indian merchant keywords for categorization
+  // Common merchant keywords for categorization
   const categories: Record<string, string[]> = {
-    'Food Delivery': ['swiggy', 'zomato', 'ubereats', 'dunzo', 'shadowfax'],
-    'Dining': ['dominos', 'mcdonalds', 'mcd', 'kfc', 'pizza hut', 'subway', 'starbucks', 'ccd', 'cafe coffee day', 'restaurant', 'cafe'],
-    'Shopping': ['amazon', 'flipkart', 'myntra', 'ajio', 'meesho', 'nykaa', 'store', 'retail'],
-    'Travel': ['uber', 'ola', 'rapido', 'irctc', 'makemytrip', 'goibibo', 'cleartrip', 'spicejet', 'indigo', 'vistara', 'air india'],
-    'Entertainment': ['bookmyshow', 'netflix', 'prime video', 'hotstar', 'disney', 'spotify', 'youtube', 'movie', 'theater'],
-    'Utilities': ['bsnl', 'airtel', 'jio', 'vi', 'vodafone', 'bescom', 'adani gas', 'tata power', 'electric', 'water', 'internet', 'phone'],
-    'Groceries': ['bigbasket', 'blinkit', 'zepto', 'instamart', 'dmart', 'more', 'reliance fresh', 'spencers', 'grocery', 'supermarket'],
-    'Fuel': ['indian oil', 'iocl', 'bpcl', 'hpcl', 'bharat petroleum', 'hindustan petroleum', 'reliance petrol', 'shell', 'essar', 'gas', 'petrol'],
-    'Healthcare': ['apollo', 'netmeds', 'pharmeasy', '1mg', 'practo', 'pharmacy', 'doctor', 'hospital', 'medical', 'health'],
-    'Finance': ['zerodha', 'groww', 'upstox', 'paytm', 'phonepe', 'gpay', 'googlepay', 'cred', 'bank'],
+    'Groceries': ['grocery', 'supermarket', 'whole foods', 'trader joe', 'safeway', 'kroger', 'walmart'],
+    'Dining': ['restaurant', 'cafe', 'coffee', 'starbucks', 'mcdonald', 'pizza', 'bar', 'diner'],
+    'Transportation': ['uber', 'lyft', 'taxi', 'gas', 'fuel', 'parking', 'transit'],
+    'Shopping': ['amazon', 'target', 'store', 'shop', 'retail', 'mall'],
+    'Utilities': ['electric', 'water', 'gas', 'internet', 'phone', 'utility'],
+    'Entertainment': ['netflix', 'spotify', 'movie', 'theater', 'entertainment', 'game'],
+    'Healthcare': ['pharmacy', 'doctor', 'hospital', 'medical', 'health', 'cvs', 'walgreens'],
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -160,15 +154,6 @@ export function extractTransactions(text: string, fileName: string): Transaction
   return transactions;
 }
 
-export function formatINR(amount: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
 export function analyzeTransactions(transactions: Transaction[]) {
   const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);
   
@@ -179,8 +164,8 @@ export function analyzeTransactions(transactions: Transaction[]) {
   
   const dateRange = dates.length > 0 
     ? {
-        start: dates[0].toLocaleDateString('en-IN'),
-        end: dates[dates.length - 1].toLocaleDateString('en-IN'),
+        start: dates[0].toLocaleDateString(),
+        end: dates[dates.length - 1].toLocaleDateString(),
       }
     : { start: 'N/A', end: 'N/A' };
 

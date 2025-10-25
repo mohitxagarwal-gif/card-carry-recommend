@@ -87,7 +87,6 @@ const Upload = () => {
     setFilesWithStatus(prev => prev.map(f => ({ ...f, status: 'checking' as FileStatus })));
     
     const encrypted: File[] = [];
-    const nonEncrypted: File[] = [];
     
     for (const file of files) {
       try {
@@ -99,7 +98,6 @@ const Upload = () => {
             f.file.name === file.name ? { ...f, status: 'encrypted' as FileStatus } : f
           ));
         } else {
-          nonEncrypted.push(file);
           setFilesWithStatus(prev => prev.map(f => 
             f.file.name === file.name ? { ...f, status: 'selected' as FileStatus } : f
           ));
@@ -112,17 +110,9 @@ const Upload = () => {
       }
     }
 
-    // If there are non-encrypted files, process them immediately
-    if (nonEncrypted.length > 0 && encrypted.length === 0) {
-      // All files are non-encrypted, process immediately
-      const passwords = new Map<string, string>();
-      await processAllFiles(passwords);
-    } else if (encrypted.length > 0) {
-      // Some files need passwords
+    if (encrypted.length > 0) {
       setEncryptedFiles(encrypted);
       setShowPasswordModal(true);
-      
-      // If there are also non-encrypted files, we'll process them after password entry
     }
   };
 
@@ -146,12 +136,11 @@ const Upload = () => {
     const total = filesWithStatus.length;
 
     for (const fileWithStatus of filesWithStatus) {
-      const { file, status: currentStatus } = fileWithStatus;
+      const { file } = fileWithStatus;
       const password = passwords.get(file.name);
-      const isEncrypted = currentStatus === 'encrypted';
 
       setFilesWithStatus(prev => prev.map(f => 
-        f.file.name === file.name ? { ...f, status: (isEncrypted ? 'decrypting' : 'processing') as FileStatus, progress: 0 } : f
+        f.file.name === file.name ? { ...f, status: 'decrypting' as FileStatus, progress: 0 } : f
       ));
 
       const result = await decryptAndExtractPDF(file, password, (progress) => {
