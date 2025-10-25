@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, FileText, DollarSign, Calendar } from "lucide-react";
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatINR } from "@/lib/pdfProcessor";
 
 export interface Transaction {
   date: string;
@@ -75,7 +76,7 @@ export const TransactionReview = ({ extractedData, onSubmit, onCancel }: Transac
             </div>
             <div>
               <p className="text-sm font-sans text-muted-foreground">total spending</p>
-              <p className="text-2xl font-playfair italic font-medium">${totalSpending.toFixed(2)}</p>
+              <p className="text-2xl font-playfair italic font-medium">{formatINR(totalSpending)}</p>
             </div>
           </div>
         </Card>
@@ -105,7 +106,7 @@ export const TransactionReview = ({ extractedData, onSubmit, onCancel }: Transac
                 <div>
                   <p className="font-sans font-medium text-foreground">{data.fileName}</p>
                   <p className="text-sm font-sans text-muted-foreground">
-                    {data.transactions.length} transactions • ${data.totalAmount.toFixed(2)} • 
+                    {data.transactions.length} transactions • {formatINR(data.totalAmount)} • 
                     {data.dateRange.start} to {data.dateRange.end}
                   </p>
                 </div>
@@ -122,7 +123,7 @@ export const TransactionReview = ({ extractedData, onSubmit, onCancel }: Transac
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(data.categoryTotals).map(([category, amount]) => (
                     <Badge key={category} variant="secondary" className="font-sans">
-                      {category}: ${amount.toFixed(2)}
+                      {category}: {formatINR(amount)}
                     </Badge>
                   ))}
                 </div>
@@ -148,7 +149,7 @@ export const TransactionReview = ({ extractedData, onSubmit, onCancel }: Transac
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-sans text-sm">
-                            ${tx.amount.toFixed(2)}
+                            {formatINR(tx.amount)}
                           </TableCell>
                         </TableRow>
                       ))}
