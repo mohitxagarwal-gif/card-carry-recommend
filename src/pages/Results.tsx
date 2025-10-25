@@ -3,8 +3,25 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut } from "lucide-react";
+import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Transaction {
   date: string;
@@ -30,6 +47,20 @@ interface AnalysisData {
   transactions?: Transaction[];
 }
 
+const CATEGORY_OPTIONS = [
+  "Food & Dining",
+  "Shopping & E-commerce",
+  "Transportation",
+  "Utilities & Bills",
+  "Entertainment & Subscriptions",
+  "Healthcare",
+  "Education",
+  "Groceries",
+  "Financial Services",
+  "Travel",
+  "Other"
+];
+
 const Results = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,8 +69,9 @@ const Results = () => {
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [editedTransactions, setEditedTransactions] = useState<Transaction[]>([]);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showRecommendations, setShowRecommendations] = useState(false);
+  const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
+  const [showOtherWarning, setShowOtherWarning] = useState(false);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -104,10 +136,78 @@ const Results = () => {
     } : null);
   };
 
-  const handleSaveAndViewRecommendations = () => {
-    toast.success("Analysis finalized!");
-    setShowRecommendations(true);
+  const handleFinalizeAndGetRecommendations = async () => {
+    // Check how many transactions are still "Other"
+    const otherCount = editedTransactions.filter(t => t.category === "Other").length;
+    const otherPercentage = (otherCount / editedTransactions.length) * 100;
+
+    // If more than 20% are "Other", show warning
+    if (otherPercentage > 20) {
+      setShowOtherWarning(true);
+      return;
+    }
+
+    await generateRecommendations();
   };
+
+  const generateRecommendations = async () => {
+    setIsGeneratingRecommendations(true);
+    setShowOtherWarning(false);
+
+    try {
+      // Update the database with edited transactions
+      const { error: updateError } = await supabase
+        .from('spending_analyses')
+        .update({
+          analysis_data: {
+            ...analysis,
+            transactions: editedTransactions
+          } as any
+        })
+        .eq('id', analysisId);
+
+      if (updateError) throw updateError;
+
+      // Call the new edge function to generate recommendations
+      const { data, error } = await supabase.functions.invoke('generate-recommendations', {
+        body: {
+          analysisId,
+          transactions: editedTransactions
+        }
+      });
+
+      if (error) throw error;
+
+      // Update the local state with recommendations
+      if (data.recommendations) {
+        setAnalysis(prev => prev ? {
+          ...prev,
+          recommendedCards: data.recommendations.recommendedCards,
+          insights: [
+            ...(prev.insights || []),
+            ...(data.recommendations.additionalInsights || [])
+          ]
+        } : null);
+        setShowRecommendations(true);
+        toast.success("Recommendations generated successfully!");
+        
+        // Scroll to recommendations
+        setTimeout(() => {
+          document.getElementById('recommendations-section')?.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }, 300);
+      }
+    } catch (error: any) {
+      console.error('Error generating recommendations:', error);
+      toast.error('Failed to generate recommendations. Please try again.');
+    } finally {
+      setIsGeneratingRecommendations(false);
+    }
+  };
+
+  const otherCount = editedTransactions.filter(t => t.category === "Other").length;
 
   if (loading) {
     return (
@@ -156,12 +256,36 @@ const Results = () => {
         </Button>
 
         <div className="max-w-5xl mx-auto space-y-8">
+          {/* Progress Indicator */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                1
+              </div>
+              <span className="text-sm font-sans text-foreground">Review & Edit Transactions</span>
+            </div>
+            <div className="w-12 h-px bg-border"></div>
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                showRecommendations ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+              }`}>
+                2
+              </div>
+              <span className={`text-sm font-sans ${
+                showRecommendations ? 'text-foreground' : 'text-muted-foreground'
+              }`}>Get Recommendations</span>
+            </div>
+          </div>
+
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-playfair italic font-medium text-foreground mb-4">
               your spending analysis
             </h2>
             <p className="text-lg font-sans text-muted-foreground">
-              insights and recommendations based on your spending patterns
+              {showRecommendations 
+                ? 'personalized credit card recommendations'
+                : 'review and correct categories for better recommendations'
+              }
             </p>
           </div>
 
@@ -237,7 +361,10 @@ const Results = () => {
           )}
 
           {/* Recommended Cards */}
-          {analysis.recommendedCards && analysis.recommendedCards.length > 0 && (
+          {showRecommendations && analysis.recommendedCards && analysis.recommendedCards.length > 0 && (
+            <div id="recommendations-section"></div>
+          )}
+          {showRecommendations && analysis.recommendedCards && analysis.recommendedCards.length > 0 && (
             <div className="space-y-6">
               <h3 className="text-2xl font-playfair italic font-medium text-foreground">
                 recommended credit cards
@@ -315,16 +442,30 @@ const Results = () => {
           )}
 
           {/* All Transactions Table */}
-          {editedTransactions.length > 0 && (
+          {!showRecommendations && editedTransactions.length > 0 && (
             <Card className="p-8 border-border">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-playfair italic font-medium text-foreground">
                   all transactions ({editedTransactions.length})
                 </h3>
-                <p className="text-sm font-sans text-muted-foreground">
-                  click any field to edit
-                </p>
               </div>
+
+              {/* Warning for Other categories */}
+              {otherCount > 0 && (
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-500 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-sans font-medium text-amber-900 dark:text-amber-100">
+                        {otherCount} transaction{otherCount !== 1 ? 's' : ''} categorized as "Other"
+                      </p>
+                      <p className="text-xs font-sans text-amber-700 dark:text-amber-300 mt-1">
+                        Review and recategorize these for more accurate credit card recommendations
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -338,14 +479,17 @@ const Results = () => {
                   </thead>
                   <tbody>
                     {editedTransactions.map((transaction, index) => (
-                      <tr key={index} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                      <tr 
+                        key={index} 
+                        className={`border-b border-border/50 hover:bg-secondary/20 transition-colors ${
+                          transaction.category === "Other" ? 'bg-amber-50/50 dark:bg-amber-950/10' : ''
+                        }`}
+                      >
                         <td className="py-3 px-4">
                           <input
                             type="text"
                             value={transaction.date}
                             onChange={(e) => handleEditTransaction(index, 'date', e.target.value)}
-                            onFocus={() => setEditingIndex(index)}
-                            onBlur={() => setEditingIndex(null)}
                             className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
                           />
                         </td>
@@ -354,28 +498,31 @@ const Results = () => {
                             type="text"
                             value={transaction.description}
                             onChange={(e) => handleEditTransaction(index, 'description', e.target.value)}
-                            onFocus={() => setEditingIndex(index)}
-                            onBlur={() => setEditingIndex(null)}
                             className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
                           />
                         </td>
                         <td className="py-3 px-4">
-                          <input
-                            type="text"
+                          <Select
                             value={transaction.category}
-                            onChange={(e) => handleEditTransaction(index, 'category', e.target.value)}
-                            onFocus={() => setEditingIndex(index)}
-                            onBlur={() => setEditingIndex(null)}
-                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
-                          />
+                            onValueChange={(value) => handleEditTransaction(index, 'category', value)}
+                          >
+                            <SelectTrigger className="w-full h-9 font-sans text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CATEGORY_OPTIONS.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <input
                             type="number"
                             value={transaction.amount}
                             onChange={(e) => handleEditTransaction(index, 'amount', parseFloat(e.target.value) || 0)}
-                            onFocus={() => setEditingIndex(index)}
-                            onBlur={() => setEditingIndex(null)}
                             className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1 text-right"
                           />
                         </td>
@@ -388,18 +535,51 @@ const Results = () => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-4 justify-center pt-8">
-            <Button
-              onClick={handleSaveAndViewRecommendations}
-              size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <CreditCardIcon className="mr-2 h-5 w-5" />
-              {showRecommendations ? "analysis finalized" : "finalize & see recommended cards"}
-            </Button>
-          </div>
+          {!showRecommendations && (
+            <div className="flex gap-4 justify-center pt-8">
+              <Button
+                onClick={handleFinalizeAndGetRecommendations}
+                size="lg"
+                disabled={isGeneratingRecommendations}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {isGeneratingRecommendations ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    generating recommendations...
+                  </>
+                ) : (
+                  <>
+                    <CreditCardIcon className="mr-2 h-5 w-5" />
+                    finalize categorization & get recommendations
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Other Category Warning Dialog */}
+      <AlertDialog open={showOtherWarning} onOpenChange={setShowOtherWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Many transactions still marked as "Other"</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have {otherCount} transaction{otherCount !== 1 ? 's' : ''} ({((otherCount / editedTransactions.length) * 100).toFixed(0)}%) 
+              still categorized as "Other". Getting recommendations with more specific categories will yield significantly better results.
+              <br /><br />
+              Would you like to continue anyway or go back to review these transactions?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Review Transactions</AlertDialogCancel>
+            <AlertDialogAction onClick={generateRecommendations}>
+              Continue Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

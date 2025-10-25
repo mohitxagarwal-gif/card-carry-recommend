@@ -67,7 +67,7 @@ ${ed.transactions.length > 50 ? `... and ${ed.transactions.length - 50} more tra
         messages: [
           {
             role: 'system',
-            content: `You are a financial analyst specializing in credit card recommendations for Indian users. Analyze transaction data and provide spending insights.
+            content: `You are a financial analyst specializing in transaction categorization for Indian users. Analyze transaction data and provide spending insights with accurate categorization.
 
 Return ONLY valid JSON with this EXACT structure (no markdown, no code blocks):
 {
@@ -79,24 +79,26 @@ Return ONLY valid JSON with this EXACT structure (no markdown, no code blocks):
   "topCategories": [
     { "name": "string", "amount": number, "percentage": number }
   ],
-  "recommendedCards": [
-    {
-      "name": "string (e.g., HDFC Diners Club Black, AMEX Platinum Travel)",
-      "issuer": "string (HDFC, ICICI, Axis, SBI, AMEX, etc.)",
-      "reason": "string explaining why this card fits their spending pattern",
-      "benefits": ["benefit 1", "benefit 2", "benefit 3"],
-      "estimatedSavings": "string (e.g., ₹15,000-20,000/year)"
-    }
-  ],
-  "insights": ["insight 1", "insight 2", "insight 3"],
-  "summary": "string with 2-3 sentence overview"
+  "insights": ["insight 1 about spending patterns", "insight 2 about categories", "insight 3 about trends"],
+  "summary": "string with 2-3 sentence overview of spending patterns"
 }
 
-Focus on actual Indian credit cards with realistic benefits and savings estimates based on their spending.`
+Focus on accurate categorization. Use these standard categories when possible:
+- Food & Dining
+- Shopping & E-commerce
+- Transportation
+- Utilities & Bills
+- Entertainment & Subscriptions
+- Healthcare
+- Education
+- Groceries
+- Financial Services
+- Travel
+- Other (only when transaction doesn't fit other categories)`
           },
           {
             role: 'user',
-            content: `Analyze this transaction data and provide insights with credit card recommendations:\n\n${formattedData}`
+            content: `Analyze and categorize this transaction data:\n\n${formattedData}`
           }
         ]
       })
