@@ -9,18 +9,32 @@ export interface PDFProcessingResult {
   needsPassword: boolean;
 }
 
+// Format amount in Indian Rupees with proper formatting
+export function formatINR(amount: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export async function checkPDFEncryption(file: File): Promise<PDFProcessingResult> {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     
     try {
-      await loadingTask.promise;
+      const pdf = await loadingTask.promise;
+      // Successfully loaded without password - not encrypted
       return { isEncrypted: false, needsPassword: false };
     } catch (error: any) {
       if (error.name === 'PasswordException') {
+        // Password required
         return { isEncrypted: true, needsPassword: true };
       }
+      // Other errors
+      console.error('PDF loading error:', error);
       throw error;
     }
   } catch (error) {
@@ -88,15 +102,51 @@ export function extractTransactions(text: string, fileName: string): Transaction
   // Amount pattern (with optional currency symbol)
   const amountPattern = /[\$]?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
 
-  // Common merchant keywords for categorization
+  // Indian merchant keywords for categorization
   const categories: Record<string, string[]> = {
-    'Groceries': ['grocery', 'supermarket', 'whole foods', 'trader joe', 'safeway', 'kroger', 'walmart'],
-    'Dining': ['restaurant', 'cafe', 'coffee', 'starbucks', 'mcdonald', 'pizza', 'bar', 'diner'],
-    'Transportation': ['uber', 'lyft', 'taxi', 'gas', 'fuel', 'parking', 'transit'],
-    'Shopping': ['amazon', 'target', 'store', 'shop', 'retail', 'mall'],
-    'Utilities': ['electric', 'water', 'gas', 'internet', 'phone', 'utility'],
-    'Entertainment': ['netflix', 'spotify', 'movie', 'theater', 'entertainment', 'game'],
-    'Healthcare': ['pharmacy', 'doctor', 'hospital', 'medical', 'health', 'cvs', 'walgreens'],
+    'Food & Dining': [
+      'swiggy', 'zomato', 'uber eats', 'dominos', 'pizza hut', 'mcdonald', 'kfc', 'subway',
+      'cafe coffee day', 'starbucks', 'burger king', 'haldiram', 'barbeque nation',
+      'restaurant', 'cafe', 'dhaba', 'biryani', 'thali'
+    ],
+    'Shopping & E-commerce': [
+      'amazon', 'flipkart', 'myntra', 'ajio', 'meesho', 'nykaa', 'snapdeal',
+      'reliance', 'big bazaar', 'dmart', 'more megastore', 'hypercity', 'star bazaar',
+      'lifestyle', 'westside', 'pantaloons', 'max fashion', 'mall', 'store', 'shop'
+    ],
+    'Transportation': [
+      'uber', 'ola', 'rapido', 'metro', 'irctc', 'redbus', 'goibibo', 'makemytrip',
+      'indian oil', 'bharat petroleum', 'hp petrol', 'shell', 'essar',
+      'fastag', 'toll', 'parking'
+    ],
+    'Utilities & Bills': [
+      'airtel', 'jio', 'vodafone', 'idea', 'bsnl', 'tata sky', 'dish tv',
+      'electricity', 'water', 'gas', 'lpg', 'cylinder',
+      'broadband', 'wifi', 'internet', 'postpaid', 'prepaid'
+    ],
+    'Entertainment & Subscriptions': [
+      'netflix', 'amazon prime', 'hotstar', 'disney', 'zee5', 'sonyliv', 'voot',
+      'spotify', 'gaana', 'wynk', 'jiosaavn',
+      'bookmyshow', 'paytm insider', 'pvr', 'inox', 'movie', 'cinema'
+    ],
+    'Healthcare': [
+      'apollo', 'fortis', 'max hospital', 'manipal', 'medanta',
+      'pharmacy', 'medical', 'doctor', 'clinic', 'diagnostic',
+      'apollo pharmacy', 'medplus', 'netmeds', '1mg', 'pharmeasy'
+    ],
+    'Education': [
+      'byju', 'unacademy', 'vedantu', 'upgrad', 'coursera', 'udemy',
+      'school', 'college', 'university', 'tuition', 'coaching'
+    ],
+    'Groceries': [
+      'bigbasket', 'grofers', 'blinkit', 'dunzo', 'milk basket', 'jiomart',
+      'dmart', 'reliance fresh', 'more', 'spencer', 'nature basket',
+      'grocery', 'supermarket', 'kirana'
+    ],
+    'Financial Services': [
+      'sbi', 'hdfc', 'icici', 'axis', 'kotak', 'paytm', 'phonepe', 'google pay',
+      'insurance', 'lic', 'policy', 'mutual fund', 'sip', 'investment'
+    ],
   };
 
   for (let i = 0; i < lines.length; i++) {

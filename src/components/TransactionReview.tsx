@@ -1,9 +1,9 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, FileText, DollarSign, Calendar } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatINR } from "@/lib/pdfProcessor";
 
 export interface Transaction {
   date: string;
@@ -26,88 +26,116 @@ interface TransactionReviewProps {
   onCancel: () => void;
 }
 
-export const TransactionReview = ({ extractedData, onSubmit, onCancel }: TransactionReviewProps) => {
+export function TransactionReview({ extractedData, onSubmit, onCancel }: TransactionReviewProps) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set([extractedData[0]?.fileName]));
 
   const toggleFile = (fileName: string) => {
-    setExpandedFiles(prev => {
-      const updated = new Set(prev);
-      if (updated.has(fileName)) {
-        updated.delete(fileName);
-      } else {
-        updated.add(fileName);
-      }
-      return updated;
-    });
+    const newExpanded = new Set(expandedFiles);
+    if (newExpanded.has(fileName)) {
+      newExpanded.delete(fileName);
+    } else {
+      newExpanded.add(fileName);
+    }
+    setExpandedFiles(newExpanded);
   };
 
   const totalTransactions = extractedData.reduce((sum, data) => sum + data.transactions.length, 0);
-  const totalSpending = extractedData.reduce((sum, data) => sum + data.totalAmount, 0);
+  const totalAmount = extractedData.reduce((sum, data) => sum + data.totalAmount, 0);
+
+  // Aggregate category totals across all statements
+  const aggregatedCategories: Record<string, number> = {};
+  extractedData.forEach(data => {
+    Object.entries(data.categoryTotals).forEach(([category, amount]) => {
+      aggregatedCategories[category] = (aggregatedCategories[category] || 0) + amount;
+    });
+  });
+
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      'Food & Dining': 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
+      'Shopping & E-commerce': 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+      'Transportation': 'bg-green-500/10 text-green-700 dark:text-green-400',
+      'Utilities & Bills': 'bg-purple-500/10 text-purple-700 dark:text-purple-400',
+      'Entertainment & Subscriptions': 'bg-pink-500/10 text-pink-700 dark:text-pink-400',
+      'Healthcare': 'bg-red-500/10 text-red-700 dark:text-red-400',
+      'Education': 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+      'Groceries': 'bg-teal-500/10 text-teal-700 dark:text-teal-400',
+      'Financial Services': 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+      'Other': 'bg-gray-500/10 text-gray-700 dark:text-gray-400',
+    };
+    return colors[category] || colors['Other'];
+  };
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-3xl font-playfair italic font-medium text-foreground mb-2">
-          review extracted data
-        </h2>
-        <p className="text-lg font-sans text-muted-foreground">
-          verify your transaction data before analysis
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
+          <CheckCircle2 className="h-6 w-6" />
+          <h2 className="text-2xl font-playfair italic font-medium text-foreground">
+            extraction complete
+          </h2>
+        </div>
+        <p className="text-muted-foreground font-sans">
+          review your transactions before submitting for analysis
         </p>
       </div>
 
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6 border-border">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-sans text-muted-foreground">statements</p>
-              <p className="text-2xl font-playfair italic font-medium">{extractedData.length}</p>
-            </div>
-          </div>
+        <Card className="p-4 border-border">
+          <p className="text-sm font-sans text-muted-foreground mb-1">Total Statements</p>
+          <p className="text-2xl font-playfair italic font-medium text-foreground">{extractedData.length}</p>
         </Card>
-
-        <Card className="p-6 border-border">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <DollarSign className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-sans text-muted-foreground">total spending</p>
-              <p className="text-2xl font-playfair italic font-medium">${totalSpending.toFixed(2)}</p>
-            </div>
-          </div>
+        <Card className="p-4 border-border">
+          <p className="text-sm font-sans text-muted-foreground mb-1">Total Transactions</p>
+          <p className="text-2xl font-playfair italic font-medium text-foreground">{totalTransactions}</p>
         </Card>
-
-        <Card className="p-6 border-border">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-3 rounded-full">
-              <Calendar className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-sans text-muted-foreground">transactions</p>
-              <p className="text-2xl font-playfair italic font-medium">{totalTransactions}</p>
-            </div>
-          </div>
+        <Card className="p-4 border-border">
+          <p className="text-sm font-sans text-muted-foreground mb-1">Total Amount</p>
+          <p className="text-2xl font-playfair italic font-medium text-foreground">{formatINR(totalAmount)}</p>
         </Card>
       </div>
 
-      <div className="space-y-4">
-        {extractedData.map((data) => (
-          <Card key={data.fileName} className="border-border overflow-hidden">
+      {/* Category Breakdown */}
+      <Card className="p-6 border-border">
+        <h3 className="text-lg font-playfair italic font-medium text-foreground mb-4">
+          spending by category
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Object.entries(aggregatedCategories)
+            .sort(([, a], [, b]) => b - a)
+            .map(([category, amount]) => (
+              <div key={category} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Badge className={getCategoryColor(category)}>
+                    {category}
+                  </Badge>
+                </div>
+                <p className="text-sm font-sans font-medium text-foreground">{formatINR(amount)}</p>
+              </div>
+            ))}
+        </div>
+      </Card>
+
+      {/* File-by-File Breakdown */}
+      <div className="space-y-3">
+        <h3 className="text-lg font-playfair italic font-medium text-foreground">
+          transactions by statement
+        </h3>
+        {extractedData.map((data, index) => (
+          <Card key={index} className="border-border overflow-hidden">
+            {/* File Header */}
             <button
               onClick={() => toggleFile(data.fileName)}
-              className="w-full p-6 flex items-center justify-between hover:bg-secondary/30 transition-colors"
+              className="w-full p-4 flex items-center justify-between hover:bg-secondary/30 transition-colors"
             >
-              <div className="flex items-center gap-4 text-left">
-                <FileText className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="font-sans font-medium text-foreground">{data.fileName}</p>
-                  <p className="text-sm font-sans text-muted-foreground">
-                    {data.transactions.length} transactions • ${data.totalAmount.toFixed(2)} • 
-                    {data.dateRange.start} to {data.dateRange.end}
-                  </p>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-sans font-medium text-foreground mb-1">{data.fileName}</p>
+                <div className="flex items-center gap-4 text-xs font-sans text-muted-foreground">
+                  <span>{data.transactions.length} transactions</span>
+                  <span>{data.dateRange.start} - {data.dateRange.end}</span>
+                  <span className="font-medium text-foreground">{formatINR(data.totalAmount)}</span>
                 </div>
               </div>
               {expandedFiles.has(data.fileName) ? (
@@ -117,48 +145,36 @@ export const TransactionReview = ({ extractedData, onSubmit, onCancel }: Transac
               )}
             </button>
 
+            {/* Transactions List */}
             {expandedFiles.has(data.fileName) && (
-              <div className="px-6 pb-6 space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(data.categoryTotals).map(([category, amount]) => (
-                    <Badge key={category} variant="secondary" className="font-sans">
-                      {category}: ${amount.toFixed(2)}
-                    </Badge>
-                  ))}
-                </div>
-
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="font-sans">date</TableHead>
-                        <TableHead className="font-sans">merchant</TableHead>
-                        <TableHead className="font-sans">category</TableHead>
-                        <TableHead className="text-right font-sans">amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.transactions.slice(0, 10).map((tx, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell className="font-sans text-sm">{tx.date}</TableCell>
-                          <TableCell className="font-sans text-sm">{tx.merchant}</TableCell>
-                          <TableCell className="font-sans text-sm">
-                            <Badge variant="outline" className="font-sans text-xs">
+              <div className="border-t border-border">
+                <div className="max-h-[400px] overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-secondary/30 sticky top-0">
+                      <tr>
+                        <th className="text-left p-3 text-xs font-sans font-medium text-muted-foreground">Date</th>
+                        <th className="text-left p-3 text-xs font-sans font-medium text-muted-foreground">Merchant</th>
+                        <th className="text-left p-3 text-xs font-sans font-medium text-muted-foreground">Category</th>
+                        <th className="text-right p-3 text-xs font-sans font-medium text-muted-foreground">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.transactions.map((tx, txIndex) => (
+                        <tr key={txIndex} className="border-t border-border/50 hover:bg-secondary/20">
+                          <td className="p-3 text-xs font-sans text-foreground">{tx.date}</td>
+                          <td className="p-3 text-xs font-sans text-foreground">{tx.merchant}</td>
+                          <td className="p-3">
+                            <Badge className={`text-xs ${getCategoryColor(tx.category)}`}>
                               {tx.category}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-sans text-sm">
-                            ${tx.amount.toFixed(2)}
-                          </TableCell>
-                        </TableRow>
+                          </td>
+                          <td className="p-3 text-xs font-sans text-foreground text-right font-medium">
+                            {formatINR(tx.amount)}
+                          </td>
+                        </tr>
                       ))}
-                    </TableBody>
-                  </Table>
-                  {data.transactions.length > 10 && (
-                    <div className="p-3 text-center text-sm font-sans text-muted-foreground bg-secondary/30">
-                      and {data.transactions.length - 10} more transactions...
-                    </div>
-                  )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -166,14 +182,22 @@ export const TransactionReview = ({ extractedData, onSubmit, onCancel }: Transac
         ))}
       </div>
 
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={onCancel} className="font-sans">
-          cancel
+      {/* Action Buttons */}
+      <div className="flex gap-4 pt-4">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          className="flex-1 border-foreground/20 hover:bg-foreground/5"
+        >
+          Cancel & Start Over
         </Button>
-        <Button onClick={onSubmit} className="font-sans py-6 px-8">
-          submit for analysis
+        <Button
+          onClick={onSubmit}
+          className="flex-1"
+        >
+          Submit for AI Analysis
         </Button>
       </div>
     </div>
   );
-};
+}

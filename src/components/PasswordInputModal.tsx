@@ -1,18 +1,10 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Lock, AlertCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-
-interface EncryptedFile {
-  file: File;
-  password: string;
-  showPassword: boolean;
-  error?: string;
-}
+import { Eye, EyeOff, Lock, Info } from "lucide-react";
 
 interface PasswordInputModalProps {
   open: boolean;
@@ -21,163 +13,183 @@ interface PasswordInputModalProps {
   onCancel: () => void;
 }
 
-export const PasswordInputModal = ({ open, encryptedFiles, onSubmit, onCancel }: PasswordInputModalProps) => {
-  const [filePasswords, setFilePasswords] = useState<Map<string, EncryptedFile>>(
-    new Map(encryptedFiles.map(file => [file.name, { file, password: "", showPassword: false }]))
-  );
-  const [useSamePassword, setUseSamePassword] = useState(false);
-  const [commonPassword, setCommonPassword] = useState("");
-  const [showCommonPassword, setShowCommonPassword] = useState(false);
+export function PasswordInputModal({ open, encryptedFiles, onSubmit, onCancel }: PasswordInputModalProps) {
+  const [passwords, setPasswords] = useState<Map<string, string>>(new Map());
+  const [showPasswords, setShowPasswords] = useState<Map<string, boolean>>(new Map());
+  const [useSamePassword, setUseSamePassword] = useState(encryptedFiles.length > 1);
+  const [singlePassword, setSinglePassword] = useState("");
 
-  const handlePasswordChange = (fileName: string, password: string) => {
-    setFilePasswords(prev => {
-      const updated = new Map(prev);
-      const fileData = updated.get(fileName)!;
-      updated.set(fileName, { ...fileData, password, error: undefined });
-      return updated;
-    });
+  useEffect(() => {
+    // Reset state when files change
+    setPasswords(new Map());
+    setShowPasswords(new Map());
+    setUseSamePassword(encryptedFiles.length > 1);
+    setSinglePassword("");
+  }, [encryptedFiles]);
+
+  const handlePasswordChange = (fileName: string, value: string) => {
+    const newPasswords = new Map(passwords);
+    newPasswords.set(fileName, value);
+    setPasswords(newPasswords);
   };
 
-  const toggleShowPassword = (fileName: string) => {
-    setFilePasswords(prev => {
-      const updated = new Map(prev);
-      const fileData = updated.get(fileName)!;
-      updated.set(fileName, { ...fileData, showPassword: !fileData.showPassword });
-      return updated;
-    });
+  const togglePasswordVisibility = (fileName: string) => {
+    const newShowPasswords = new Map(showPasswords);
+    newShowPasswords.set(fileName, !newShowPasswords.get(fileName));
+    setShowPasswords(newShowPasswords);
   };
 
   const handleSubmit = () => {
-    const passwords = new Map<string, string>();
+    const finalPasswords = new Map<string, string>();
     
-    if (useSamePassword) {
-      if (!commonPassword) {
-        return;
-      }
+    if (useSamePassword && encryptedFiles.length > 1) {
+      // Use single password for all files
       encryptedFiles.forEach(file => {
-        passwords.set(file.name, commonPassword);
+        finalPasswords.set(file.name, singlePassword);
       });
     } else {
-      let hasError = false;
-      filePasswords.forEach((data, fileName) => {
-        if (!data.password) {
-          hasError = true;
-        } else {
-          passwords.set(fileName, data.password);
-        }
+      // Use individual passwords
+      encryptedFiles.forEach(file => {
+        const password = passwords.get(file.name) || "";
+        finalPasswords.set(file.name, password);
       });
-      
-      if (hasError) {
-        return;
-      }
     }
     
-    onSubmit(passwords);
+    onSubmit(finalPasswords);
   };
+
+  const isValid = useSamePassword 
+    ? singlePassword.length > 0 
+    : encryptedFiles.every(file => passwords.get(file.name)?.length || 0 > 0);
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-playfair italic">
+          <DialogTitle className="flex items-center gap-2 text-foreground">
             <Lock className="h-5 w-5 text-primary" />
-            password-protected statements detected
+            Password Required
           </DialogTitle>
-          <DialogDescription className="font-sans">
-            {encryptedFiles.length} {encryptedFiles.length === 1 ? 'file is' : 'files are'} password-protected. 
-            Please enter the password(s) to decrypt them in your browser.
+          <DialogDescription className="text-muted-foreground">
+            {encryptedFiles.length === 1 
+              ? "This statement is password protected. Please enter the password to continue."
+              : `${encryptedFiles.length} statements are password protected. Please enter passwords to continue.`
+            }
           </DialogDescription>
         </DialogHeader>
 
-        <Alert className="border-primary/20 bg-primary/5">
-          <AlertCircle className="h-4 w-4 text-primary" />
-          <AlertDescription className="text-sm font-sans">
-            <strong>Privacy First:</strong> Your statements are processed entirely in your browser. 
-            Passwords and files never leave your device.
-          </AlertDescription>
-        </Alert>
-
         <div className="space-y-6 py-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="same-password" 
-              checked={useSamePassword}
-              onCheckedChange={(checked) => setUseSamePassword(checked as boolean)}
-            />
-            <label
-              htmlFor="same-password"
-              className="text-sm font-sans font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              use the same password for all statements
-            </label>
-          </div>
-
-          {useSamePassword ? (
-            <div className="space-y-2">
-              <Label htmlFor="common-password" className="font-sans">password for all files</Label>
-              <div className="relative">
-                <Input
-                  id="common-password"
-                  type={showCommonPassword ? "text" : "password"}
-                  value={commonPassword}
-                  onChange={(e) => setCommonPassword(e.target.value)}
-                  placeholder="Enter password"
-                  className="pr-10 font-sans"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCommonPassword(!showCommonPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showCommonPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              <p className="text-xs font-sans text-muted-foreground">
-                Hint: Most bank statements use your DOB (DDMMYYYY) or last 4 digits of account number
+          {/* Password hint */}
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+              <p className="text-xs font-sans text-foreground">
+                <strong>Common passwords:</strong> Your date of birth (DDMMYYYY), 
+                last 4 digits of account number, or the password you use for online banking.
               </p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {Array.from(filePasswords.entries()).map(([fileName, data]) => (
-                <div key={fileName} className="space-y-2 p-4 border border-border rounded-lg">
-                  <Label className="font-sans font-medium text-sm">{fileName}</Label>
+          </div>
+
+          {/* Use same password checkbox - only show if multiple files */}
+          {encryptedFiles.length > 1 && (
+            <div className="flex items-center space-x-3 p-3 bg-secondary/30 rounded-lg border border-border">
+              <Checkbox
+                id="use-same-password"
+                checked={useSamePassword}
+                onCheckedChange={(checked) => setUseSamePassword(checked === true)}
+                className="border-2 border-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              />
+              <Label
+                htmlFor="use-same-password"
+                className="text-sm font-sans text-foreground cursor-pointer flex-1"
+              >
+                Use the same password for all statements
+              </Label>
+            </div>
+          )}
+
+          {/* Password inputs */}
+          <div className="space-y-4">
+            {useSamePassword && encryptedFiles.length > 1 ? (
+              // Single password field for all files
+              <div className="space-y-2">
+                <Label htmlFor="single-password" className="text-sm font-sans font-medium text-foreground">
+                  Password for all {encryptedFiles.length} statements
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="single-password"
+                    type={showPasswords.get('single') ? "text" : "password"}
+                    value={singlePassword}
+                    onChange={(e) => setSinglePassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="pr-10 border-border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => togglePasswordVisibility('single')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPasswords.get('single') ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Individual password fields
+              encryptedFiles.map((file, index) => (
+                <div key={index} className="space-y-2">
+                  <Label htmlFor={`password-${index}`} className="text-sm font-sans font-medium text-foreground">
+                    Password for: <span className="font-normal text-muted-foreground">{file.name}</span>
+                  </Label>
                   <div className="relative">
                     <Input
-                      type={data.showPassword ? "text" : "password"}
-                      value={data.password}
-                      onChange={(e) => handlePasswordChange(fileName, e.target.value)}
+                      id={`password-${index}`}
+                      type={showPasswords.get(file.name) ? "text" : "password"}
+                      value={passwords.get(file.name) || ""}
+                      onChange={(e) => handlePasswordChange(file.name, e.target.value)}
                       placeholder="Enter password"
-                      className="pr-10 font-sans"
+                      className="pr-10 border-border"
                     />
                     <button
                       type="button"
-                      onClick={() => toggleShowPassword(fileName)}
+                      onClick={() => togglePasswordVisibility(file.name)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {data.showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPasswords.get(file.name) ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
-                  {data.error && (
-                    <p className="text-xs font-sans text-destructive">{data.error}</p>
-                  )}
                 </div>
-              ))}
-              <p className="text-xs font-sans text-muted-foreground">
-                Hint: Most bank statements use your DOB (DDMMYYYY) or last 4 digits of account number
-              </p>
-            </div>
-          )}
-        </div>
+              ))
+            )}
+          </div>
 
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={onCancel} className="font-sans">
-            cancel
-          </Button>
-          <Button onClick={handleSubmit} className="font-sans">
-            decrypt & process
-          </Button>
+          {/* Action buttons */}
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              className="flex-1 border-foreground/20 hover:bg-foreground/5"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!isValid}
+              className="flex-1"
+            >
+              Decrypt & Process
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
-};
+}

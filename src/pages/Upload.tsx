@@ -87,6 +87,7 @@ const Upload = () => {
     setFilesWithStatus(prev => prev.map(f => ({ ...f, status: 'checking' as FileStatus })));
     
     const encrypted: File[] = [];
+    const nonEncrypted: File[] = [];
     
     for (const file of files) {
       try {
@@ -98,6 +99,7 @@ const Upload = () => {
             f.file.name === file.name ? { ...f, status: 'encrypted' as FileStatus } : f
           ));
         } else {
+          nonEncrypted.push(file);
           setFilesWithStatus(prev => prev.map(f => 
             f.file.name === file.name ? { ...f, status: 'selected' as FileStatus } : f
           ));
@@ -110,7 +112,13 @@ const Upload = () => {
       }
     }
 
-    if (encrypted.length > 0) {
+    // If there are non-encrypted files, process them immediately
+    if (nonEncrypted.length > 0 && encrypted.length === 0) {
+      // All files are non-encrypted, process them directly
+      const emptyPasswords = new Map<string, string>();
+      await processAllFiles(emptyPasswords);
+    } else if (encrypted.length > 0) {
+      // Some files are encrypted, show password modal
       setEncryptedFiles(encrypted);
       setShowPasswordModal(true);
     }
@@ -136,11 +144,23 @@ const Upload = () => {
     const total = filesWithStatus.length;
 
     for (const fileWithStatus of filesWithStatus) {
-      const { file } = fileWithStatus;
+      const { file, status } = fileWithStatus;
+      
+      // Skip files that are already in error state
+      if (status === 'error') {
+        completed++;
+        continue;
+      }
+
       const password = passwords.get(file.name);
+      const isEncrypted = status === 'encrypted';
 
       setFilesWithStatus(prev => prev.map(f => 
-        f.file.name === file.name ? { ...f, status: 'decrypting' as FileStatus, progress: 0 } : f
+        f.file.name === file.name ? { 
+          ...f, 
+          status: isEncrypted ? 'decrypting' as FileStatus : 'processing' as FileStatus, 
+          progress: 0 
+        } : f
       ));
 
       const result = await decryptAndExtractPDF(file, password, (progress) => {
@@ -150,10 +170,19 @@ const Upload = () => {
       });
 
       if (!result.success) {
+        const errorMessage = result.error || 'Unknown error';
         setFilesWithStatus(prev => prev.map(f => 
-          f.file.name === file.name ? { ...f, status: 'error' as FileStatus, error: result.error } : f
+          f.file.name === file.name ? { 
+            ...f, 
+            status: 'error' as FileStatus, 
+            error: errorMessage 
+          } : f
         ));
-        toast.error(`Failed to process ${file.name}: ${result.error}`);
+        toast.error(`Failed to process ${file.name}: ${errorMessage}`, {
+          description: "Check the password and try again, or re-upload the file.",
+          duration: 5000,
+        });
+        completed++;
         continue;
       }
 
@@ -161,19 +190,39 @@ const Upload = () => {
         f.file.name === file.name ? { ...f, status: 'processing' as FileStatus } : f
       ));
 
-      // Extract transactions
-      const transactions = extractTransactions(result.text, file.name);
-      const analysis = analyzeTransactions(transactions);
+      try {
+        // Extract transactions
+        const transactions = extractTransactions(result.text, file.name);
+        
+        if (transactions.length === 0) {
+          throw new Error('No transactions found in statement');
+        }
 
-      allExtractedData.push({
-        fileName: file.name,
-        transactions,
-        ...analysis,
-      });
+        const analysis = analyzeTransactions(transactions);
 
-      setFilesWithStatus(prev => prev.map(f => 
-        f.file.name === file.name ? { ...f, status: 'success' as FileStatus, progress: 100 } : f
-      ));
+        allExtractedData.push({
+          fileName: file.name,
+          transactions,
+          ...analysis,
+        });
+
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? { ...f, status: 'success' as FileStatus, progress: 100 } : f
+        ));
+      } catch (error: any) {
+        const errorMessage = error.message || 'Failed to extract transactions';
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? { 
+            ...f, 
+            status: 'error' as FileStatus, 
+            error: errorMessage 
+          } : f
+        ));
+        toast.error(`Failed to analyze ${file.name}: ${errorMessage}`, {
+          description: "The statement format may not be supported.",
+          duration: 5000,
+        });
+      }
 
       completed++;
       setOverallProgress((completed / total) * 100);
@@ -182,7 +231,9 @@ const Upload = () => {
     if (allExtractedData.length > 0) {
       setExtractedData(allExtractedData);
       setShowReview(true);
-      toast.success('All files processed successfully!');
+      toast.success(`Successfully processed ${allExtractedData.length} of ${total} statements!`);
+    } else {
+      toast.error('Failed to process any statements. Please check your files and try again.');
     }
   };
 
