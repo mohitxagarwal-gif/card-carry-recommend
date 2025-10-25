@@ -27,27 +27,29 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { statementPaths } = await req.json();
-    console.log('Analyzing statements for user:', user.id, 'Files:', statementPaths);
+    const { extractedData } = await req.json();
+    console.log('Analyzing statements for user:', user.id, 'Statements:', extractedData.length);
 
-    // Download and read the statement files
-    let statementContents = [];
-    for (const path of statementPaths) {
-      const { data, error } = await supabaseClient.storage
-        .from('statements')
-        .download(path);
-      
-      if (error) {
-        console.error('Error downloading file:', error);
-        continue;
-      }
-      
-      const text = await data.text();
-      statementContents.push(text);
-    }
+    // Format the extracted transaction data for AI analysis
+    const formattedData = extractedData.map((ed: any) => {
+      return `
+File: ${ed.fileName}
+Period: ${ed.dateRange?.start || 'N/A'} to ${ed.dateRange?.end || 'N/A'}
+Total Amount: ₹${ed.totalAmount?.toLocaleString('en-IN') || '0'}
+Number of Transactions: ${ed.transactions.length}
 
-    const combinedStatements = statementContents.join('\n\n---\n\n');
+Category Breakdown:
+${Object.entries(ed.categoryTotals || {}).map(([cat, amt]: [string, any]) => `- ${cat}: ₹${amt.toLocaleString('en-IN')}`).join('\n')}
 
+Transactions:
+${ed.transactions.slice(0, 50).map((t: any) => `${t.date}: ${t.description} - ₹${t.amount.toLocaleString('en-IN')} (${t.category})`).join('\n')}
+${ed.transactions.length > 50 ? `... and ${ed.transactions.length - 50} more transactions` : ''}
+      `.trim();
+    }).join('\n\n---\n\n');
+
+    // Combine all transactions from all statements
+    const allTransactions = extractedData.flatMap((ed: any) => ed.transactions);
+    
     // Analyze using Lovable AI
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -65,16 +67,9 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a financial analyst specializing in credit card recommendations for Indian users. Analyze bank/credit card statements and provide spending insights across categories.
+            content: `You are a financial analyst specializing in credit card recommendations for Indian users. Analyze transaction data and provide spending insights.
 
-Your analysis should include:
-1. Total spending over the period
-2. Spending breakdown by categories (dining, travel, shopping, groceries, entertainment, etc.)
-3. Top 3 spending categories with percentages
-4. Recommended credit cards based on spending patterns (specifically Indian credit cards)
-5. Potential savings with recommended cards
-
-Return a JSON object with this structure:
+Return ONLY valid JSON with this EXACT structure (no markdown, no code blocks):
 {
   "totalSpending": number,
   "period": "string describing period",
@@ -86,20 +81,22 @@ Return a JSON object with this structure:
   ],
   "recommendedCards": [
     {
-      "name": "string",
-      "issuer": "string",
-      "reason": "string",
-      "benefits": ["string"],
-      "estimatedSavings": "string"
+      "name": "string (e.g., HDFC Diners Club Black, AMEX Platinum Travel)",
+      "issuer": "string (HDFC, ICICI, Axis, SBI, AMEX, etc.)",
+      "reason": "string explaining why this card fits their spending pattern",
+      "benefits": ["benefit 1", "benefit 2", "benefit 3"],
+      "estimatedSavings": "string (e.g., ₹15,000-20,000/year)"
     }
   ],
-  "insights": ["string"],
-  "summary": "string"
-}`
+  "insights": ["insight 1", "insight 2", "insight 3"],
+  "summary": "string with 2-3 sentence overview"
+}
+
+Focus on actual Indian credit cards with realistic benefits and savings estimates based on their spending.`
           },
           {
             role: 'user',
-            content: `Analyze these bank statements and provide spending insights with credit card recommendations:\n\n${combinedStatements}`
+            content: `Analyze this transaction data and provide insights with credit card recommendations:\n\n${formattedData}`
           }
         ]
       })
@@ -147,13 +144,16 @@ Return a JSON object with this structure:
       };
     }
 
-    // Store the analysis in the database
+    // Store the analysis in the database with transactions
     const { data: analysis, error: dbError } = await supabaseClient
       .from('spending_analyses')
       .insert({
         user_id: user.id,
-        statement_paths: statementPaths,
-        analysis_data: analysisData
+        statement_paths: extractedData.map((ed: any) => ed.fileName),
+        analysis_data: {
+          ...analysisData,
+          transactions: allTransactions
+        }
       })
       .select()
       .single();

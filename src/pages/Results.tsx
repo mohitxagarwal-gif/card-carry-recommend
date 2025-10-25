@@ -6,6 +6,13 @@ import { Card } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
+interface Transaction {
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+}
+
 interface AnalysisData {
   totalSpending: number;
   period?: string;
@@ -20,6 +27,7 @@ interface AnalysisData {
   }>;
   insights?: string[];
   summary?: string;
+  transactions?: Transaction[];
 }
 
 const Results = () => {
@@ -29,6 +37,9 @@ const Results = () => {
   
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
+  const [editedTransactions, setEditedTransactions] = useState<Transaction[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showRecommendations, setShowRecommendations] = useState(false);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -47,7 +58,9 @@ const Results = () => {
 
         if (error) throw error;
 
-        setAnalysis(data.analysis_data as unknown as AnalysisData);
+        const analysisData = data.analysis_data as unknown as AnalysisData;
+        setAnalysis(analysisData);
+        setEditedTransactions(analysisData.transactions || []);
       } catch (error: any) {
         console.error('Error fetching analysis:', error);
         toast.error('Failed to load analysis');
@@ -63,6 +76,37 @@ const Results = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
+  };
+
+  const handleEditTransaction = (index: number, field: keyof Transaction, value: string | number) => {
+    const updated = [...editedTransactions];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditedTransactions(updated);
+    
+    // Recalculate totals and categories
+    const newTotal = updated.reduce((sum, t) => sum + t.amount, 0);
+    const categoryTotals: Record<string, number> = {};
+    updated.forEach(t => {
+      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+    });
+    
+    const categories = Object.entries(categoryTotals).map(([name, amount]) => ({
+      name,
+      amount,
+      percentage: (amount / newTotal) * 100
+    }));
+    
+    setAnalysis(prev => prev ? {
+      ...prev,
+      totalSpending: newTotal,
+      categories: categories.sort((a, b) => b.amount - a.amount),
+      topCategories: categories.sort((a, b) => b.amount - a.amount).slice(0, 3)
+    } : null);
+  };
+
+  const handleSaveAndViewRecommendations = () => {
+    toast.success("Analysis finalized!");
+    setShowRecommendations(true);
   };
 
   if (loading) {
@@ -269,6 +313,91 @@ const Results = () => {
               </ul>
             </Card>
           )}
+
+          {/* All Transactions Table */}
+          {editedTransactions.length > 0 && (
+            <Card className="p-8 border-border">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-playfair italic font-medium text-foreground">
+                  all transactions ({editedTransactions.length})
+                </h3>
+                <p className="text-sm font-sans text-muted-foreground">
+                  click any field to edit
+                </p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Date</th>
+                      <th className="text-left py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Merchant</th>
+                      <th className="text-left py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Category</th>
+                      <th className="text-right py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editedTransactions.map((transaction, index) => (
+                      <tr key={index} className="border-b border-border/50 hover:bg-secondary/20 transition-colors">
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            value={transaction.date}
+                            onChange={(e) => handleEditTransaction(index, 'date', e.target.value)}
+                            onFocus={() => setEditingIndex(index)}
+                            onBlur={() => setEditingIndex(null)}
+                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            value={transaction.description}
+                            onChange={(e) => handleEditTransaction(index, 'description', e.target.value)}
+                            onFocus={() => setEditingIndex(index)}
+                            onBlur={() => setEditingIndex(null)}
+                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="py-3 px-4">
+                          <input
+                            type="text"
+                            value={transaction.category}
+                            onChange={(e) => handleEditTransaction(index, 'category', e.target.value)}
+                            onFocus={() => setEditingIndex(index)}
+                            onBlur={() => setEditingIndex(null)}
+                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <input
+                            type="number"
+                            value={transaction.amount}
+                            onChange={(e) => handleEditTransaction(index, 'amount', parseFloat(e.target.value) || 0)}
+                            onFocus={() => setEditingIndex(index)}
+                            onBlur={() => setEditingIndex(null)}
+                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1 text-right"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-4 justify-center pt-8">
+            <Button
+              onClick={handleSaveAndViewRecommendations}
+              size="lg"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <CreditCardIcon className="mr-2 h-5 w-5" />
+              {showRecommendations ? "analysis finalized" : "finalize & see recommended cards"}
+            </Button>
+          </div>
         </div>
       </main>
     </div>
