@@ -3,14 +3,31 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload as UploadIcon, FileText, Loader2, LogOut } from "lucide-react";
+import { Upload as UploadIcon, FileText, Loader2, LogOut, Lock, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { PasswordInputModal } from "@/components/PasswordInputModal";
+import { TransactionReview, ExtractedData } from "@/components/TransactionReview";
+import { Progress } from "@/components/ui/progress";
+import { checkPDFEncryption, decryptAndExtractPDF, extractTransactions, analyzeTransactions } from "@/lib/pdfProcessor";
+
+type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
+
+interface FileWithStatus {
+  file: File;
+  status: FileStatus;
+  progress: number;
+  error?: string;
+}
 
 const Upload = () => {
   const navigate = useNavigate();
-  const [files, setFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [filesWithStatus, setFilesWithStatus] = useState<FileWithStatus[]>([]);
+  const [encryptedFiles, setEncryptedFiles] = useState<File[]>([]);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [extractedData, setExtractedData] = useState<ExtractedData[]>([]);
+  const [showReview, setShowReview] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [overallProgress, setOverallProgress] = useState(0);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -34,16 +51,15 @@ const Upload = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
       
-      // Validate file types
-      const validTypes = ['text/plain', 'text/csv', 'application/pdf', 'application/vnd.ms-excel'];
-      const invalidFiles = selectedFiles.filter(file => !validTypes.includes(file.type) && !file.name.endsWith('.csv'));
+      // Validate file types - only PDFs
+      const invalidFiles = selectedFiles.filter(file => !file.type.includes('pdf') && !file.name.endsWith('.pdf'));
       
       if (invalidFiles.length > 0) {
-        toast.error('Please upload only PDF, CSV, or TXT files');
+        toast.error('Please upload only PDF files');
         return;
       }
 
@@ -52,57 +68,146 @@ const Upload = () => {
         return;
       }
 
-      setFiles(selectedFiles);
-      toast.success(`${selectedFiles.length} file(s) selected`);
+      // Initialize files with status
+      const filesWithInitialStatus: FileWithStatus[] = selectedFiles.map(file => ({
+        file,
+        status: 'selected' as FileStatus,
+        progress: 0,
+      }));
+      
+      setFilesWithStatus(filesWithInitialStatus);
+      toast.success(`${selectedFiles.length} PDF file(s) selected`);
+
+      // Check for encryption
+      await checkFilesForEncryption(selectedFiles);
     }
   };
 
-  const handleUploadAndAnalyze = async () => {
-    if (files.length === 0) {
-      toast.error('Please select at least one statement file');
-      return;
+  const checkFilesForEncryption = async (files: File[]) => {
+    setFilesWithStatus(prev => prev.map(f => ({ ...f, status: 'checking' as FileStatus })));
+    
+    const encrypted: File[] = [];
+    
+    for (const file of files) {
+      try {
+        const result = await checkPDFEncryption(file);
+        
+        if (result.needsPassword) {
+          encrypted.push(file);
+          setFilesWithStatus(prev => prev.map(f => 
+            f.file.name === file.name ? { ...f, status: 'encrypted' as FileStatus } : f
+          ));
+        } else {
+          setFilesWithStatus(prev => prev.map(f => 
+            f.file.name === file.name ? { ...f, status: 'selected' as FileStatus } : f
+          ));
+        }
+      } catch (error) {
+        console.error(`Error checking ${file.name}:`, error);
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? { ...f, status: 'error' as FileStatus, error: 'Failed to check encryption' } : f
+        ));
+      }
     }
 
+    if (encrypted.length > 0) {
+      setEncryptedFiles(encrypted);
+      setShowPasswordModal(true);
+    }
+  };
+
+  const handlePasswordSubmit = async (passwords: Map<string, string>) => {
+    setShowPasswordModal(false);
+    setProcessing(true);
+    
+    try {
+      await processAllFiles(passwords);
+    } catch (error) {
+      console.error('Error processing files:', error);
+      toast.error('Failed to process files');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const processAllFiles = async (passwords: Map<string, string>) => {
+    const allExtractedData: ExtractedData[] = [];
+    let completed = 0;
+    const total = filesWithStatus.length;
+
+    for (const fileWithStatus of filesWithStatus) {
+      const { file } = fileWithStatus;
+      const password = passwords.get(file.name);
+
+      setFilesWithStatus(prev => prev.map(f => 
+        f.file.name === file.name ? { ...f, status: 'decrypting' as FileStatus, progress: 0 } : f
+      ));
+
+      const result = await decryptAndExtractPDF(file, password, (progress) => {
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? { ...f, progress } : f
+        ));
+      });
+
+      if (!result.success) {
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? { ...f, status: 'error' as FileStatus, error: result.error } : f
+        ));
+        toast.error(`Failed to process ${file.name}: ${result.error}`);
+        continue;
+      }
+
+      setFilesWithStatus(prev => prev.map(f => 
+        f.file.name === file.name ? { ...f, status: 'processing' as FileStatus } : f
+      ));
+
+      // Extract transactions
+      const transactions = extractTransactions(result.text, file.name);
+      const analysis = analyzeTransactions(transactions);
+
+      allExtractedData.push({
+        fileName: file.name,
+        transactions,
+        ...analysis,
+      });
+
+      setFilesWithStatus(prev => prev.map(f => 
+        f.file.name === file.name ? { ...f, status: 'success' as FileStatus, progress: 100 } : f
+      ));
+
+      completed++;
+      setOverallProgress((completed / total) * 100);
+    }
+
+    if (allExtractedData.length > 0) {
+      setExtractedData(allExtractedData);
+      setShowReview(true);
+      toast.success('All files processed successfully!');
+    }
+  };
+
+  const handleSubmitForAnalysis = async () => {
     if (!user) {
       toast.error('Please sign in first');
       navigate("/auth");
       return;
     }
 
-    setUploading(true);
+    setShowReview(false);
+    setProcessing(true);
 
     try {
-      // Upload files to storage
-      const uploadedPaths = [];
-      
-      for (const file of files) {
-        const filePath = `${user.id}/${Date.now()}_${file.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('statements')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          toast.error(`Failed to upload ${file.name}`);
-          continue;
-        }
-
-        uploadedPaths.push(filePath);
-      }
-
-      if (uploadedPaths.length === 0) {
-        toast.error('No files were uploaded successfully');
-        return;
-      }
-
-      toast.success('Files uploaded successfully! Starting analysis...');
-      setUploading(false);
-      setAnalyzing(true);
-
-      // Call the analysis function
+      // Call the analysis function with extracted data
       const { data, error } = await supabase.functions.invoke('analyze-statements', {
-        body: { statementPaths: uploadedPaths }
+        body: { 
+          extractedData: extractedData.map(ed => ({
+            fileName: ed.fileName,
+            transactions: ed.transactions,
+            totalAmount: ed.totalAmount,
+            dateRange: ed.dateRange,
+            categoryTotals: ed.categoryTotals,
+          }))
+        }
       });
 
       if (error) {
@@ -118,8 +223,48 @@ const Upload = () => {
       console.error('Error:', error);
       toast.error(error.message || 'An error occurred');
     } finally {
-      setUploading(false);
-      setAnalyzing(false);
+      setProcessing(false);
+    }
+  };
+
+  const getStatusIcon = (status: FileStatus) => {
+    switch (status) {
+      case 'selected':
+        return <FileText className="h-5 w-5 text-primary" />;
+      case 'checking':
+        return <Loader2 className="h-5 w-5 text-primary animate-spin" />;
+      case 'encrypted':
+        return <Lock className="h-5 w-5 text-amber-500" />;
+      case 'decrypting':
+      case 'processing':
+        return <Loader2 className="h-5 w-5 text-primary animate-spin" />;
+      case 'success':
+        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
+      case 'error':
+        return <AlertCircle className="h-5 w-5 text-destructive" />;
+      default:
+        return <FileText className="h-5 w-5 text-primary" />;
+    }
+  };
+
+  const getStatusText = (status: FileStatus) => {
+    switch (status) {
+      case 'selected':
+        return 'ready';
+      case 'checking':
+        return 'checking encryption...';
+      case 'encrypted':
+        return 'password required';
+      case 'decrypting':
+        return 'decrypting...';
+      case 'processing':
+        return 'extracting data...';
+      case 'success':
+        return 'processed';
+      case 'error':
+        return 'error';
+      default:
+        return 'unknown';
     }
   };
 
@@ -127,6 +272,45 @@ const Upload = () => {
     await supabase.auth.signOut();
     navigate("/");
   };
+
+  if (showReview) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
+          <div className="container mx-auto px-6 lg:px-12 py-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-playfair italic font-medium text-foreground">
+                card & carry.
+              </h1>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="border-foreground/20 hover:bg-foreground/5"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                sign out
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-6 lg:px-12 py-16">
+          <div className="max-w-4xl mx-auto">
+            <TransactionReview
+              extractedData={extractedData}
+              onSubmit={handleSubmitForAnalysis}
+              onCancel={() => {
+                setShowReview(false);
+                setFilesWithStatus([]);
+                setExtractedData([]);
+              }}
+            />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -156,7 +340,7 @@ const Upload = () => {
               upload your statements
             </h2>
             <p className="text-lg font-sans text-muted-foreground">
-              upload up to 3 months of bank or credit card statements for analysis
+              upload up to 3 months of PDF bank or credit card statements
             </p>
           </div>
 
@@ -167,13 +351,14 @@ const Upload = () => {
                   type="file"
                   id="file-upload"
                   multiple
-                  accept=".pdf,.csv,.txt"
+                  accept=".pdf"
                   onChange={handleFileChange}
                   className="hidden"
+                  disabled={processing}
                 />
                 <label
                   htmlFor="file-upload"
-                  className="cursor-pointer flex flex-col items-center gap-4"
+                  className={`cursor-pointer flex flex-col items-center gap-4 ${processing ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   <div className="bg-primary/10 p-4 rounded-full">
                     <UploadIcon className="h-8 w-8 text-primary" />
@@ -183,57 +368,83 @@ const Upload = () => {
                       click to upload or drag and drop
                     </p>
                     <p className="text-sm font-sans text-muted-foreground">
-                      PDF, CSV, or TXT files (max 3 files)
+                      PDF files only (max 3 files)
                     </p>
                   </div>
                 </label>
               </div>
 
-              {files.length > 0 && (
+              {filesWithStatus.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-sm font-sans font-medium text-foreground">
-                    selected files:
-                  </p>
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg"
-                    >
-                      <FileText className="h-5 w-5 text-primary" />
-                      <span className="text-sm font-sans text-foreground flex-1">
-                        {file.name}
-                      </span>
-                      <span className="text-xs font-sans text-muted-foreground">
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </span>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-sans font-medium text-foreground">
+                      selected files:
+                    </p>
+                    {processing && (
+                      <p className="text-sm font-sans text-muted-foreground">
+                        processing {filesWithStatus.filter(f => f.status === 'success').length} of {filesWithStatus.length}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {filesWithStatus.map((fileWithStatus, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                        {getStatusIcon(fileWithStatus.status)}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-sans text-foreground truncate">
+                            {fileWithStatus.file.name}
+                          </p>
+                          <p className="text-xs font-sans text-muted-foreground">
+                            {getStatusText(fileWithStatus.status)}
+                            {fileWithStatus.error && ` - ${fileWithStatus.error}`}
+                          </p>
+                        </div>
+                        <span className="text-xs font-sans text-muted-foreground whitespace-nowrap">
+                          {(fileWithStatus.file.size / 1024 / 1024).toFixed(2)} MB
+                        </span>
+                      </div>
+                      
+                      {(fileWithStatus.status === 'decrypting' || fileWithStatus.status === 'processing') && (
+                        <Progress value={fileWithStatus.progress} className="h-1" />
+                      )}
                     </div>
                   ))}
+
+                  {processing && overallProgress > 0 && (
+                    <div className="pt-4">
+                      <div className="flex justify-between text-sm font-sans text-muted-foreground mb-2">
+                        <span>overall progress</span>
+                        <span>{Math.round(overallProgress)}%</span>
+                      </div>
+                      <Progress value={overallProgress} className="h-2" />
+                    </div>
+                  )}
                 </div>
               )}
 
-              <Button
-                onClick={handleUploadAndAnalyze}
-                disabled={files.length === 0 || uploading || analyzing}
-                className="w-full font-sans py-6 text-base"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    uploading files...
-                  </>
-                ) : analyzing ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    analyzing spending patterns...
-                  </>
-                ) : (
-                  'upload & analyze'
-                )}
-              </Button>
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <p className="text-sm font-sans text-foreground">
+                  <Lock className="h-4 w-4 inline mr-2 text-primary" />
+                  <strong>Privacy First:</strong> Your statements are processed entirely in your browser. 
+                  Passwords and files never leave your device until you submit.
+                </p>
+              </div>
             </div>
           </Card>
         </div>
       </main>
+
+      <PasswordInputModal
+        open={showPasswordModal}
+        encryptedFiles={encryptedFiles}
+        onSubmit={handlePasswordSubmit}
+        onCancel={() => {
+          setShowPasswordModal(false);
+          setFilesWithStatus([]);
+          setEncryptedFiles([]);
+        }}
+      />
     </div>
   );
 };
