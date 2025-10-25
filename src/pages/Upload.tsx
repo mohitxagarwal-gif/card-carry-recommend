@@ -262,8 +262,19 @@ const Upload = () => {
       });
 
       if (error) {
-        console.error('Analysis error:', error);
-        toast.error('Failed to analyze statements. Please try again.');
+        console.error('Analysis error details:', error);
+        toast.error(`Failed to analyze statements: ${error.message || 'Unknown error'}`, {
+          description: "Please try again or contact support if the issue persists.",
+          duration: 6000,
+        });
+        setProcessing(false);
+        return;
+      }
+
+      if (!data?.analysis?.id) {
+        console.error('No analysis ID returned:', data);
+        toast.error('Analysis completed but failed to save results');
+        setProcessing(false);
         return;
       }
 
@@ -271,9 +282,11 @@ const Upload = () => {
       navigate('/results', { state: { analysisId: data.analysis.id } });
 
     } catch (error: any) {
-      console.error('Error:', error);
-      toast.error(error.message || 'An error occurred');
-    } finally {
+      console.error('Unexpected error during analysis:', error);
+      toast.error(`An unexpected error occurred: ${error.message || 'Unknown error'}`, {
+        description: "Please check the console for details and try again.",
+        duration: 6000,
+      });
       setProcessing(false);
     }
   };
