@@ -176,8 +176,8 @@ const CardsPage = () => {
   }, [selectedIssuers, selectedRewardTypes, selectedPerks, selectedNetworks, search, selectedFeeRange, selectedForexRange, hasAppliedFilters, navigate]);
 
   const FilterContent = () => (
-    <div className="space-y-6">
-      <div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="md:col-span-2 lg:col-span-3 xl:col-span-4">
         <label className="text-sm font-sans font-medium text-foreground mb-2 block">Search</label>
         <Input
           placeholder="Card name or issuer..."
@@ -309,14 +309,16 @@ const CardsPage = () => {
         </Select>
       </div>
 
-      <Button
-        variant="outline"
-        onClick={clearAllFilters}
-        className="w-full font-sans"
-      >
-        <XIcon className="w-4 h-4 mr-2" />
-        Clear All Filters
-      </Button>
+      <div className="flex items-end">
+        <Button
+          variant="outline"
+          onClick={clearAllFilters}
+          className="w-full font-sans"
+        >
+          <XIcon className="w-4 h-4 mr-2" />
+          Clear All
+        </Button>
+      </div>
     </div>
   );
 
@@ -345,40 +347,13 @@ const CardsPage = () => {
               </Button>
             </div>
 
-            {/* Filters & Results */}
-            <div className="flex gap-8">
-              {/* Desktop Filters */}
-              <aside className="hidden lg:block w-64 shrink-0">
-                <div className="sticky top-24 bg-card/30 rounded-2xl border border-border/30 p-6">
-                  <h3 className="text-lg font-playfair italic font-medium text-foreground mb-4">
-                    Filters
-                  </h3>
-                  <FilterContent />
-                </div>
-              </aside>
+            {/* Horizontal Filters Bar */}
+            <div className="mb-8 bg-card/30 rounded-2xl border border-border/30 p-6">
+              <FilterContent />
+            </div>
 
-              {/* Mobile Filter Button */}
-              <div className="lg:hidden fixed bottom-20 right-6 z-40">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button size="lg" className="rounded-full shadow-lg font-sans">
-                      <FilterIcon className="w-5 h-5 mr-2" />
-                      Filters
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-full sm:w-96 overflow-y-auto">
-                    <SheetHeader>
-                      <SheetTitle className="font-playfair italic">Filters</SheetTitle>
-                    </SheetHeader>
-                    <div className="mt-6">
-                      <FilterContent />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
-
-              {/* Card Grid */}
-              <div className="flex-1">
+            {/* Card Grid */}
+            <div>
                 <div className="mb-4 flex items-center justify-between">
                   <p className="text-sm font-sans text-muted-foreground">
                     {filteredCards.length} {filteredCards.length === 1 ? "card" : "cards"} found
@@ -402,7 +377,6 @@ const CardsPage = () => {
                   </div>
                 )}
               </div>
-            </div>
 
             {/* Footer Disclaimer */}
             <div className="mt-12 pt-8 border-t border-border/30">
