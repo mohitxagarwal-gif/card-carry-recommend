@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useCompare } from "@/contexts/CompareContext";
+import { CreditCard } from "@/hooks/useCards";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 import { Button } from "./ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
@@ -83,9 +84,9 @@ export const CompareDrawer = () => {
                         <TableCell className="font-sans font-medium">annual fee</TableCell>
                         {selectedCards.map(card => (
                           <TableCell key={card.id} className="font-sans">
-                            {card.annualFee === 0 ? "Free" : `₹${card.annualFee.toLocaleString('en-IN')}`}
-                            {card.waiverRule && (
-                              <p className="text-xs text-muted-foreground mt-1">{card.waiverRule}</p>
+                            {card.annual_fee === 0 ? "Free" : `₹${card.annual_fee.toLocaleString('en-IN')}`}
+                            {card.waiver_rule && (
+                              <p className="text-xs text-muted-foreground mt-1">{card.waiver_rule}</p>
                             )}
                           </TableCell>
                         ))}
@@ -93,37 +94,37 @@ export const CompareDrawer = () => {
                       <TableRow>
                         <TableCell className="font-sans font-medium">welcome bonus</TableCell>
                         {selectedCards.map(card => (
-                          <TableCell key={card.id} className="font-sans">{card.welcomeBonus}</TableCell>
+                          <TableCell key={card.id} className="font-sans">{card.welcome_bonus}</TableCell>
                         ))}
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-sans font-medium">rewards</TableCell>
                         {selectedCards.map(card => (
-                          <TableCell key={card.id} className="font-sans text-sm">{card.rewardStructure}</TableCell>
+                          <TableCell key={card.id} className="font-sans text-sm">{card.reward_structure}</TableCell>
                         ))}
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-sans font-medium">lounge</TableCell>
                         {selectedCards.map(card => (
-                          <TableCell key={card.id} className="font-sans text-sm">{card.loungeAccess}</TableCell>
+                          <TableCell key={card.id} className="font-sans text-sm">{card.lounge_access}</TableCell>
                         ))}
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-sans font-medium">forex markup</TableCell>
                         {selectedCards.map(card => (
-                          <TableCell key={card.id} className="font-sans text-sm">{card.forexMarkup}</TableCell>
+                          <TableCell key={card.id} className="font-sans text-sm">{card.forex_markup}</TableCell>
                         ))}
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-sans font-medium">ideal for</TableCell>
                         {selectedCards.map(card => (
-                          <TableCell key={card.id} className="font-sans text-sm">{card.idealFor}</TableCell>
+                          <TableCell key={card.id} className="font-sans text-sm">{card.ideal_for.join(", ")}</TableCell>
                         ))}
                       </TableRow>
                       <TableRow>
                         <TableCell className="font-sans font-medium">downsides</TableCell>
                         {selectedCards.map(card => (
-                          <TableCell key={card.id} className="font-sans text-sm text-muted-foreground">{card.downsides}</TableCell>
+                          <TableCell key={card.id} className="font-sans text-sm text-muted-foreground">{card.downsides.join(", ")}</TableCell>
                         ))}
                       </TableRow>
                       <TableRow>
@@ -131,7 +132,7 @@ export const CompareDrawer = () => {
                         {selectedCards.map(card => (
                           <TableCell key={card.id}>
                             <div className="flex flex-wrap gap-1">
-                              {card.categoryBadges.map(badge => (
+                              {card.category_badges.map(badge => (
                                 <Badge key={badge} variant="secondary" className="text-xs">
                                   {badge}
                                 </Badge>

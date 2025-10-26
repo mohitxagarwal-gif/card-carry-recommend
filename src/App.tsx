@@ -8,6 +8,8 @@ import Auth from "./pages/Auth";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
 import CardsPage from "./pages/CardsPage";
+import Admin from "./pages/Admin";
+import AdminCardForm from "./pages/AdminCardForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,9 @@ const App = () => (
           <Route path="/cards" element={<CardsPage />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/results" element={<Results />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/cards/new" element={<AdminCardForm />} />
+          <Route path="/admin/cards/:id" element={<AdminCardForm />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { CreditCard } from "@/data/cardData";
+import { CreditCard } from "@/hooks/useCards";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -45,20 +45,20 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                 <div>
                   <p className="text-xs font-sans text-muted-foreground mb-1">Annual Fee</p>
                   <p className="text-lg font-sans font-medium text-foreground">
-                    {card.annualFee === 0 ? "Free" : `₹${card.annualFee.toLocaleString('en-IN')}`}
+                    {card.annual_fee === 0 ? "Free" : `₹${card.annual_fee.toLocaleString('en-IN')}`}
                   </p>
-                  {card.waiverRule && (
-                    <p className="text-xs font-sans text-muted-foreground mt-1">{card.waiverRule}</p>
+                  {card.waiver_rule && (
+                    <p className="text-xs font-sans text-muted-foreground mt-1">{card.waiver_rule}</p>
                   )}
                 </div>
                 <div>
                   <p className="text-xs font-sans text-muted-foreground mb-1">Forex Markup</p>
-                  <p className="text-lg font-sans font-medium text-foreground">{card.forexMarkup}</p>
+                  <p className="text-lg font-sans font-medium text-foreground">{card.forex_markup}</p>
                 </div>
                 <div>
                   <p className="text-xs font-sans text-muted-foreground mb-1">Reward Type</p>
                   <p className="text-lg font-sans font-medium text-foreground">
-                    {card.rewardType.join(", ")}
+                    {card.reward_type.join(", ")}
                   </p>
                 </div>
                 <div>
@@ -81,7 +81,7 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                 <div>
                   <h4 className="text-sm font-sans font-medium text-foreground mb-2">Key Perks</h4>
                   <ul className="space-y-2">
-                    {card.keyPerks.map((perk, idx) => (
+                    {card.key_perks.map((perk, idx) => (
                       <li key={idx} className="text-sm font-sans text-muted-foreground flex items-start">
                         <span className="mr-2">•</span>
                         <span>{perk}</span>
@@ -92,13 +92,13 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
 
                 <div>
                   <h4 className="text-sm font-sans font-medium text-foreground mb-2">Lounge Access</h4>
-                  <p className="text-sm font-sans text-muted-foreground">{card.loungeAccess}</p>
+                  <p className="text-sm font-sans text-muted-foreground">{card.lounge_access}</p>
                 </div>
 
-                {card.welcomeBonus !== "None" && (
+                {card.welcome_bonus !== "None" && (
                   <div>
                     <h4 className="text-sm font-sans font-medium text-foreground mb-2">Welcome Bonus</h4>
-                    <p className="text-sm font-sans text-muted-foreground">{card.welcomeBonus}</p>
+                    <p className="text-sm font-sans text-muted-foreground">{card.welcome_bonus}</p>
                   </div>
                 )}
               </TabsContent>
@@ -107,21 +107,21 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                 <div>
                   <h4 className="text-sm font-sans font-medium text-foreground mb-2">Annual Fee</h4>
                   <p className="text-sm font-sans text-muted-foreground">
-                    {card.annualFee === 0 ? "Free" : `₹${card.annualFee.toLocaleString('en-IN')}`}
+                    {card.annual_fee === 0 ? "Free" : `₹${card.annual_fee.toLocaleString('en-IN')}`}
                   </p>
-                  {card.waiverRule && (
-                    <p className="text-xs font-sans text-muted-foreground mt-1">{card.waiverRule}</p>
+                  {card.waiver_rule && (
+                    <p className="text-xs font-sans text-muted-foreground mt-1">{card.waiver_rule}</p>
                   )}
                 </div>
 
                 <div>
                   <h4 className="text-sm font-sans font-medium text-foreground mb-2">Rewards Structure</h4>
-                  <p className="text-sm font-sans text-muted-foreground">{card.rewardStructure}</p>
+                  <p className="text-sm font-sans text-muted-foreground">{card.reward_structure}</p>
                 </div>
 
                 <div>
                   <h4 className="text-sm font-sans font-medium text-foreground mb-2">Forex Markup</h4>
-                  <p className="text-sm font-sans text-muted-foreground">{card.forexMarkup}</p>
+                  <p className="text-sm font-sans text-muted-foreground">{card.forex_markup}</p>
                 </div>
               </TabsContent>
 
@@ -133,10 +133,10 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                   </div>
                 )}
 
-                {card.docsRequired && (
+                {card.docs_required && (
                   <div>
                     <h4 className="text-sm font-sans font-medium text-foreground mb-2">Documents Required</h4>
-                    <p className="text-sm font-sans text-muted-foreground">{card.docsRequired}</p>
+                    <p className="text-sm font-sans text-muted-foreground">{card.docs_required}</p>
                   </div>
                 )}
               </TabsContent>
@@ -145,7 +145,7 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                 <div>
                   <h4 className="text-sm font-sans font-medium text-foreground mb-2">Ideal For</h4>
                   <div className="flex flex-wrap gap-2">
-                    {card.idealFor.map(item => (
+                    {card.ideal_for.map(item => (
                       <Badge key={item} variant="secondary" className="font-sans">
                         {item}
                       </Badge>
@@ -168,7 +168,7 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                 <div>
                   <h4 className="text-sm font-sans font-medium text-foreground mb-2">Categories</h4>
                   <div className="flex flex-wrap gap-2">
-                    {card.categoryBadges.map(badge => (
+                    {card.category_badges.map(badge => (
                       <Badge key={badge} variant="outline" className="font-sans">
                         {badge}
                       </Badge>
@@ -176,22 +176,10 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                   </div>
                 </div>
 
-                {card.lastUpdated && (
-                  <div>
-                    <p className="text-xs font-sans text-muted-foreground">
-                      Last updated: {new Date(card.lastUpdated).toLocaleDateString('en-IN', { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
-                    </p>
-                  </div>
-                )}
-
-                {card.tncUrl && (
+                {card.tnc_url && (
                   <div>
                     <a
-                      href={card.tncUrl}
+                      href={card.tnc_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center text-sm font-sans text-primary hover:underline"

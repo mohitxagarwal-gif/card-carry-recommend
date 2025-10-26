@@ -6,7 +6,8 @@ import { CardTile } from "@/components/CardTile";
 import { CompareDrawer } from "@/components/CompareDrawer";
 import { CompareProvider } from "@/contexts/CompareContext";
 import { MobileNudges } from "@/components/MobileNudges";
-import { creditCards, issuers, rewardTypes, perkCategories, networks, feeRanges, forexRanges } from "@/data/cardData";
+import { issuers, rewardTypes, perkCategories, networks, feeRanges, forexRanges } from "@/data/cardData";
+import { useCards } from "@/hooks/useCards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -19,6 +20,7 @@ import { toast } from "sonner";
 const CardsPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { data: creditCards = [], isLoading } = useCards();
   
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedIssuers, setSelectedIssuers] = useState<string[]>(
@@ -55,8 +57,21 @@ const CardsPage = () => {
     setSearchParams(params);
   }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, sortBy, setSearchParams]);
 
+  useEffect(() => {
+    const hasFilters = Boolean(search || selectedIssuers.length || selectedFeeRange || selectedRewardTypes.length || selectedPerks.length || selectedNetworks.length || selectedForexRange || welcomeBonusOnly);
+    setHasAppliedFilters(hasFilters);
+  }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading cards...</p>
+      </div>
+    );
+  }
+
   const filteredCards = useMemo(() => {
-    let cards = creditCards.filter(card => card.isActive);
+    let cards = creditCards.filter(card => card.is_active);
 
     // Search
     if (search) {
@@ -75,10 +90,10 @@ const CardsPage = () => {
     // Fee range
     if (selectedFeeRange) {
       cards = cards.filter(card => {
-        if (selectedFeeRange === "No fee") return card.annualFee === 0;
-        if (selectedFeeRange === "≤₹1,000") return card.annualFee > 0 && card.annualFee <= 1000;
-        if (selectedFeeRange === "₹1,000–₹3,000") return card.annualFee > 1000 && card.annualFee <= 3000;
-        if (selectedFeeRange === ">₹3,000") return card.annualFee > 3000;
+        if (selectedFeeRange === "No fee") return card.annual_fee === 0;
+        if (selectedFeeRange === "≤₹1,000") return card.annual_fee > 0 && card.annual_fee <= 1000;
+        if (selectedFeeRange === "₹1,000–₹3,000") return card.annual_fee > 1000 && card.annual_fee <= 3000;
+        if (selectedFeeRange === ">₹3,000") return card.annual_fee > 3000;
         return true;
       });
     }
@@ -86,14 +101,14 @@ const CardsPage = () => {
     // Reward types
     if (selectedRewardTypes.length) {
       cards = cards.filter(card => 
-        card.rewardType.some(type => selectedRewardTypes.includes(type))
+        card.reward_type.some(type => selectedRewardTypes.includes(type))
       );
     }
 
     // Perks
     if (selectedPerks.length) {
       cards = cards.filter(card => 
-        card.keyPerks.some(perk => 
+        card.key_perks.some(perk => 
           selectedPerks.some(selectedPerk => 
             perk.toLowerCase().includes(selectedPerk.toLowerCase())
           )
@@ -109,7 +124,7 @@ const CardsPage = () => {
     // Forex range
     if (selectedForexRange) {
       cards = cards.filter(card => {
-        const forex = card.forexMarkupPct;
+        const forex = card.forex_markup_pct;
         if (selectedForexRange === "0%") return forex === 0;
         if (selectedForexRange === "<2%") return forex > 0 && forex < 2;
         if (selectedForexRange === "2-3.5%") return forex >= 2 && forex <= 3.5;
@@ -120,21 +135,21 @@ const CardsPage = () => {
 
     // Welcome bonus
     if (welcomeBonusOnly) {
-      cards = cards.filter(card => card.welcomeBonus && card.welcomeBonus !== "None");
+      cards = cards.filter(card => card.welcome_bonus && card.welcome_bonus !== "None");
     }
 
     // Sort
     cards.sort((a, b) => {
-      if (sortBy === "popularity" || !sortBy) return b.popularScore - a.popularScore;
-      if (sortBy === "welcome-bonus") return (b.welcomeBonus !== "None" ? 1 : 0) - (a.welcomeBonus !== "None" ? 1 : 0);
-      if (sortBy === "fee-low") return a.annualFee - b.annualFee;
-      if (sortBy === "fee-high") return b.annualFee - a.annualFee;
-      if (sortBy === "lounge-access") return (b.loungeAccess !== "No lounge access" ? 1 : 0) - (a.loungeAccess !== "No lounge access" ? 1 : 0);
+      if (sortBy === "popularity" || !sortBy) return b.popular_score - a.popular_score;
+      if (sortBy === "welcome-bonus") return (b.welcome_bonus !== "None" ? 1 : 0) - (a.welcome_bonus !== "None" ? 1 : 0);
+      if (sortBy === "fee-low") return a.annual_fee - b.annual_fee;
+      if (sortBy === "fee-high") return b.annual_fee - a.annual_fee;
+      if (sortBy === "lounge-access") return (b.lounge_access !== "No lounge access" ? 1 : 0) - (a.lounge_access !== "No lounge access" ? 1 : 0);
       return 0;
     });
 
     return cards;
-  }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, sortBy]);
+  }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, sortBy, creditCards]);
 
   const clearAllFilters = () => {
     setSearch("");

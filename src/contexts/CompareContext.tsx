@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { CreditCard } from '@/data/cardData';
+import { CreditCard } from '@/hooks/useCards';
 
 interface CompareContextType {
   selectedCards: CreditCard[];

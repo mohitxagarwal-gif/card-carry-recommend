@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CreditCard } from "@/data/cardData";
+import { CreditCard } from "@/hooks/useCards";
 import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
@@ -44,7 +44,7 @@ export const CardTile = ({ card }: CardTileProps) => {
         </div>
 
         <ul className="space-y-2 mb-4 flex-grow">
-          {card.keyPerks.slice(0, 3).map((perk, idx) => (
+          {card.key_perks.slice(0, 3).map((perk, idx) => (
             <li key={idx} className="text-sm font-sans text-muted-foreground flex items-start">
               <span className="mr-2">•</span>
               <span>{perk}</span>
@@ -54,17 +54,17 @@ export const CardTile = ({ card }: CardTileProps) => {
 
         <div className="mb-4">
           <p className="text-base font-sans text-foreground font-medium">
-            {card.annualFee === 0 ? "Free" : `₹${card.annualFee.toLocaleString('en-IN')}/yr`}
+            {card.annual_fee === 0 ? "Free" : `₹${card.annual_fee.toLocaleString('en-IN')}/yr`}
           </p>
-          {card.waiverRule && (
+          {card.waiver_rule && (
             <p className="text-xs font-sans text-muted-foreground mt-1">
-              {card.waiverRule}
+              {card.waiver_rule}
             </p>
           )}
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4">
-          {card.categoryBadges.map(badge => (
+          {card.category_badges.map(badge => (
             <Badge key={badge} variant="secondary" className="text-xs">
               {badge}
             </Badge>
