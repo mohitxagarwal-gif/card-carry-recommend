@@ -6,21 +6,28 @@ import Header from "@/components/Header";
 import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { useShortlist } from "@/hooks/useShortlist";
 import { useApplications } from "@/hooks/useApplications";
+import { useUserCards } from "@/hooks/useUserCards";
 import { Loader2, TrendingUp, Heart, FileText, Upload } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
+import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
+import { FeeWaiverGoalsModule } from "@/components/dashboard/FeeWaiverGoalsModule";
+import { RemindersModule } from "@/components/dashboard/RemindersModule";
+import { ContentFeedModule } from "@/components/dashboard/ContentFeedModule";
+import { generateNextSteps } from "@/lib/nextStepsGenerator";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { latestSnapshot, isLoading: snapshotLoading } = useRecommendationSnapshot();
   const { shortlist, isLoading: shortlistLoading } = useShortlist();
   const { applications, isLoading: appsLoading } = useApplications();
+  const { userCards, isLoading: cardsLoading } = useUserCards();
 
   useEffect(() => {
     trackEvent("dash_view");
   }, []);
 
-  if (snapshotLoading || shortlistLoading || appsLoading) {
+  if (snapshotLoading || shortlistLoading || appsLoading || cardsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -66,30 +73,14 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {!latestSnapshot && (
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <span>Complete your analysis</span>
-                    <Button size="sm" onClick={() => navigate('/upload')}>
-                      Upload
+                {generateNextSteps(latestSnapshot, applications, shortlist, userCards, navigate).map((step) => (
+                  <div key={step.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <span>{step.text}</span>
+                    <Button size="sm" onClick={step.action}>
+                      {step.cta}
                     </Button>
                   </div>
-                )}
-                {latestSnapshot && applications.filter(a => a.status === 'considering').length > 0 && (
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <span>Review cards you're considering</span>
-                    <Button size="sm" onClick={() => navigate('/apps')}>
-                      View
-                    </Button>
-                  </div>
-                )}
-                {applications.filter(a => a.status === 'considering').length === 0 && shortlist.length > 0 && (
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <span>Apply to your shortlisted cards</span>
-                    <Button size="sm" onClick={() => navigate('/recs')}>
-                      View
-                    </Button>
-                  </div>
-                )}
+                ))}
               </CardContent>
             </Card>
 
