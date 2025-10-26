@@ -36,7 +36,7 @@ const CardsPage = () => {
   );
   const [selectedForexRange, setSelectedForexRange] = useState(searchParams.get("forex") || "");
   const [welcomeBonusOnly, setWelcomeBonusOnly] = useState(searchParams.get("bonus") === "true");
-  const [sortBy, setSortBy] = useState(searchParams.get("sort") || "popular");
+  const [sortBy, setSortBy] = useState(searchParams.get("sort") || "");
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
@@ -51,7 +51,7 @@ const CardsPage = () => {
     if (selectedNetworks.length) params.set("network", selectedNetworks.join(","));
     if (selectedForexRange) params.set("forex", selectedForexRange);
     if (welcomeBonusOnly) params.set("bonus", "true");
-    if (sortBy !== "popular") params.set("sort", sortBy);
+    if (sortBy) params.set("sort", sortBy);
     setSearchParams(params);
   }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, sortBy, setSearchParams]);
 
@@ -125,10 +125,11 @@ const CardsPage = () => {
 
     // Sort
     cards.sort((a, b) => {
-      if (sortBy === "popular") return b.popularScore - a.popularScore;
-      if (sortBy === "welcome") return (b.welcomeBonus !== "None" ? 1 : 0) - (a.welcomeBonus !== "None" ? 1 : 0);
-      if (sortBy === "fee") return a.annualFee - b.annualFee;
-      if (sortBy === "lounge") return (b.loungeAccess !== "No lounge access" ? 1 : 0) - (a.loungeAccess !== "No lounge access" ? 1 : 0);
+      if (sortBy === "popularity" || !sortBy) return b.popularScore - a.popularScore;
+      if (sortBy === "welcome-bonus") return (b.welcomeBonus !== "None" ? 1 : 0) - (a.welcomeBonus !== "None" ? 1 : 0);
+      if (sortBy === "fee-low") return a.annualFee - b.annualFee;
+      if (sortBy === "fee-high") return b.annualFee - a.annualFee;
+      if (sortBy === "lounge-access") return (b.loungeAccess !== "No lounge access" ? 1 : 0) - (a.loungeAccess !== "No lounge access" ? 1 : 0);
       return 0;
     });
 
@@ -144,7 +145,7 @@ const CardsPage = () => {
     setSelectedNetworks([]);
     setSelectedForexRange("");
     setWelcomeBonusOnly(false);
-    setSortBy("popular");
+    setSortBy("");
     setSearchParams(new URLSearchParams());
   };
 
@@ -422,7 +423,7 @@ const CardsPage = () => {
                     {/* Sort Dropdown */}
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="w-full md:w-[180px] font-sans">
-                        <SelectValue placeholder="Sort by" />
+                        <SelectValue placeholder="Sort" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="popularity">Popularity</SelectItem>
