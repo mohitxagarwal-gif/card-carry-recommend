@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FilterIcon, XIcon } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { FilterIcon, XIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 
 const CardsPage = () => {
@@ -37,6 +38,7 @@ const CardsPage = () => {
   const [welcomeBonusOnly, setWelcomeBonusOnly] = useState(searchParams.get("bonus") === "true");
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "popular");
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
   // Update URL when filters change
   useEffect(() => {
@@ -175,6 +177,75 @@ const CardsPage = () => {
     }
   }, [selectedIssuers, selectedRewardTypes, selectedPerks, selectedNetworks, search, selectedFeeRange, selectedForexRange, hasAppliedFilters, navigate]);
 
+  // Helper function to get active filters
+  const getActiveFilters = () => {
+    const filters: { label: string; onRemove: () => void; key: string }[] = [];
+    
+    if (search) {
+      filters.push({ label: `"${search}"`, onRemove: () => setSearch(""), key: "search" });
+    }
+    
+    selectedIssuers.forEach(issuer => {
+      filters.push({ 
+        label: issuer, 
+        onRemove: () => setSelectedIssuers(prev => prev.filter(i => i !== issuer)),
+        key: `issuer-${issuer}`
+      });
+    });
+    
+    if (selectedFeeRange) {
+      filters.push({ 
+        label: selectedFeeRange.replace("-", " - "), 
+        onRemove: () => setSelectedFeeRange(null),
+        key: "fee"
+      });
+    }
+    
+    selectedRewardTypes.forEach(reward => {
+      filters.push({ 
+        label: reward, 
+        onRemove: () => setSelectedRewardTypes(prev => prev.filter(r => r !== reward)),
+        key: `reward-${reward}`
+      });
+    });
+    
+    selectedPerks.forEach(perk => {
+      filters.push({ 
+        label: perk, 
+        onRemove: () => setSelectedPerks(prev => prev.filter(p => p !== perk)),
+        key: `perk-${perk}`
+      });
+    });
+    
+    selectedNetworks.forEach(network => {
+      filters.push({ 
+        label: network, 
+        onRemove: () => setSelectedNetworks(prev => prev.filter(n => n !== network)),
+        key: `network-${network}`
+      });
+    });
+    
+    if (selectedForexRange) {
+      filters.push({ 
+        label: `Forex ${selectedForexRange}`, 
+        onRemove: () => setSelectedForexRange(null),
+        key: "forex"
+      });
+    }
+    
+    if (welcomeBonusOnly) {
+      filters.push({ 
+        label: "Welcome Bonus", 
+        onRemove: () => setWelcomeBonusOnly(false),
+        key: "welcome"
+      });
+    }
+    
+    return filters;
+  };
+
+  const activeFilters = getActiveFilters();
+
   const FilterContent = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       <div className="md:col-span-2 lg:col-span-3 xl:col-span-4">
@@ -190,7 +261,7 @@ const CardsPage = () => {
       <div>
         <label className="text-sm font-sans font-medium text-foreground mb-2 block">Issuer</label>
         <div className="flex flex-wrap gap-2">
-          {issuers.map(issuer => (
+          {["HDFC", "SBI", "ICICI", "Axis", "Kotak", "AMEX", "Standard Chartered", "Yes Bank", "IndusInd", "AU Bank", "IDFC First", "RBL"].map((issuer) => (
             <Badge
               key={issuer}
               variant={selectedIssuers.includes(issuer) ? "default" : "outline"}
@@ -206,12 +277,12 @@ const CardsPage = () => {
       <div>
         <label className="text-sm font-sans font-medium text-foreground mb-2 block">Annual Fee</label>
         <div className="flex flex-wrap gap-2">
-          {feeRanges.map(range => (
+          {["Free", "₹500-2000", "₹2000-5000", "₹5000+"].map((range) => (
             <Badge
               key={range}
               variant={selectedFeeRange === range ? "default" : "outline"}
               className="cursor-pointer font-sans"
-              onClick={() => setSelectedFeeRange(selectedFeeRange === range ? "" : range)}
+              onClick={() => setSelectedFeeRange(selectedFeeRange === range ? null : range)}
             >
               {range}
             </Badge>
@@ -220,9 +291,9 @@ const CardsPage = () => {
       </div>
 
       <div>
-        <label className="text-sm font-sans font-medium text-foreground mb-2 block">Reward Type</label>
+        <label className="text-sm font-sans font-medium text-foreground mb-2 block">Rewards</label>
         <div className="flex flex-wrap gap-2">
-          {rewardTypes.map(type => (
+          {["Cashback", "Reward Points", "Miles", "Fuel", "Travel"].map((type) => (
             <Badge
               key={type}
               variant={selectedRewardTypes.includes(type) ? "default" : "outline"}
@@ -238,7 +309,7 @@ const CardsPage = () => {
       <div>
         <label className="text-sm font-sans font-medium text-foreground mb-2 block">Perks</label>
         <div className="flex flex-wrap gap-2">
-          {perkCategories.map(perk => (
+          {["Airport Lounge", "Golf", "Dining", "Movie", "Shopping"].map((perk) => (
             <Badge
               key={perk}
               variant={selectedPerks.includes(perk) ? "default" : "outline"}
@@ -254,7 +325,7 @@ const CardsPage = () => {
       <div>
         <label className="text-sm font-sans font-medium text-foreground mb-2 block">Network</label>
         <div className="flex flex-wrap gap-2">
-          {networks.map(network => (
+          {["Visa", "Mastercard", "RuPay", "American Express"].map((network) => (
             <Badge
               key={network}
               variant={selectedNetworks.includes(network) ? "default" : "outline"}
@@ -270,12 +341,12 @@ const CardsPage = () => {
       <div>
         <label className="text-sm font-sans font-medium text-foreground mb-2 block">Forex Markup</label>
         <div className="flex flex-wrap gap-2">
-          {forexRanges.map(range => (
+          {["0%", "1-2%", "2-3%", "3%+"].map((range) => (
             <Badge
               key={range}
               variant={selectedForexRange === range ? "default" : "outline"}
               className="cursor-pointer font-sans"
-              onClick={() => setSelectedForexRange(selectedForexRange === range ? "" : range)}
+              onClick={() => setSelectedForexRange(selectedForexRange === range ? null : range)}
             >
               {range}
             </Badge>
@@ -292,21 +363,6 @@ const CardsPage = () => {
         >
           Has Welcome Bonus
         </Badge>
-      </div>
-
-      <div>
-        <label className="text-sm font-sans font-medium text-foreground mb-2 block">Sort By</label>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="font-sans">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="popular">Most Popular</SelectItem>
-            <SelectItem value="welcome">Best Welcome Bonus</SelectItem>
-            <SelectItem value="fee">Lowest Fee</SelectItem>
-            <SelectItem value="lounge">Highest Lounge Access</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="flex items-end">
@@ -347,9 +403,86 @@ const CardsPage = () => {
               </Button>
             </div>
 
-            {/* Horizontal Filters Bar */}
-            <div className="mb-8 bg-card/30 rounded-2xl border border-border/30 p-6">
-              <FilterContent />
+            {/* Collapsible Filters Banner */}
+            <div className="mb-8 bg-card/30 rounded-2xl border border-border/30 overflow-hidden">
+              <Collapsible open={isFiltersExpanded} onOpenChange={setIsFiltersExpanded}>
+                {/* Always Visible Top Bar */}
+                <div className="p-4 md:p-6">
+                  <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                    {/* Search Input */}
+                    <div className="flex-1 w-full md:w-auto">
+                      <Input
+                        placeholder="Search cards..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="font-sans"
+                      />
+                    </div>
+
+                    {/* Sort Dropdown */}
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="w-full md:w-[180px] font-sans">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="popularity">Popularity</SelectItem>
+                        <SelectItem value="welcome-bonus">Welcome Bonus</SelectItem>
+                        <SelectItem value="fee-low">Fee: Low to High</SelectItem>
+                        <SelectItem value="fee-high">Fee: High to Low</SelectItem>
+                        <SelectItem value="lounge-access">Lounge Access</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Expand/Collapse Button */}
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" size="default" className="font-sans w-full md:w-auto">
+                        <FilterIcon className="w-4 h-4 mr-2" />
+                        {isFiltersExpanded ? "Hide Filters" : "Show Filters"}
+                        {isFiltersExpanded ? (
+                          <ChevronUp className="w-4 h-4 ml-2" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 ml-2" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+
+                  {/* Active Filter Badges */}
+                  {activeFilters.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2 items-center">
+                      <span className="text-sm font-sans text-muted-foreground">
+                        Active filters:
+                      </span>
+                      {activeFilters.map((filter) => (
+                        <Badge
+                          key={filter.key}
+                          variant="secondary"
+                          className="font-sans cursor-pointer hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                          onClick={filter.onRemove}
+                        >
+                          {filter.label}
+                          <XIcon className="w-3 h-3 ml-1" />
+                        </Badge>
+                      ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearAllFilters}
+                        className="font-sans text-xs h-7"
+                      >
+                        Clear all
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Expandable Filter Content */}
+                <CollapsibleContent className="animate-accordion-down">
+                  <div className="px-4 md:px-6 pb-6 pt-2 border-t border-border/30">
+                    <FilterContent />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
 
             {/* Card Grid */}
