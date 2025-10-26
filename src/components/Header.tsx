@@ -15,19 +15,19 @@ const Header = () => {
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a 
-              href="#how-it-works" 
+              href="/#how-it-works" 
               className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
               how it works
             </a>
-            <a 
-              href="#explore-cards" 
+            <button
+              onClick={() => navigate("/cards")}
               className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
               explore cards
-            </a>
+            </button>
             <a 
-              href="#faqs" 
+              href="/#faqs" 
               className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
               faqs

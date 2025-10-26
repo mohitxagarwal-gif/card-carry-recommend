@@ -6,14 +6,22 @@ export interface CreditCard {
   annualFee: number;
   waiverRule?: string;
   welcomeBonus: string;
+  rewardType: string[];
   rewardStructure: string;
   keyPerks: string[];
   loungeAccess: string;
   forexMarkup: string;
-  idealFor: string;
-  downsides: string;
+  forexMarkupPct: number;
+  idealFor: string[];
+  downsides: string[];
   categoryBadges: string[];
   imageUrl?: string;
+  eligibility?: string;
+  docsRequired?: string;
+  tncUrl?: string;
+  popularScore: number;
+  isActive: boolean;
+  lastUpdated: string;
 }
 
 export const creditCards: CreditCard[] = [
@@ -25,13 +33,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 2500,
     waiverRule: "₹3L annual spend",
     welcomeBonus: "5,000 reward points",
+    rewardType: ["Points"],
     rewardStructure: "4 points per ₹150 spent",
     keyPerks: ["8 lounge visits/year", "10x rewards on dining", "Zero forex markup"],
     loungeAccess: "8 domestic visits/year",
     forexMarkup: "2% + GST",
-    idealFor: "Travel and dining enthusiasts",
-    downsides: "Moderate annual fee, limited international lounge access",
+    forexMarkupPct: 2,
+    idealFor: ["Travel", "Dining"],
+    downsides: ["Moderate annual fee", "Limited international lounge access"],
     categoryBadges: ["Travel", "Dining"],
+    eligibility: "Net monthly income ≥₹3L",
+    docsRequired: "PAN, Aadhaar, income proof",
+    tncUrl: "https://www.hdfcbank.com/personal/pay/cards/credit-cards/regalia",
+    popularScore: 95,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "axis-magnus",
@@ -41,13 +57,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 10000,
     waiverRule: "₹15L annual spend",
     welcomeBonus: "25,000 Edge Miles",
+    rewardType: ["Miles"],
     rewardStructure: "12 Edge Miles per ₹200",
     keyPerks: ["Unlimited lounge access", "Hotel partnerships", "12x miles on travel"],
     loungeAccess: "Unlimited domestic + international",
     forexMarkup: "3.5% + GST",
-    idealFor: "Luxury travelers with high spending",
-    downsides: "High annual fee, devaluation risk",
+    forexMarkupPct: 3.5,
+    idealFor: ["Luxury Travel", "High Spending"],
+    downsides: ["High annual fee", "Devaluation risk"],
     categoryBadges: ["Luxury", "Travel"],
+    eligibility: "Net monthly income ≥₹2.5L",
+    docsRequired: "PAN, Aadhaar, salary slips",
+    tncUrl: "https://www.axisbank.com/retail/cards/credit-card/magnus-credit-card",
+    popularScore: 90,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "sbi-simplysave",
@@ -57,13 +81,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 499,
     waiverRule: "Free for first year",
     welcomeBonus: "2,000 bonus points",
+    rewardType: ["Cashback"],
     rewardStructure: "5% cashback on dining, groceries, movies",
     keyPerks: ["5% cashback on select categories", "Low annual fee", "Wide acceptance"],
     loungeAccess: "None",
     forexMarkup: "3.5% + GST",
-    idealFor: "Daily spending and groceries",
-    downsides: "No lounge access, limited premium perks",
+    forexMarkupPct: 3.5,
+    idealFor: ["Daily Spending", "Groceries"],
+    downsides: ["No lounge access", "Limited premium perks"],
     categoryBadges: ["Daily", "Cashback"],
+    eligibility: "Net monthly income ≥₹20,000",
+    docsRequired: "PAN, Aadhaar",
+    tncUrl: "https://www.sbicard.com/en/personal/credit-cards/shopping/simplysave-sbi-card.page",
+    popularScore: 85,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "icici-amazon-pay",
@@ -72,13 +104,21 @@ export const creditCards: CreditCard[] = [
     network: "Visa",
     annualFee: 0,
     welcomeBonus: "₹500 Amazon gift voucher",
+    rewardType: ["Cashback"],
     rewardStructure: "5% on Amazon, 1% elsewhere",
     keyPerks: ["5% back on Amazon", "No annual fee", "Instant approval"],
     loungeAccess: "None",
     forexMarkup: "3.5% + GST",
-    idealFor: "Online shopping enthusiasts",
-    downsides: "Limited rewards outside Amazon",
+    forexMarkupPct: 3.5,
+    idealFor: ["Online Shopping", "Amazon"],
+    downsides: ["Limited rewards outside Amazon"],
     categoryBadges: ["Online", "Cashback"],
+    eligibility: "Net monthly income ≥₹20,000",
+    docsRequired: "PAN, Aadhaar",
+    tncUrl: "https://www.icicibank.com/personal-banking/cards/credit-card/amazon-pay-credit-card",
+    popularScore: 92,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "amex-platinum-travel",
@@ -88,13 +128,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 5000,
     waiverRule: "₹4L annual spend",
     welcomeBonus: "20,000 bonus points",
+    rewardType: ["Points"],
     rewardStructure: "10 points per ₹50 on travel",
     keyPerks: ["Taj vouchers", "Hotel memberships", "Priority Pass"],
     loungeAccess: "Priority Pass membership",
     forexMarkup: "3.5% + GST",
-    idealFor: "Frequent travelers with hotel preferences",
-    downsides: "Limited acceptance in India, high fee",
+    forexMarkupPct: 3.5,
+    idealFor: ["Travel", "Hotel Stays"],
+    downsides: ["Limited acceptance in India", "High fee"],
     categoryBadges: ["Travel", "Premium"],
+    eligibility: "Net monthly income ≥₹1.5L",
+    docsRequired: "PAN, income proof",
+    tncUrl: "https://www.americanexpress.com/in/credit-cards/platinum-travel-credit-card/",
+    popularScore: 82,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "yes-marquee",
@@ -104,13 +152,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 10000,
     waiverRule: "₹8L annual spend",
     welcomeBonus: "50,000 bonus points",
+    rewardType: ["Points"],
     rewardStructure: "8 points per ₹200",
     keyPerks: ["Unlimited golf", "Concierge service", "Annual vouchers worth ₹20k"],
     loungeAccess: "Unlimited Priority Pass",
     forexMarkup: "3.5% + GST",
-    idealFor: "Premium lifestyle and golf enthusiasts",
-    downsides: "High fee, bank stability concerns",
+    forexMarkupPct: 3.5,
+    idealFor: ["Premium Lifestyle", "Golf"],
+    downsides: ["High fee", "Bank stability concerns"],
     categoryBadges: ["Luxury", "Lifestyle"],
+    eligibility: "Net monthly income ≥₹2L",
+    docsRequired: "PAN, Aadhaar, salary slips",
+    tncUrl: "https://www.yesbank.in/personal-banking/yes-credit-cards",
+    popularScore: 78,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "hsbc-live-plus",
@@ -120,13 +176,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 999,
     waiverRule: "₹1L annual spend",
     welcomeBonus: "1,500 reward points",
+    rewardType: ["Points"],
     rewardStructure: "10x on entertainment, 2x elsewhere",
     keyPerks: ["10x rewards on OTT/movies", "Fuel surcharge waiver", "Dining offers"],
     loungeAccess: "2 visits/quarter",
     forexMarkup: "3.5% + GST",
-    idealFor: "Entertainment and OTT lovers",
-    downsides: "Limited lounge access, moderate rewards",
+    forexMarkupPct: 3.5,
+    idealFor: ["Entertainment", "OTT"],
+    downsides: ["Limited lounge access", "Moderate rewards"],
     categoryBadges: ["Entertainment", "Lifestyle"],
+    eligibility: "Net monthly income ≥₹40,000",
+    docsRequired: "PAN, Aadhaar",
+    tncUrl: "https://www.hsbc.co.in/credit-cards/",
+    popularScore: 75,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "idfc-first-wealth",
@@ -136,13 +200,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 10000,
     waiverRule: "Free with salary account",
     welcomeBonus: "10,000 reward points",
+    rewardType: ["Points"],
     rewardStructure: "3x on all spends, 10x on travel",
     keyPerks: ["Airport meet & assist", "Golf privileges", "Exclusive dining"],
     loungeAccess: "Unlimited domestic + international",
-    forexMarkup: "1.75% + GST (best in class)",
-    idealFor: "International travelers and NRIs",
-    downsides: "Requires wealth account, limited awareness",
+    forexMarkup: "1.75% + GST",
+    forexMarkupPct: 1.75,
+    idealFor: ["International Travel", "NRIs"],
+    downsides: ["Requires wealth account", "Limited awareness"],
     categoryBadges: ["Travel", "Premium"],
+    eligibility: "Wealth account required",
+    docsRequired: "PAN, Aadhaar, salary slips",
+    tncUrl: "https://www.idfcfirstbank.com/credit-card/wealth-credit-card",
+    popularScore: 80,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "kotak-league-platinum",
@@ -152,13 +224,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 999,
     waiverRule: "₹90k annual spend",
     welcomeBonus: "500 bonus points",
+    rewardType: ["Points"],
     rewardStructure: "4 points per ₹150",
     keyPerks: ["Fuel surcharge waiver", "Utility bill discounts", "Zero forex on intl spends"],
     loungeAccess: "4 domestic visits/year",
     forexMarkup: "0% on intl transactions",
-    idealFor: "International spenders on a budget",
-    downsides: "Limited premium perks",
+    forexMarkupPct: 0,
+    idealFor: ["International Spending", "Budget Travel"],
+    downsides: ["Limited premium perks"],
     categoryBadges: ["Travel", "Value"],
+    eligibility: "Net monthly income ≥₹30,000",
+    docsRequired: "PAN, Aadhaar",
+    tncUrl: "https://www.kotak.com/en/personal-banking/cards/credit-cards.html",
+    popularScore: 77,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "standard-chartered-ultimate",
@@ -168,13 +248,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 4999,
     waiverRule: "₹6L annual spend",
     welcomeBonus: "10,000 bonus points",
+    rewardType: ["Cashback"],
     rewardStructure: "5% cashback on top 2 categories",
     keyPerks: ["Smart-category cashback", "Airport transfers", "Premium dining"],
     loungeAccess: "6 Priority Pass visits/year",
     forexMarkup: "3.5% + GST",
-    idealFor: "Category-focused high spenders",
-    downsides: "Complex reward structure",
+    forexMarkupPct: 3.5,
+    idealFor: ["Category Spenders", "Cashback"],
+    downsides: ["Complex reward structure"],
     categoryBadges: ["Cashback", "Premium"],
+    eligibility: "Net monthly income ≥₹1.5L",
+    docsRequired: "PAN, Aadhaar, income proof",
+    tncUrl: "https://www.sc.com/in/credit-cards/",
+    popularScore: 73,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "indusind-pinnacle",
@@ -184,13 +272,21 @@ export const creditCards: CreditCard[] = [
     annualFee: 10000,
     waiverRule: "₹8L annual spend",
     welcomeBonus: "20,000 reward points",
+    rewardType: ["Points"],
     rewardStructure: "3 points per ₹100",
     keyPerks: ["Movie tickets 4/month", "Buy 1 Get 1 dining", "Zero forex on spends abroad"],
     loungeAccess: "Unlimited Priority Pass",
     forexMarkup: "0% on select MCCs",
-    idealFor: "Entertainment and international spenders",
-    downsides: "High fee, complex terms",
+    forexMarkupPct: 0,
+    idealFor: ["Entertainment", "International Travel"],
+    downsides: ["High fee", "Complex terms"],
     categoryBadges: ["Entertainment", "Travel"],
+    eligibility: "Net monthly income ≥₹2L",
+    docsRequired: "PAN, Aadhaar, salary slips",
+    tncUrl: "https://www.indusind.com/in/en/personal/cards/credit-card.html",
+    popularScore: 78,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
   {
     id: "rbl-world-safari",
@@ -200,24 +296,32 @@ export const creditCards: CreditCard[] = [
     annualFee: 1000,
     waiverRule: "₹1.5L annual spend",
     welcomeBonus: "5,000 bonus points",
+    rewardType: ["Points"],
     rewardStructure: "4 points per ₹100",
     keyPerks: ["Fuel surcharge waiver", "Dining privileges", "Airport lounge"],
     loungeAccess: "4 domestic visits/year",
     forexMarkup: "3.5% + GST",
-    idealFor: "Mid-tier spenders seeking lounge access",
-    downsides: "Limited premium features",
+    forexMarkupPct: 3.5,
+    idealFor: ["Mid-tier Spenders", "Lounge Access"],
+    downsides: ["Limited premium features"],
     categoryBadges: ["Lifestyle", "Value"],
+    eligibility: "Net monthly income ≥₹50,000",
+    docsRequired: "PAN, Aadhaar",
+    tncUrl: "https://www.rblbank.com/credit-cards",
+    popularScore: 73,
+    isActive: true,
+    lastUpdated: "2025-01-15"
   },
 ];
 
-export const issuers = ["All", "HDFC Bank", "Axis Bank", "SBI Card", "ICICI Bank", "American Express", "Yes Bank", "HSBC Bank", "IDFC FIRST Bank", "Kotak Mahindra Bank", "Standard Chartered", "IndusInd Bank", "RBL Bank"];
+export const issuers = ["HDFC Bank", "Axis Bank", "SBI Card", "ICICI Bank", "American Express", "Yes Bank", "HSBC Bank", "IDFC FIRST Bank", "Kotak Mahindra Bank", "Standard Chartered", "IndusInd Bank", "RBL Bank"];
 
-export const feeCategories = ["All", "No Fee", "Low (< ₹1,000)", "Medium (₹1,000 - ₹5,000)", "High (> ₹5,000)"];
+export const feeRanges = ["No fee", "≤₹1,000", "₹1,000–₹3,000", ">₹3,000"];
 
-export const rewardTypes = ["All", "Cashback", "Points", "Miles"];
+export const rewardTypes = ["Cashback", "Points", "Miles", "Co-brand"];
 
-export const perkCategories = ["All", "Lounge", "Dining", "Fuel", "Online Shopping", "Entertainment", "Travel", "Golf"];
+export const perkCategories = ["Lounge", "Dining", "Fuel", "Online Shopping", "Entertainment", "Travel", "Golf", "Insurance"];
 
-export const networks = ["All", "Visa", "Mastercard", "Rupay", "American Express"];
+export const networks = ["Visa", "Mastercard", "American Express", "Rupay"];
 
-export const forexCategories = ["All", "Zero Markup", "Low (< 2%)", "Standard (2-3.5%)", "High (> 3.5%)"];
+export const forexRanges = ["0%", "<2%", "2-3.5%", ">3.5%"];
