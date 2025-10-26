@@ -176,9 +176,15 @@ Recommend 3-4 actual Indian credit cards based on their top spending categories.
     );
 
   } catch (error) {
-    console.error('Error in generate-recommendations function:', error);
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] Error in generate-recommendations:`, error);
+    
+    // Return generic error message to client
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'An error occurred' }),
+      JSON.stringify({ 
+        error: 'Unable to generate recommendations. Please try again.',
+        correlationId 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

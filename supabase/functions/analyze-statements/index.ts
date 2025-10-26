@@ -173,9 +173,15 @@ Focus on accurate categorization. Use these standard categories when possible:
     );
 
   } catch (error) {
-    console.error('Error in analyze-statements function:', error);
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] Error in analyze-statements:`, error);
+    
+    // Return generic error message to client
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'An error occurred' }),
+      JSON.stringify({ 
+        error: 'Unable to analyze statements. Please try again.',
+        correlationId 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

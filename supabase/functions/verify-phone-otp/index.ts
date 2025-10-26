@@ -75,8 +75,15 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] Error in verify-phone-otp:`, error);
+    
+    // Return generic error message to client
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: "Verification failed. Please check your code and try again.",
+        correlationId 
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
