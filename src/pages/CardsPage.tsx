@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import { CardTile } from "@/components/CardTile";
 import { CompareDrawer } from "@/components/CompareDrawer";
 import { CompareProvider } from "@/contexts/CompareContext";
+import { MobileNudges } from "@/components/MobileNudges";
 import { creditCards, issuers, rewardTypes, perkCategories, networks, feeRanges, forexRanges } from "@/data/cardData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -414,6 +415,7 @@ const CardsPage = () => {
 
         <Footer />
         <CompareDrawer />
+        <MobileNudges />
       </div>
     </CompareProvider>
   );

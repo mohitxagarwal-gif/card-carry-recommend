@@ -5,7 +5,6 @@ import ExploreTeaserSection from "@/components/ExploreTeaserSection";
 import AboutTrustSection from "@/components/AboutTrustSection";
 import FAQSection from "@/components/FAQSection";
 import Footer from "@/components/Footer";
-import { MobileNudges } from "@/components/MobileNudges";
 
 const Index = () => {
   return (
@@ -19,7 +18,6 @@ const Index = () => {
         <FAQSection />
       </main>
       <Footer />
-      <MobileNudges />
     </div>
   );
 };
