@@ -62,14 +62,6 @@ const CardsPage = () => {
     setHasAppliedFilters(hasFilters);
   }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading cards...</p>
-      </div>
-    );
-  }
-
   const filteredCards = useMemo(() => {
     let cards = creditCards.filter(card => card.is_active);
 
@@ -151,27 +143,6 @@ const CardsPage = () => {
     return cards;
   }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, sortBy, creditCards]);
 
-  const clearAllFilters = () => {
-    setSearch("");
-    setSelectedIssuers([]);
-    setSelectedFeeRange("");
-    setSelectedRewardTypes([]);
-    setSelectedPerks([]);
-    setSelectedNetworks([]);
-    setSelectedForexRange("");
-    setWelcomeBonusOnly(false);
-    setSortBy("");
-    setSearchParams(new URLSearchParams());
-  };
-
-  const toggleArrayFilter = (value: string, array: string[], setter: (arr: string[]) => void) => {
-    if (array.includes(value)) {
-      setter(array.filter(item => item !== value));
-    } else {
-      setter([...array, value]);
-    }
-  };
-
   // Show nudge after filters applied
   useEffect(() => {
     const filterCount = selectedIssuers.length + selectedRewardTypes.length + selectedPerks.length + selectedNetworks.length;
@@ -192,6 +163,35 @@ const CardsPage = () => {
       return () => clearTimeout(timer);
     }
   }, [selectedIssuers, selectedRewardTypes, selectedPerks, selectedNetworks, search, selectedFeeRange, selectedForexRange, hasAppliedFilters, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading cards...</p>
+      </div>
+    );
+  }
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setSelectedIssuers([]);
+    setSelectedFeeRange("");
+    setSelectedRewardTypes([]);
+    setSelectedPerks([]);
+    setSelectedNetworks([]);
+    setSelectedForexRange("");
+    setWelcomeBonusOnly(false);
+    setSortBy("");
+    setSearchParams(new URLSearchParams());
+  };
+
+  const toggleArrayFilter = (value: string, array: string[], setter: (arr: string[]) => void) => {
+    if (array.includes(value)) {
+      setter(array.filter(item => item !== value));
+    } else {
+      setter([...array, value]);
+    }
+  };
 
   // Helper function to get active filters
   const getActiveFilters = () => {
