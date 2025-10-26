@@ -71,7 +71,7 @@ const Results = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const analysisId = location.state?.analysisId;
-  const { createSnapshot } = useRecommendationSnapshot();
+  const { createSnapshot, latestSnapshot } = useRecommendationSnapshot();
   
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
@@ -446,6 +446,8 @@ const Results = () => {
                     : 'medium'
                 }
                 nextAction={analysis.recommendedCards[0] ? `Apply for ${analysis.recommendedCards[0].name} first` : undefined}
+                snapshotId={latestSnapshot?.id}
+                recommendedCards={analysis.recommendedCards}
               />
               
               <div className="space-y-6">
