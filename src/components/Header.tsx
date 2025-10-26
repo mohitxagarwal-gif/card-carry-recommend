@@ -28,56 +28,56 @@ const Header = () => {
   const isActive = (path: string) => currentPath === path;
 
   return (
-    <header className="border-b border-border/30 bg-background/80 backdrop-blur-md sticky top-0 z-50">
+    <header className="border-b border-hairline bg-canvas/95 backdrop-blur-md sticky top-0 z-50">
       <div className="container mx-auto px-6 lg:px-12 py-6">
         <div className="flex items-center justify-between">
           <button 
             onClick={() => navigate("/")}
-            className="flex items-center cursor-pointer"
+            className="flex items-center cursor-pointer focus-ring"
           >
-            <h1 className="text-2xl font-playfair italic font-medium text-foreground tracking-wide">
+            <h1 className="text-2xl font-heading font-bold text-ink tracking-tight">
               card & carry.
             </h1>
           </button>
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden md:flex items-center gap-6">
             {user ? (
               <>
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className={`text-sm font-sans transition-colors duration-300 ${
+                  className={`px-4 py-2 rounded-pill text-sm font-body transition-all duration-150 focus-ring ${
                     isActive("/dashboard") 
-                      ? "text-foreground font-medium" 
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary-ghost text-primary font-semibold border border-primary" 
+                      : "text-subtle hover:bg-muted hover:text-ink border border-transparent"
                   }`}
                 >
                   dashboard
                 </button>
                 <button
                   onClick={() => navigate("/recs")}
-                  className={`text-sm font-sans transition-colors duration-300 ${
+                  className={`px-4 py-2 rounded-pill text-sm font-body transition-all duration-150 focus-ring ${
                     isActive("/recs") 
-                      ? "text-foreground font-medium" 
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary-ghost text-primary font-semibold border border-primary" 
+                      : "text-subtle hover:bg-muted hover:text-ink border border-transparent"
                   }`}
                 >
                   recommendations
                 </button>
                 <button
                   onClick={() => navigate("/cards")}
-                  className={`text-sm font-sans transition-colors duration-300 ${
+                  className={`px-4 py-2 rounded-pill text-sm font-body transition-all duration-150 focus-ring ${
                     isActive("/cards") 
-                      ? "text-foreground font-medium" 
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary-ghost text-primary font-semibold border border-primary" 
+                      : "text-subtle hover:bg-muted hover:text-ink border border-transparent"
                   }`}
                 >
                   explore cards
                 </button>
                 <button
                   onClick={() => navigate("/profile")}
-                  className={`text-sm font-sans transition-colors duration-300 ${
+                  className={`px-4 py-2 rounded-pill text-sm font-body transition-all duration-150 focus-ring ${
                     isActive("/profile") 
-                      ? "text-foreground font-medium" 
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary-ghost text-primary font-semibold border border-primary" 
+                      : "text-subtle hover:bg-muted hover:text-ink border border-transparent"
                   }`}
                 >
                   profile
@@ -87,27 +87,26 @@ const Header = () => {
               <>
                 <a 
                   href="/#how-it-works" 
-                  className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
+                  className="px-4 py-2 rounded-pill text-sm font-body text-subtle hover:bg-muted hover:text-ink transition-all duration-150 border border-transparent focus-ring"
                 >
                   how it works
                 </a>
                 <button
                   onClick={() => navigate("/cards")}
-                  className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
+                  className="px-4 py-2 rounded-pill text-sm font-body text-subtle hover:bg-muted hover:text-ink transition-all duration-150 border border-transparent focus-ring"
                 >
                   explore cards
                 </button>
                 <a 
                   href="/#faqs" 
-                  className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
+                  className="px-4 py-2 rounded-pill text-sm font-body text-subtle hover:bg-muted hover:text-ink transition-all duration-150 border border-transparent focus-ring"
                 >
                   faqs
                 </a>
                 <Button 
-                  variant="outline" 
                   size="sm"
                   onClick={() => navigate("/auth")}
-                  className="border-foreground/20 hover:bg-foreground/5 transition-all duration-300"
+                  className="font-body"
                 >
                   get started
                 </Button>

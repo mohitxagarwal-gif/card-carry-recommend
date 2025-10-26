@@ -33,31 +33,36 @@ export const CardTile = ({ card }: CardTileProps) => {
 
   return (
     <>
-      <div className="group bg-card/50 hover:bg-card rounded-2xl border border-border/30 hover:border-border/60 transition-all duration-300 p-6 flex flex-col">
+      <div className="group bg-card rounded-card border border-hairline hover:shadow-elevated transition-all duration-220 p-6 flex flex-col cc-card-hover">
         <div className="mb-4">
-          <h3 className="text-xl font-playfair italic font-medium text-foreground mb-1">
+          <h3 className="text-xl font-heading font-bold text-ink mb-1">
             {card.name}
           </h3>
-          <p className="text-sm font-sans text-muted-foreground">
-            {card.issuer} • {card.network}
-          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="secondary" className="text-xs">
+              {card.issuer}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {card.network}
+            </Badge>
+          </div>
         </div>
 
         <ul className="space-y-2 mb-4 flex-grow">
           {card.key_perks.slice(0, 3).map((perk, idx) => (
-            <li key={idx} className="text-sm font-sans text-muted-foreground flex items-start">
-              <span className="mr-2">•</span>
+            <li key={idx} className="text-sm font-body text-subtle flex items-start">
+              <span className="mr-2 text-primary">•</span>
               <span>{perk}</span>
             </li>
           ))}
         </ul>
 
         <div className="mb-4">
-          <p className="text-base font-sans text-foreground font-medium">
-            {card.annual_fee === 0 ? "Free" : `₹${card.annual_fee.toLocaleString('en-IN')}/yr`}
+          <p className="text-base font-body text-ink font-semibold tabular-nums">
+            {card.annual_fee === 0 ? "free" : `₹${card.annual_fee.toLocaleString('en-IN')}/yr`}
           </p>
           {card.waiver_rule && (
-            <p className="text-xs font-sans text-muted-foreground mt-1">
+            <p className="text-xs font-body text-subtle mt-1">
               {card.waiver_rule}
             </p>
           )}
@@ -71,7 +76,7 @@ export const CardTile = ({ card }: CardTileProps) => {
           ))}
         </div>
 
-        <div className="space-y-3 pt-4 border-t border-border/30">
+        <div className="space-y-3 pt-4 border-t border-hairline">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Checkbox 
@@ -81,7 +86,7 @@ export const CardTile = ({ card }: CardTileProps) => {
               />
               <label 
                 htmlFor={`compare-${card.id}`}
-                className="text-sm font-sans text-muted-foreground cursor-pointer"
+                className="text-sm font-body text-subtle cursor-pointer"
               >
                 compare
               </label>
@@ -90,16 +95,16 @@ export const CardTile = ({ card }: CardTileProps) => {
               variant="ghost" 
               size="sm"
               onClick={() => setDetailsOpen(true)}
-              className="text-sm font-sans text-foreground hover:text-foreground/80"
+              className="text-sm font-body"
             >
               details
             </Button>
           </div>
           <Button 
-            variant="outline" 
+            variant="secondary" 
             size="sm"
             onClick={() => navigate("/auth")}
-            className="w-full text-sm font-sans"
+            className="w-full text-sm font-body"
           >
             check fit →
           </Button>

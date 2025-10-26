@@ -14,8 +14,18 @@ export default {
     },
     extend: {
       fontFamily: {
-        'playfair': ['Playfair Display', 'serif'],
-        'sans': ['Inter', 'sans-serif'],
+        'heading': ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'body': ['Nunito Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'sans': ['Nunito Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      spacing: {
+        '4': '1rem',
+        '8': '2rem',
+        '12': '3rem',
+        '16': '4rem',
+        '24': '6rem',
+        '32': '8rem',
+        '48': '12rem',
       },
       colors: {
         border: "hsl(var(--border))",
@@ -23,9 +33,16 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        canvas: "hsl(var(--canvas))",
+        surface: "hsl(var(--surface))",
+        ink: "hsl(var(--ink))",
+        subtle: "hsl(var(--subtle))",
+        hairline: "hsl(var(--hairline))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary-hover))",
+          ghost: "hsl(var(--primary-ghost))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -34,6 +51,15 @@ export default {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        danger: {
+          DEFAULT: "hsl(var(--danger))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -66,6 +92,21 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "var(--radius-card)",
+        input: "var(--radius-input)",
+        pill: "var(--radius-pill)",
+      },
+      boxShadow: {
+        'card': 'var(--shadow-card)',
+        'modal': 'var(--shadow-modal)',
+        'elevated': 'var(--shadow-elevated)',
+      },
+      transitionDuration: {
+        '150': '150ms',
+        '220': '220ms',
+      },
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(.2,.8,.2,1)',
       },
       keyframes: {
         "accordion-down": {

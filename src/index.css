@@ -2,88 +2,141 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* 
+  Card & Carry Design System
+  Airbnb-inspired, Royal Indigo theme
+  All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 40 30% 96%;
-    --foreground: 30 15% 20%;
-
-    --card: 38 40% 98%;
-    --card-foreground: 30 15% 20%;
-
-    --popover: 38 40% 98%;
-    --popover-foreground: 30 15% 20%;
-
-    --primary: 30 25% 25%;
-    --primary-foreground: 40 30% 96%;
-
-    --secondary: 35 35% 88%;
-    --secondary-foreground: 30 15% 20%;
-
-    --muted: 35 30% 90%;
-    --muted-foreground: 30 10% 45%;
-
-    --accent: 25 40% 70%;
-    --accent-foreground: 30 15% 20%;
-
+    /* Canvas & Surface */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    
+    --canvas: 0 0% 100%;
+    --surface: 0 0% 100%;
+    --ink: 222 47% 11%;
+    --subtle: 215 16% 47%;
+    
+    /* Card surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    
+    /* Popover surfaces */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    /* Primary: Royal Indigo */
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 243 75% 53%;
+    --primary-ghost: 238 100% 97%;
+    
+    /* Secondary */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    
+    /* Neutrals & Utility */
+    --muted: 220 17% 97%;
+    --muted-foreground: 215 16% 47%;
+    
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+    
+    /* Borders */
+    --border: 220 13% 91%;
+    --hairline: 220 13% 91%;
+    --input: 220 13% 91%;
+    
+    /* Focus ring */
+    --ring: 243 90% 85%;
+    
+    /* Feedback colors */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-
-    --border: 35 20% 85%;
-    --input: 35 20% 85%;
-    --ring: 30 25% 25%;
-
+    --danger: 0 84% 60%;
+    
+    --success: 158 64% 52%;
+    --warning: 38 92% 50%;
+    
+    /* Typography */
+    --font-heading: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+    
+    /* Radius */
     --radius: 1rem;
-
-    --sidebar-background: 40 30% 96%;
-    --sidebar-foreground: 30 15% 20%;
-    --sidebar-primary: 30 25% 25%;
-    --sidebar-primary-foreground: 40 30% 96%;
-    --sidebar-accent: 35 35% 88%;
-    --sidebar-accent-foreground: 30 15% 20%;
-    --sidebar-border: 35 20% 85%;
-    --sidebar-ring: 30 25% 25%;
+    --radius-card: 16px;
+    --radius-input: 14px;
+    --radius-pill: 9999px;
+    
+    /* Shadows */
+    --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.08);
+    --shadow-modal: 0 12px 28px rgba(16, 24, 40, 0.12);
+    --shadow-elevated: 0 20px 40px rgba(16, 24, 40, 0.16);
+    
+    /* Sidebar tokens */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 243 75% 59%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 243 90% 85%;
   }
 
   .dark {
-    --background: 30 20% 15%;
-    --foreground: 40 30% 95%;
-
-    --card: 30 18% 18%;
-    --card-foreground: 40 30% 95%;
-
-    --popover: 30 18% 18%;
-    --popover-foreground: 40 30% 95%;
-
-    --primary: 40 30% 90%;
-    --primary-foreground: 30 20% 15%;
-
-    --secondary: 30 15% 25%;
-    --secondary-foreground: 40 30% 95%;
-
-    --muted: 30 15% 25%;
-    --muted-foreground: 35 15% 60%;
-
-    --accent: 25 40% 60%;
-    --accent-foreground: 30 20% 15%;
-
+    /* Dark mode: Indigo on dark slate */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    
+    --canvas: 222 47% 11%;
+    --surface: 217 33% 17%;
+    --ink: 210 40% 98%;
+    --subtle: 215 20% 65%;
+    
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 243 75% 65%;
+    --primary-foreground: 222 47% 11%;
+    --primary-hover: 243 75% 70%;
+    --primary-ghost: 243 75% 15%;
+    
+    --secondary: 217 33% 20%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217 33% 20%;
+    --muted-foreground: 215 20% 65%;
+    
+    --accent: 217 33% 24%;
+    --accent-foreground: 210 40% 98%;
+    
+    --border: 217 33% 24%;
+    --hairline: 217 33% 24%;
+    --input: 217 33% 24%;
+    
+    --ring: 243 75% 70%;
+    
     --destructive: 0 63% 31%;
-    --destructive-foreground: 40 30% 95%;
-
-    --border: 30 15% 25%;
-    --input: 30 15% 25%;
-    --ring: 40 30% 90%;
-    --sidebar-background: 30 20% 15%;
-    --sidebar-foreground: 40 30% 95%;
-    --sidebar-primary: 40 30% 90%;
-    --sidebar-primary-foreground: 30 20% 15%;
-    --sidebar-accent: 30 15% 25%;
-    --sidebar-accent-foreground: 40 30% 95%;
-    --sidebar-border: 30 15% 25%;
-    --sidebar-ring: 40 30% 90%;
+    --destructive-foreground: 210 40% 98%;
+    --danger: 0 84% 60%;
+    
+    --success: 158 64% 52%;
+    --warning: 38 92% 50%;
+    
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 243 75% 65%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 33% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 24%;
+    --sidebar-ring: 243 75% 70%;
   }
 }
 
@@ -94,5 +147,77 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    font-feature-settings: "tnum" 1; /* Enable tabular numerals */
+    text-transform: lowercase;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    text-transform: lowercase;
+  }
+  
+  /* Privacy and compliance text: UPPERCASE */
+  .privacy-chip {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  
+  /* Focus ring utility */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+}
+
+@layer components {
+  /* Card utilities */
+  .cc-card {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--hairline));
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+  
+  .cc-card-hover {
+    @apply transition-all duration-220;
+  }
+  
+  @media (prefers-reduced-motion: no-preference) {
+    .cc-card-hover:hover {
+      box-shadow: var(--shadow-elevated);
+      border-color: hsl(var(--border) / 0.8);
+      transform: translateY(-1px);
+    }
+  }
+  
+  /* Button utilities */
+  .cc-btn-hover {
+    @apply transition-all duration-150;
+  }
+  
+  @media (prefers-reduced-motion: no-preference) {
+    .cc-btn-hover:hover {
+      transform: translateY(-1px);
+    }
+  }
+}
+
+@layer utilities {
+  /* Animation utilities with reduced motion support */
+  @media (prefers-reduced-motion: no-preference) {
+    .hover-scale {
+      @apply transition-transform duration-200 hover:scale-105;
+    }
+    
+    .hover-lift {
+      @apply transition-transform duration-150 hover:-translate-y-0.5;
+    }
+  }
+  
+  /* Tabular numerals for currency */
+  .tabular-nums {
+    font-feature-settings: "tnum" 1;
   }
 }
