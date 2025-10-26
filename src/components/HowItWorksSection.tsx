@@ -1,64 +1,50 @@
-const steps = [
-  {
-    number: "01",
-    title: "upload",
-    description: "share your bank or credit card statements securely. we support all major indian banks."
-  },
-  {
-    number: "02",
-    title: "analyze",
-    description: "our system categorizes your spending patterns across lifestyle, travel, dining, and more."
-  },
-  {
-    number: "03",
-    title: "discover",
-    description: "receive curated recommendations that maximize rewards for your unique spending profile."
-  }
-];
-
 const HowItWorksSection = () => {
   return (
-    <section id="how-it-works" className="container mx-auto px-6 lg:px-12 py-24 md:py-32">
+    <section id="how-it-works" className="container mx-auto px-6 lg:px-12 py-24 md:py-32 scroll-mt-20">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-playfair italic font-medium text-foreground mb-6">
-            three simple steps
-          </h2>
-          <p className="text-lg font-sans text-muted-foreground max-w-2xl mx-auto">
-            a refined approach to finding your perfect credit card match
-          </p>
-        </div>
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-playfair italic font-medium text-foreground text-center mb-16 leading-tight">
+          how card & carry works
+        </h2>
 
-        <div className="grid md:grid-cols-3 gap-12 md:gap-16">
-          {steps.map((step, index) => (
-            <div 
-              key={index} 
-              className="group relative"
-              style={{ 
-                animation: 'fade-in 0.6s ease-out',
-                animationDelay: `${index * 0.15}s`,
-                animationFillMode: 'both'
-              }}
-            >
-              <div className="text-center space-y-6">
-                <div className="relative inline-block">
-                  <span className="text-7xl md:text-8xl font-playfair italic font-light text-foreground/10 group-hover:text-foreground/20 transition-colors duration-500">
-                    {step.number}
-                  </span>
-                </div>
-                <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground">
-                  {step.title}
-                </h3>
-                <p className="text-base font-sans text-muted-foreground leading-relaxed">
-                  {step.description}
-                </p>
-              </div>
-              
-              {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-1/4 -right-8 w-16 h-[1px] bg-border" />
-              )}
-            </div>
-          ))}
+        <div className="grid md:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
+          <div className="group hover:scale-105 transition-transform duration-300">
+            <div className="text-7xl md:text-8xl font-playfair italic font-medium text-primary/10 mb-4">01</div>
+            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+              tell us your basics
+            </h3>
+            <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">
+              spending categories, travel, dining, online shopping — share your habits with us.
+            </p>
+          </div>
+
+          <div className="group hover:scale-105 transition-transform duration-300">
+            <div className="text-7xl md:text-8xl font-playfair italic font-medium text-primary/10 mb-4">02</div>
+            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+              we match your benefits
+            </h3>
+            <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">
+              rewards, lounge, cashback, forex, co-brands — we find what fits your lifestyle.
+            </p>
+          </div>
+
+          <div className="group hover:scale-105 transition-transform duration-300">
+            <div className="text-7xl md:text-8xl font-playfair italic font-medium text-primary/10 mb-4">03</div>
+            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+              compare & apply
+            </h3>
+            <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">
+              fit score + clear fee/perk breakdown for confident decisions.
+            </p>
+          </div>
+        </div>
+        
+        <div className="text-center mt-12">
+          <a 
+            href="/auth"
+            className="inline-flex items-center text-base md:text-lg font-sans text-primary hover:text-primary/80 transition-colors duration-300 underline underline-offset-4"
+          >
+            try the recommender →
+          </a>
         </div>
       </div>
     </section>

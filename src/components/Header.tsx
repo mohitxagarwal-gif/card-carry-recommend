@@ -21,10 +21,16 @@ const Header = () => {
               how it works
             </a>
             <a 
-              href="#categories" 
+              href="#explore-cards" 
               className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
             >
-              categories
+              explore cards
+            </a>
+            <a 
+              href="#faqs" 
+              className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors duration-300"
+            >
+              faqs
             </a>
             <Button 
               variant="outline" 
