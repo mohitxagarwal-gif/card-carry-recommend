@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCards } from "@/hooks/useCards";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -65,10 +65,16 @@ const Admin = () => {
             <h1 className="text-4xl font-bold mb-2">Admin Panel</h1>
             <p className="text-muted-foreground">Manage credit cards</p>
           </div>
-          <Button onClick={() => navigate("/admin/cards/new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Card
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/admin/bulk-upload")}>
+              <Upload className="mr-2 h-4 w-4" />
+              Bulk Upload
+            </Button>
+            <Button onClick={() => navigate("/admin/cards/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Card
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4">

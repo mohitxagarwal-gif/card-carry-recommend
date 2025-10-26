@@ -1,0 +1,470 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDropzone } from "react-dropzone";
+import Papa from "papaparse";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Upload, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+
+interface CardData {
+  card_id: string;
+  name: string;
+  issuer: string;
+  network: string;
+  annual_fee: number;
+  welcome_bonus: string;
+  reward_type: string[];
+  reward_structure: string;
+  key_perks: string[];
+  lounge_access: string;
+  forex_markup: string;
+  forex_markup_pct: number;
+  ideal_for: string[];
+  downsides: string[];
+  category_badges: string[];
+  popular_score: number;
+  waiver_rule?: string;
+  eligibility?: string;
+  docs_required?: string;
+  tnc_url?: string;
+  image_url?: string;
+}
+
+interface UploadResult {
+  success: number;
+  failed: number;
+  errors: string[];
+}
+
+const AdminBulkUpload = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { data: role, isLoading: roleLoading } = useUserRole();
+  const [parsedData, setParsedData] = useState<CardData[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/auth");
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!roleLoading && role !== "admin") {
+      navigate("/");
+    }
+  }, [role, roleLoading, navigate]);
+
+  const onDropCSV = (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      complete: (results) => {
+        const data = results.data.map((row: any) => ({
+          ...row,
+          annual_fee: parseInt(row.annual_fee) || 0,
+          forex_markup_pct: parseFloat(row.forex_markup_pct) || 0,
+          popular_score: parseInt(row.popular_score) || 0,
+          reward_type: row.reward_type?.split(',').map((s: string) => s.trim()) || [],
+          key_perks: row.key_perks?.split(',').map((s: string) => s.trim()) || [],
+          ideal_for: row.ideal_for?.split(',').map((s: string) => s.trim()) || [],
+          downsides: row.downsides?.split(',').map((s: string) => s.trim()) || [],
+          category_badges: row.category_badges?.split(',').map((s: string) => s.trim()) || [],
+        })).filter((row: any) => row.card_id && row.name);
+
+        setParsedData(data);
+        toast({
+          title: "CSV parsed successfully",
+          description: `${data.length} cards ready to upload`,
+        });
+      },
+      error: (error) => {
+        toast({
+          title: "Parse error",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const onDropImages = (acceptedFiles: File[]) => {
+    setImages(acceptedFiles);
+    toast({
+      title: "Images loaded",
+      description: `${acceptedFiles.length} images ready to upload`,
+    });
+  };
+
+  const { getRootProps: getCSVRootProps, getInputProps: getCSVInputProps, isDragActive: isCSVDragActive } = useDropzone({
+    onDrop: onDropCSV,
+    accept: { 'text/csv': ['.csv'] },
+    maxFiles: 1,
+  });
+
+  const { getRootProps: getImageRootProps, getInputProps: getImageInputProps, isDragActive: isImageDragActive } = useDropzone({
+    onDrop: onDropImages,
+    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
+    multiple: true,
+  });
+
+  const downloadTemplate = () => {
+    const template = `card_id,name,issuer,network,annual_fee,welcome_bonus,reward_type,reward_structure,key_perks,lounge_access,forex_markup,forex_markup_pct,ideal_for,downsides,category_badges,popular_score,waiver_rule,eligibility,docs_required,tnc_url
+example-card-1,Example Card,Example Bank,Visa,2500,10000 reward points,"Cashback,Rewards",2x on dining and travel,"Lounge access,Travel insurance",Domestic & international,3.5%,3.5,"Travelers,Reward seekers",High fees,"Premium,Travel",8,Waived on 5L spend,Min income 6L/yr,Income proof,https://example.com/tnc`;
+    
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'card-upload-template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleUpload = async () => {
+    if (parsedData.length === 0) {
+      toast({
+        title: "No data",
+        description: "Please upload a CSV file first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+    const errors: string[] = [];
+    let successCount = 0;
+
+    try {
+      const totalSteps = parsedData.length + images.length;
+      let completedSteps = 0;
+
+      // Upload images first
+      const imageMap = new Map<string, string>();
+      for (const image of images) {
+        const cardId = image.name.split('.')[0];
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('card-images')
+          .upload(`${cardId}.${image.name.split('.').pop()}`, image, {
+            upsert: true,
+          });
+
+        if (uploadError) {
+          errors.push(`Image upload failed for ${image.name}: ${uploadError.message}`);
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('card-images')
+            .getPublicUrl(uploadData.path);
+          imageMap.set(cardId, publicUrl);
+        }
+
+        completedSteps++;
+        setUploadProgress((completedSteps / totalSteps) * 100);
+      }
+
+      // Insert cards with image URLs
+      for (const card of parsedData) {
+        const imageUrl = imageMap.get(card.card_id) || card.image_url;
+        
+        const { error: insertError } = await supabase
+          .from('credit_cards')
+          .insert({
+            ...card,
+            image_url: imageUrl,
+          });
+
+        if (insertError) {
+          errors.push(`Card ${card.card_id}: ${insertError.message}`);
+        } else {
+          successCount++;
+        }
+
+        completedSteps++;
+        setUploadProgress((completedSteps / totalSteps) * 100);
+      }
+
+      setUploadResult({
+        success: successCount,
+        failed: parsedData.length - successCount,
+        errors,
+      });
+
+      if (successCount > 0) {
+        toast({
+          title: "Upload complete",
+          description: `Successfully uploaded ${successCount} cards`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const reset = () => {
+    setParsedData([]);
+    setImages([]);
+    setUploadResult(null);
+    setUploadProgress(0);
+  };
+
+  if (roleLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Bulk Upload Credit Cards</h1>
+          <p className="text-muted-foreground">Upload multiple cards at once with CSV and images</p>
+        </div>
+        <Button variant="outline" onClick={() => navigate("/admin")}>
+          Back to Admin
+        </Button>
+      </div>
+
+      {!uploadResult && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 1: Download Template</CardTitle>
+              <CardDescription>Download the CSV template to see the required format</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={downloadTemplate} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Download CSV Template
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 2: Upload CSV File</CardTitle>
+              <CardDescription>Upload a CSV file containing card data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div
+                {...getCSVRootProps()}
+                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
+                  isCSVDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                }`}
+              >
+                <input {...getCSVInputProps()} />
+                <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                {parsedData.length > 0 ? (
+                  <p className="text-sm">
+                    ✓ {parsedData.length} cards loaded. Drop another file to replace.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Drag & drop a CSV file here, or click to select
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {parsedData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Data Preview</CardTitle>
+                <CardDescription>Review the first 5 cards before uploading</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Card ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Issuer</TableHead>
+                        <TableHead>Network</TableHead>
+                        <TableHead>Annual Fee</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {parsedData.slice(0, 5).map((card, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-mono text-sm">{card.card_id}</TableCell>
+                          <TableCell>{card.name}</TableCell>
+                          <TableCell>{card.issuer}</TableCell>
+                          <TableCell>{card.network}</TableCell>
+                          <TableCell>₹{card.annual_fee}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {parsedData.length > 5 && (
+                  <p className="text-sm text-muted-foreground mt-4">
+                    ...and {parsedData.length - 5} more cards
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 3: Upload Images (Optional)</CardTitle>
+              <CardDescription>
+                Upload images named as {"{card_id}.png"} (e.g., hdfc-regalia-gold.png)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div
+                {...getImageRootProps()}
+                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
+                  isImageDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                }`}
+              >
+                <input {...getImageInputProps()} />
+                <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                {images.length > 0 ? (
+                  <p className="text-sm">
+                    ✓ {images.length} images loaded. Drop more to add or replace.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Drag & drop images here, or click to select multiple files
+                  </p>
+                )}
+              </div>
+              {images.length > 0 && (
+                <div className="grid grid-cols-4 gap-4 mt-4">
+                  {images.slice(0, 8).map((img, idx) => (
+                    <div key={idx} className="text-center">
+                      <img
+                        src={URL.createObjectURL(img)}
+                        alt={img.name}
+                        className="w-full h-24 object-cover rounded border"
+                      />
+                      <p className="text-xs mt-1 truncate">{img.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Step 4: Upload</CardTitle>
+              <CardDescription>Upload all cards and images to the database</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {uploading && (
+                <div>
+                  <Progress value={uploadProgress} className="mb-2" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    Uploading... {Math.round(uploadProgress)}%
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleUpload}
+                  disabled={parsedData.length === 0 || uploading}
+                  className="flex-1"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload {parsedData.length} Cards
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={reset} disabled={uploading}>
+                  Reset
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {uploadResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload Results</CardTitle>
+            <CardDescription>Summary of the bulk upload operation</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Alert>
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription>
+                  <strong>{uploadResult.success}</strong> cards uploaded successfully
+                </AlertDescription>
+              </Alert>
+              {uploadResult.failed > 0 && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>{uploadResult.failed}</strong> cards failed
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            {uploadResult.errors.length > 0 && (
+              <div>
+                <h4 className="font-semibold mb-2">Errors:</h4>
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {uploadResult.errors.map((error, idx) => (
+                    <p key={idx} className="text-sm text-destructive">
+                      • {error}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-4">
+              <Button onClick={() => navigate("/admin")} className="flex-1">
+                Go to Admin Panel
+              </Button>
+              <Button variant="outline" onClick={reset}>
+                Upload More
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default AdminBulkUpload;

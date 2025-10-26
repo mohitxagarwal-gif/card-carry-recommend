@@ -10,6 +10,7 @@ import Results from "./pages/Results";
 import CardsPage from "./pages/CardsPage";
 import Admin from "./pages/Admin";
 import AdminCardForm from "./pages/AdminCardForm";
+import AdminBulkUpload from "./pages/AdminBulkUpload";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/cards/new" element={<AdminCardForm />} />
           <Route path="/admin/cards/:id" element={<AdminCardForm />} />
+          <Route path="/admin/bulk-upload" element={<AdminBulkUpload />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
