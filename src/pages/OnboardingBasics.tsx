@@ -161,12 +161,16 @@ export default function OnboardingBasics() {
       trackEvent("onboarding_basics_submit_success");
       toast.success("Saved. Tailoring picks for you...");
       
-      // Navigate to returnTo or default /upload
+      // Save the intended destination for after first-card decision
       const returnTo = getReturnToFromQuery();
       const safe = sanitizeInternalPath(returnTo) || '/upload';
-      const reason = returnTo ? 'returnTo' : 'fallback';
-      trackAuthRedirectNext(safe, reason);
-      navigate(safe, { replace: true });
+      
+      if (userId) {
+        localStorage.setItem(`post_first_card_destination_${userId}`, safe);
+      }
+      
+      // Always route to first-card screen next
+      navigate('/onboarding/first-card', { replace: true });
     } catch (error: any) {
       toast.error(error.message);
     } finally {

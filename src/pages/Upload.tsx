@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Upload as UploadIcon, FileText, Loader2, LogOut, Lock, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PasswordInputModal } from "@/components/PasswordInputModal";
 import { TransactionReview, ExtractedData } from "@/components/TransactionReview";
 import { Progress } from "@/components/ui/progress";
+import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { checkPDFEncryption, decryptAndExtractPDF, extractTransactions, analyzeTransactions } from "@/lib/pdfProcessor";
 
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
@@ -21,6 +23,7 @@ interface FileWithStatus {
 
 const Upload = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [filesWithStatus, setFilesWithStatus] = useState<FileWithStatus[]>([]);
   const [encryptedFiles, setEncryptedFiles] = useState<File[]>([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -29,6 +32,7 @@ const Upload = () => {
   const [processing, setProcessing] = useState(false);
   const [overallProgress, setOverallProgress] = useState(0);
   const [user, setUser] = useState<any>(null);
+  const [mode, setMode] = useState<'bank' | 'credit' | 'mixed' | null>(null);
 
   useEffect(() => {
     const initUser = async () => {
@@ -54,6 +58,25 @@ const Upload = () => {
     };
   }, [navigate]);
 
+  // Read mode from URL query params or localStorage
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const modeParam = params.get('mode');
+    
+    if (modeParam === 'bank' || modeParam === 'credit' || modeParam === 'mixed') {
+      setMode(modeParam);
+    } else if (user) {
+      // No mode specified - check localStorage for saved choice
+      const saved = localStorage.getItem(`first_card_choice_${user.id}`);
+      if (saved === 'bank' || saved === 'credit') {
+        setMode(saved);
+      } else {
+        // Fallback: show inline chooser
+        setMode(null);
+      }
+    }
+  }, [location.search, user]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
@@ -69,6 +92,19 @@ const Upload = () => {
       if (selectedFiles.length > 3) {
         toast.error('Please upload a maximum of 3 statement files');
         return;
+      }
+
+      // Gentle validation nudges based on mode
+      if (mode === 'bank' && selectedFiles.length < 2) {
+        toast.info('Tip: Upload 2-3 months of statements for better recommendations', {
+          duration: 4000,
+        });
+      }
+
+      if (mode === 'credit' && selectedFiles.length === 1) {
+        toast.info('Have more cards? Add their statements too for accurate savings estimates', {
+          duration: 4000,
+        });
       }
 
       // Initialize files with status
@@ -400,19 +436,47 @@ const Upload = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 lg:px-12 py-16">
+        <main className="container mx-auto px-6 lg:px-12 py-16">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-playfair italic font-medium text-foreground mb-4">
-              upload your statements
+              {mode === 'bank' && 'Upload bank statements (last 3 months)'}
+              {mode === 'credit' && 'Upload your latest credit card statements (all cards)'}
+              {mode === 'mixed' && 'Upload statements'}
+              {!mode && 'Upload your statements'}
             </h2>
             <p className="text-lg font-sans text-muted-foreground">
-              upload up to 3 months of PDF bank or credit card statements
+              {mode === 'bank' && "PDF/CSV from your salary/spend account. If the file is password-protected, we'll ask for it."}
+              {mode === 'credit' && 'PDF/CSV. Add a statement for each card you use so we can estimate savings accurately.'}
+              {mode === 'mixed' && 'You can add bank and card statements—use whatever you have handy.'}
+              {!mode && 'Upload up to 3 months of PDF bank or credit card statements'}
             </p>
           </div>
 
           <Card className="p-8 md:p-12 border-border">
             <div className="space-y-8">
+              {/* Inline mode chooser if no mode specified */}
+              {!mode && (
+                <div className="mb-6 p-4 border border-border rounded-lg bg-card">
+                  <Label className="text-sm font-medium mb-3 block">
+                    What type of statements will you upload?
+                  </Label>
+                  <SegmentedControl
+                    name="upload-mode"
+                    options={[
+                      { value: "bank", label: "Bank statements" },
+                      { value: "credit", label: "Credit card statements" },
+                    ]}
+                    value=""
+                    onValueChange={(value) => {
+                      setMode(value as 'bank' | 'credit');
+                      if (user) {
+                        localStorage.setItem(`first_card_choice_${user.id}`, value);
+                      }
+                    }}
+                  />
+                </div>
+              )}
               <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 transition-colors">
                 <input
                   type="file"

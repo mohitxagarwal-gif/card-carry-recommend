@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OnboardingBasics from "./pages/OnboardingBasics";
+import OnboardingFirstCard from "./pages/OnboardingFirstCard";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
 import CardsPage from "./pages/CardsPage";
@@ -29,6 +30,11 @@ const App = () => (
           <Route path="/onboarding/basics" element={
             <ProtectedRoute requireOnboarding={false}>
               <OnboardingBasics />
+            </ProtectedRoute>
+          } />
+          <Route path="/onboarding/first-card" element={
+            <ProtectedRoute requireOnboarding={false}>
+              <OnboardingFirstCard />
             </ProtectedRoute>
           } />
           <Route path="/cards" element={<CardsPage />} />
