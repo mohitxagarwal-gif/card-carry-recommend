@@ -50,7 +50,7 @@ const Profile = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <h1 className="text-4xl font-playfair italic font-medium text-foreground mb-8">
+        <h1 className="text-4xl font-heading font-bold text-foreground mb-8">
           your profile
         </h1>
 

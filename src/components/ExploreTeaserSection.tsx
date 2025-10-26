@@ -14,11 +14,11 @@ const ExploreTeaserSection = () => {
     <section className="py-16 lg:py-24 bg-background">
       <div className="container mx-auto px-6 lg:px-12">
         <div className="mb-8">
-          <h2 className="text-3xl lg:text-4xl font-playfair italic font-medium text-foreground mb-3">
-            Explore top Indian credit cards
+          <h2 className="text-3xl lg:text-4xl font-heading font-bold text-foreground mb-3">
+            explore top indian credit cards
           </h2>
           <p className="text-base lg:text-lg font-sans text-muted-foreground">
-            Browse by fees and perks. Compare side-by-side.
+            browse by fees and perks. compare side-by-side.
           </p>
         </div>
 
@@ -30,7 +30,7 @@ const ExploreTeaserSection = () => {
               className="group bg-card/30 hover:bg-card rounded-2xl border border-border/30 hover:border-border/60 transition-all duration-300 p-6 cursor-pointer"
             >
               <div className="mb-4">
-                <h3 className="text-lg font-playfair italic font-medium text-foreground mb-1">
+                <h3 className="text-lg font-heading font-bold text-foreground mb-1">
                   {card.name}
                 </h3>
                 <p className="text-sm font-sans text-muted-foreground">

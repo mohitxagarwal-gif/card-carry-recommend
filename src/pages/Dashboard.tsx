@@ -45,7 +45,7 @@ const Dashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <h1 className="text-4xl font-playfair italic font-medium text-foreground mb-8">
+        <h1 className="text-4xl font-heading font-bold text-foreground mb-8">
           your dashboard
         </h1>
 
@@ -53,12 +53,12 @@ const Dashboard = () => {
           <Card>
             <CardContent className="pt-6 text-center space-y-4">
               <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
-              <h3 className="text-xl font-semibold">Get Started</h3>
+              <h3 className="text-xl font-semibold">get started</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                Upload your bank or credit card statements to see personalized recommendations and track your progress.
+                upload your bank or credit card statements to see personalized recommendations and track your progress.
               </p>
-              <Button onClick={() => navigate('/upload')}>
-                Upload Statements
+              <Button onClick={() => navigate("/upload")}>
+                upload statements
               </Button>
             </CardContent>
           </Card>
@@ -69,7 +69,7 @@ const Dashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Next Steps
+                  next steps
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -90,12 +90,12 @@ const Dashboard = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="w-5 h-5" />
-                    Estimated Annual Savings
+                    estimated annual savings
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <p className="text-3xl font-playfair italic text-primary">
+                    <p className="text-3xl font-heading font-bold text-primary tabular-nums">
                       ₹{latestSnapshot.savings_min.toLocaleString()} - ₹{latestSnapshot.savings_max.toLocaleString()}
                     </p>
                     <Badge variant="outline" className={

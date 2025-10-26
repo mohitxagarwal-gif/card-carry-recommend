@@ -382,7 +382,7 @@ const Upload = () => {
         <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
           <div className="container mx-auto px-6 lg:px-12 py-6">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-playfair italic font-medium text-foreground">
+              <h1 className="text-2xl font-heading font-bold text-foreground">
                 card & carry.
               </h1>
               <Button
@@ -420,7 +420,7 @@ const Upload = () => {
       <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-6 lg:px-12 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-playfair italic font-medium text-foreground">
+            <h1 className="text-2xl font-heading font-bold text-foreground">
               card & carry.
             </h1>
             <Button
@@ -439,11 +439,11 @@ const Upload = () => {
         <main className="container mx-auto px-6 lg:px-12 py-16">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-playfair italic font-medium text-foreground mb-4">
-              {mode === 'bank' && 'Upload bank statements (last 3 months)'}
-              {mode === 'credit' && 'Upload your latest credit card statements (all cards)'}
-              {mode === 'mixed' && 'Upload statements'}
-              {!mode && 'Upload your statements'}
+            <h2 className="text-4xl font-heading font-bold text-foreground mb-4">
+              {mode === "bank" && "upload bank statements (last 3 months)"}
+              {mode === "credit" && "upload your latest credit card statements (all cards)"}
+              {mode === "mixed" && "upload statements"}
+              {!mode && "upload your statements"}
             </h2>
             <p className="text-lg font-sans text-muted-foreground">
               {mode === 'bank' && "PDF/CSV from your salary/spend account. If the file is password-protected, we'll ask for it."}

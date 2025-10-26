@@ -4,7 +4,7 @@ const FAQSection = () => {
   return (
     <section id="faqs" className="container mx-auto px-6 lg:px-12 py-24 md:py-32 bg-card/30 scroll-mt-20">
       <div className="max-w-4xl mx-auto">
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-playfair italic font-medium text-foreground text-center mb-12 leading-tight">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-foreground text-center mb-12 leading-tight">
           frequently asked questions
         </h2>
 

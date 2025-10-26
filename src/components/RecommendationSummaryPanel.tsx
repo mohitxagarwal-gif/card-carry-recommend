@@ -95,7 +95,7 @@ export const RecommendationSummaryPanel = ({
                 {confidence} confidence
               </Badge>
             </div>
-            <p className="text-3xl font-playfair italic text-primary">
+            <p className="text-3xl font-heading font-bold text-primary tabular-nums">
               ₹{savingsMin.toLocaleString()} - ₹{savingsMax.toLocaleString()}
             </p>
             {nextAction && (

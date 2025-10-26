@@ -24,7 +24,7 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div>
-              <DialogTitle className="font-playfair italic text-2xl mb-2">
+              <DialogTitle className="font-heading font-bold text-2xl mb-2">
                 {card.name}
               </DialogTitle>
               <p className="text-sm font-sans text-muted-foreground">

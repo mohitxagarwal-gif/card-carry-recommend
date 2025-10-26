@@ -184,9 +184,9 @@ export default function OnboardingBasics() {
         <div className="grid md:grid-cols-2 gap-12 items-start max-w-6xl mx-auto">
           <div className="space-y-6">
             <div className="space-y-2">
-              <h1 className="text-4xl font-playfair italic">A few basics for better matches</h1>
+              <h1 className="text-4xl font-heading font-bold">a few basics for better matches</h1>
               <p className="text-lg text-muted-foreground">
-                This helps us personalize your recommendations. Takes under 30 seconds.
+                this helps us personalize your recommendations. takes under 30 seconds.
               </p>
             </div>
 

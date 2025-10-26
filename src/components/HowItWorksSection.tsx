@@ -2,14 +2,14 @@ const HowItWorksSection = () => {
   return (
     <section id="how-it-works" className="container mx-auto px-6 lg:px-12 py-24 md:py-32 scroll-mt-20">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-playfair italic font-medium text-foreground text-center mb-16 leading-tight">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-foreground text-center mb-16 leading-tight">
           how card & carry works
         </h2>
 
         <div className="grid md:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
           <div className="group hover:scale-105 transition-transform duration-300">
-            <div className="text-7xl md:text-8xl font-playfair italic font-medium text-primary/10 mb-4">01</div>
-            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+            <div className="text-7xl md:text-8xl font-heading font-bold text-primary/10 mb-4">01</div>
+            <h3 className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-4">
               tell us your basics
             </h3>
             <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">
@@ -18,8 +18,8 @@ const HowItWorksSection = () => {
           </div>
 
           <div className="group hover:scale-105 transition-transform duration-300">
-            <div className="text-7xl md:text-8xl font-playfair italic font-medium text-primary/10 mb-4">02</div>
-            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+            <div className="text-7xl md:text-8xl font-heading font-bold text-primary/10 mb-4">02</div>
+            <h3 className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-4">
               we match your benefits
             </h3>
             <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">
@@ -28,8 +28,8 @@ const HowItWorksSection = () => {
           </div>
 
           <div className="group hover:scale-105 transition-transform duration-300">
-            <div className="text-7xl md:text-8xl font-playfair italic font-medium text-primary/10 mb-4">03</div>
-            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+            <div className="text-7xl md:text-8xl font-heading font-bold text-primary/10 mb-4">03</div>
+            <h3 className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-4">
               compare & apply
             </h3>
             <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">

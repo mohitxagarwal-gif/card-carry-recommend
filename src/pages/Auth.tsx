@@ -174,11 +174,11 @@ const Auth = () => {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-2 mb-6">
             <CreditCard className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-playfair italic font-medium text-foreground">
+            <h1 className="text-3xl font-heading font-bold text-foreground">
               card & carry.
             </h1>
           </div>
-          <h2 className="text-2xl font-playfair italic text-foreground mb-3">
+          <h2 className="text-2xl font-heading font-bold text-foreground mb-3">
             {isSignUp ? "begin your journey" : "welcome back"}
           </h2>
           <p className="text-muted-foreground font-sans">

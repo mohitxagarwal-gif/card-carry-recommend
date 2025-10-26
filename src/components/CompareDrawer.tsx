@@ -29,7 +29,7 @@ export const CompareDrawer = () => {
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
               <SheetHeader>
-                <SheetTitle className="text-2xl font-playfair italic">compare cards</SheetTitle>
+                <SheetTitle className="text-2xl font-heading font-bold">compare cards</SheetTitle>
               </SheetHeader>
               
               <div className="mt-6">

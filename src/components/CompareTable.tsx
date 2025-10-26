@@ -19,7 +19,7 @@ export const CompareTable = ({ cards, open, onOpenChange }: CompareTableProps) =
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="font-playfair italic text-2xl">Compare Cards</DialogTitle>
+          <DialogTitle className="font-heading font-bold text-2xl">compare cards</DialogTitle>
         </DialogHeader>
         
         <ScrollArea className="h-full">
@@ -32,7 +32,7 @@ export const CompareTable = ({ cards, open, onOpenChange }: CompareTableProps) =
                   </th>
                   {cards.map(card => (
                     <th key={card.id} className="text-left p-4 min-w-[200px]">
-                      <div className="font-playfair italic font-medium text-foreground">
+                      <div className="font-heading font-bold text-foreground">
                         {card.name}
                       </div>
                       <div className="text-xs font-sans text-muted-foreground mt-1">

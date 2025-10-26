@@ -71,7 +71,7 @@ const OnboardingFirstCard = () => {
           {/* Left column - Introduction */}
           <div className="space-y-8">
             <div>
-              <h1 className="text-5xl font-playfair italic font-medium text-foreground mb-6">
+              <h1 className="text-5xl font-heading font-bold text-foreground mb-6">
                 one quick question
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed">

@@ -20,7 +20,7 @@ const CategoriesSection = () => {
     <section id="categories" className="container mx-auto px-6 lg:px-12 py-24 md:py-32 bg-card/30">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-playfair italic font-medium text-foreground mb-6">
+          <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-6">
             analyzed by category
           </h2>
           <p className="text-lg font-sans text-muted-foreground max-w-2xl mx-auto">

@@ -8,13 +8,13 @@ const AboutTrustSection = () => {
   return (
     <section className="container mx-auto px-6 lg:px-12 py-24 md:py-32">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-playfair italic font-medium text-foreground text-center mb-16 leading-tight">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-foreground text-center mb-16 leading-tight">
           why trust card & carry?
         </h2>
 
         <div className="grid md:grid-cols-2 gap-12 mb-12">
           <div className="bg-card/30 rounded-2xl border border-border/30 p-8">
-            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+            <h3 className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-4">
               our mission
             </h3>
             <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">
@@ -23,7 +23,7 @@ const AboutTrustSection = () => {
           </div>
 
           <div className="bg-card/30 rounded-2xl border border-border/30 p-8">
-            <h3 className="text-2xl md:text-3xl font-playfair italic font-medium text-foreground mb-4">
+            <h3 className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-4">
               why trust us
             </h3>
             <ul className="space-y-3">

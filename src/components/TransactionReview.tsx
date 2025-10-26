@@ -72,7 +72,7 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
           <CheckCircle2 className="h-6 w-6" />
-          <h2 className="text-2xl font-playfair italic font-medium text-foreground">
+          <h2 className="text-2xl font-heading font-bold text-foreground">
             extraction complete
           </h2>
         </div>
@@ -84,22 +84,22 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-4 border-border">
-          <p className="text-sm font-sans text-muted-foreground mb-1">Total Statements</p>
-          <p className="text-2xl font-playfair italic font-medium text-foreground">{extractedData.length}</p>
+          <p className="text-sm font-sans text-muted-foreground mb-1">total statements</p>
+          <p className="text-2xl font-heading font-bold text-foreground tabular-nums">{extractedData.length}</p>
         </Card>
         <Card className="p-4 border-border">
-          <p className="text-sm font-sans text-muted-foreground mb-1">Total Transactions</p>
-          <p className="text-2xl font-playfair italic font-medium text-foreground">{totalTransactions}</p>
+          <p className="text-sm font-sans text-muted-foreground mb-1">total transactions</p>
+          <p className="text-2xl font-heading font-bold text-foreground tabular-nums">{totalTransactions}</p>
         </Card>
         <Card className="p-4 border-border">
-          <p className="text-sm font-sans text-muted-foreground mb-1">Total Amount</p>
-          <p className="text-2xl font-playfair italic font-medium text-foreground">{formatINR(totalAmount)}</p>
+          <p className="text-sm font-sans text-muted-foreground mb-1">total amount</p>
+          <p className="text-2xl font-heading font-bold text-foreground tabular-nums">{formatINR(totalAmount)}</p>
         </Card>
       </div>
 
       {/* Category Breakdown */}
       <Card className="p-6 border-border">
-        <h3 className="text-lg font-playfair italic font-medium text-foreground mb-4">
+        <h3 className="text-lg font-heading font-bold text-foreground mb-4">
           spending by category
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -120,7 +120,7 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
 
       {/* File-by-File Breakdown */}
       <div className="space-y-3">
-        <h3 className="text-lg font-playfair italic font-medium text-foreground">
+        <h3 className="text-lg font-heading font-bold text-foreground">
           transactions by statement
         </h3>
         {extractedData.map((data, index) => (

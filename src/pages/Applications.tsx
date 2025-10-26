@@ -37,7 +37,7 @@ const Applications = () => {
       <Header />
       
       <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <h1 className="text-4xl font-playfair italic font-medium text-foreground mb-8">
+        <h1 className="text-4xl font-heading font-bold text-foreground mb-8">
           application tracker
         </h1>
 

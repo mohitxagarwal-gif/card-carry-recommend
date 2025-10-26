@@ -404,8 +404,8 @@ const CardsPage = () => {
             {/* Header */}
             <div className="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
-                <h1 className="text-3xl lg:text-4xl font-playfair italic font-medium text-foreground mb-2">
-                  Explore & Compare Credit Cards (India)
+                <h1 className="text-3xl lg:text-4xl font-heading font-bold text-foreground mb-2">
+                  explore & compare credit cards (india)
                 </h1>
                 <p className="text-base lg:text-lg font-sans text-muted-foreground">
                   Browse all active cards. Filter by fees, perks, and networks. Compare side-by-side.

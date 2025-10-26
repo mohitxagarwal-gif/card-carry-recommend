@@ -8,7 +8,7 @@ const CTASection = () => {
   return (
     <section className="container mx-auto px-6 lg:px-12 py-24 md:py-32">
       <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-playfair italic font-medium text-foreground mb-8 leading-tight">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-foreground mb-8 leading-tight">
           ready to find your perfect match?
         </h2>
         <p className="text-lg md:text-xl font-sans text-muted-foreground mb-12 leading-relaxed max-w-2xl mx-auto">

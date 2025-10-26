@@ -274,7 +274,7 @@ const Results = () => {
       <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-6 lg:px-12 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-playfair italic font-medium text-foreground">
+            <h1 className="text-2xl font-heading font-bold text-foreground">
               card & carry.
             </h1>
             <Button
@@ -323,7 +323,7 @@ const Results = () => {
           </div>
 
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-playfair italic font-medium text-foreground mb-4">
+            <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
               your spending analysis
             </h2>
             <p className="text-lg font-sans text-muted-foreground">
@@ -342,7 +342,7 @@ const Results = () => {
                   <Sparkles className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-playfair italic font-medium text-foreground mb-3">
+                  <h3 className="text-xl font-heading font-bold text-foreground mb-3">
                     summary
                   </h3>
                   <p className="text-foreground/80 font-sans leading-relaxed">
@@ -360,11 +360,11 @@ const Results = () => {
                 <TrendingUp className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-playfair italic font-medium text-foreground mb-2">
+                <h3 className="text-xl font-heading font-bold text-foreground mb-2">
                   total spending
                 </h3>
-                <p className="text-3xl font-playfair font-semibold text-foreground">
-                  ₹{analysis.totalSpending?.toLocaleString('en-IN') || '0'}
+                <p className="text-3xl font-heading font-bold text-foreground tabular-nums">
+                  ₹{analysis.totalSpending?.toLocaleString("en-IN") || "0"}
                 </p>
                 {analysis.period && (
                   <p className="text-sm font-sans text-muted-foreground mt-1">
@@ -378,7 +378,7 @@ const Results = () => {
           {/* Top Categories */}
           {analysis.topCategories && analysis.topCategories.length > 0 && (
             <Card className="p-8 border-border">
-              <h3 className="text-xl font-playfair italic font-medium text-foreground mb-6">
+              <h3 className="text-xl font-heading font-bold text-foreground mb-6">
                 top spending categories
               </h3>
               <div className="space-y-4">
@@ -451,7 +451,7 @@ const Results = () => {
               />
               
               <div className="space-y-6">
-                <h3 className="text-2xl font-playfair italic font-medium text-foreground">
+                <h3 className="text-2xl font-heading font-bold text-foreground">
                   recommended credit cards
                 </h3>
                 <div className="grid md:grid-cols-2 gap-6">
@@ -464,7 +464,7 @@ const Results = () => {
                               <CreditCardIcon className="h-5 w-5 text-primary" />
                             </div>
                             <div className="flex-1">
-                              <h4 className="text-lg font-playfair italic font-medium text-foreground">
+                              <h4 className="text-lg font-heading font-bold text-foreground">
                                 {card.name}
                               </h4>
                               <p className="text-sm font-sans text-muted-foreground">
@@ -525,7 +525,7 @@ const Results = () => {
           {/* Insights */}
           {analysis.insights && analysis.insights.length > 0 && (
             <Card className="p-8 border-border">
-              <h3 className="text-xl font-playfair italic font-medium text-foreground mb-6">
+              <h3 className="text-xl font-heading font-bold text-foreground mb-6">
                 key insights
               </h3>
               <ul className="space-y-3">
@@ -543,7 +543,7 @@ const Results = () => {
           {!showRecommendations && editedTransactions.length > 0 && (
             <Card className="p-8 border-border">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-playfair italic font-medium text-foreground">
+                <h3 className="text-xl font-heading font-bold text-foreground">
                   all transactions ({editedTransactions.length})
                 </h3>
               </div>
