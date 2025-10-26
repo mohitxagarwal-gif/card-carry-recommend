@@ -13,6 +13,8 @@ import { RadioGrid } from "@/components/onboarding/RadioGrid";
 import { CityCombobox } from "@/components/onboarding/CityCombobox";
 import { PhoneInput } from "@/components/onboarding/PhoneInput";
 import { trackEvent } from "@/lib/analytics";
+import { getReturnToFromQuery, sanitizeInternalPath } from "@/lib/authUtils";
+import { trackAuthRedirectNext } from "@/lib/authAnalytics";
 
 interface FormData {
   age_range: string;
@@ -54,49 +56,23 @@ export default function OnboardingBasics() {
   const autosaveKey = `onboarding_basics_${userId}`;
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth", { replace: true });
-        return;
-      }
-
-      setUserId(session.user.id);
-
-      // Wait briefly for profile to be created
-      let attempts = 0;
-      let profile = null;
+    const loadProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       
-      while (attempts < 5 && !profile) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", session.user.id)
-          .single();
-        
-        if (data) {
-          profile = data;
-          break;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-        attempts++;
-      }
-
-      if (profile?.onboarding_completed) {
-        navigate("/upload", { replace: true });
-        return;
-      }
-
-      const saved = localStorage.getItem(`onboarding_basics_${session.user.id}`);
+      if (!user) return; // ProtectedRoute handles this
+      
+      setUserId(user.id);
+      
+      // Load saved form data from localStorage
+      const saved = localStorage.getItem(`onboarding_basics_${user.id}`);
       if (saved) {
         setFormData(JSON.parse(saved));
       }
     };
 
-    checkAuth();
+    loadProfile();
     trackEvent("onboarding_basics_view");
-  }, [navigate]);
+  }, []);
 
   const handleFieldChange = (field: keyof FormData, value: any) => {
     const newData = { ...formData, [field]: value };
@@ -185,9 +161,12 @@ export default function OnboardingBasics() {
       trackEvent("onboarding_basics_submit_success");
       toast.success("Saved. Tailoring picks for you...");
       
-      setTimeout(() => {
-        navigate("/upload");
-      }, 500);
+      // Navigate to returnTo or default /upload
+      const returnTo = getReturnToFromQuery();
+      const safe = sanitizeInternalPath(returnTo) || '/upload';
+      const reason = returnTo ? 'returnTo' : 'fallback';
+      trackAuthRedirectNext(safe, reason);
+      navigate(safe, { replace: true });
     } catch (error: any) {
       toast.error(error.message);
     } finally {

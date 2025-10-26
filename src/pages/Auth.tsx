@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { afterAuthRedirect, getReturnToFromQuery } from "@/lib/authUtils";
+import { trackAuthSuccess } from "@/lib/authAnalytics";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -23,46 +25,44 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [waitingForProfile, setWaitingForProfile] = useState(false);
 
+  // Handle OAuth callback
   useEffect(() => {
-    // Listen for auth changes and check profile
-    const checkAuthAndRedirect = async () => {
+    const handleOAuthCallback = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Wait briefly for profile creation
-        let attempts = 0;
-        let profile = null;
-        
-        while (attempts < 5 && !profile) {
-          const { data } = await supabase
-            .from("profiles")
-            .select("onboarding_completed")
-            .eq("id", session.user.id)
-            .single();
+        // Check if this is an OAuth callback
+        const returnTo = sessionStorage.getItem('oauth_returnTo');
+        if (returnTo) {
+          sessionStorage.removeItem('oauth_returnTo');
           
-          if (data) {
-            profile = data;
-            break;
+          setLoading(true);
+          setWaitingForProfile(true);
+          try {
+            trackAuthSuccess('google');
+            await afterAuthRedirect(session.user.id, returnTo, navigate);
+          } catch (error) {
+            console.error('Error during OAuth redirect:', error);
+            toast.error('Error completing sign-in. Please try again.');
+            setLoading(false);
+            setWaitingForProfile(false);
           }
-          
-          await new Promise(resolve => setTimeout(resolve, 300));
-          attempts++;
-        }
-
-        if (profile?.onboarding_completed) {
-          navigate("/upload", { replace: true });
-        } else {
-          navigate("/onboarding/basics", { replace: true });
         }
       }
     };
 
-    checkAuthAndRedirect();
+    handleOAuthCallback();
   }, [navigate]);
 
   const handleGoogleSignIn = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
+      
+      // Store returnTo in sessionStorage before OAuth redirect
+      const returnTo = getReturnToFromQuery();
+      sessionStorage.setItem('oauth_returnTo', returnTo || '/upload');
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -73,12 +73,10 @@ const Auth = () => {
           }
         }
       });
-      
-      if (error) {
-        toast.error(error.message);
-        setLoading(false);
-      }
+
+      if (error) throw error;
     } catch (error: any) {
+      console.error('Error signing in with Google:', error);
       toast.error(error.message || 'Failed to sign in with Google');
       setLoading(false);
     }
@@ -86,114 +84,87 @@ const Auth = () => {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSignUp) {
+      // Validate signup inputs
+      try {
+        authSchema.parse({ email, password, fullName });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          toast.error(error.errors[0].message);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
+    setWaitingForProfile(false);
+    const returnTo = getReturnToFromQuery();
 
     try {
       if (isSignUp) {
-        // Validate sign up fields
-        const validationResult = authSchema.safeParse({ email, fullName, password });
-        if (!validationResult.success) {
-          toast.error(validationResult.error.errors[0].message);
-          return;
-        }
-
-        const { error } = await supabase.auth.signUp({
+        // Sign up
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: `${window.location.origin}/`,
           },
         });
 
-        if (error) {
-          if (error.message.includes("already registered")) {
-            toast.error("This email is already registered. Please sign in instead.");
-          } else {
-            toast.error(error.message);
-          }
-        } else {
-          toast.success("Account created successfully! Redirecting...");
-          
-          // Wait for profile creation, then redirect based on onboarding status
-          let attempts = 0;
-          let profile = null;
-          
-          while (attempts < 5 && !profile) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              const { data } = await supabase
-                .from("profiles")
-                .select("onboarding_completed")
-                .eq("id", user.id)
-                .single();
-              
-              if (data) {
-                profile = data;
-                break;
-              }
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 300));
-            attempts++;
-          }
+        if (error) throw error;
 
-          navigate("/onboarding/basics", { replace: true });
+        if (data.user) {
+          toast.success("Account created! Setting up your profile...");
+          setWaitingForProfile(true);
+          
+          trackAuthSuccess('email');
+          
+          try {
+            await afterAuthRedirect(data.user.id, returnTo, navigate);
+          } catch (error) {
+            console.error('Error during post-signup redirect:', error);
+            toast.error('Profile setup delayed. Redirecting to onboarding...');
+            navigate('/onboarding/basics', { replace: true });
+          }
         }
       } else {
-        // Sign in validation
-        if (!email || !password) {
-          toast.error("Please enter both email and password");
-          return;
-        }
-
-        const { error, data } = await supabase.auth.signInWithPassword({
+        // Sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) {
-          if (error.message.includes("Invalid login credentials")) {
+          if (error.message === "Invalid login credentials") {
             toast.error("Invalid email or password. Please try again.");
           } else {
-            toast.error(error.message);
+            throw error;
           }
-        } else {
-          toast.success("Signed in successfully! Redirecting...");
-          
-          // Wait for profile to be available, then redirect based on onboarding status
-          let attempts = 0;
-          let profile = null;
-          
-          while (attempts < 5 && !profile) {
-            const { data: profileData } = await supabase
-              .from("profiles")
-              .select("onboarding_completed")
-              .eq("id", data.user.id)
-              .single();
-            
-            if (profileData) {
-              profile = profileData;
-              break;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 300));
-            attempts++;
-          }
+          return;
+        }
 
-          if (profile?.onboarding_completed) {
-            navigate("/upload", { replace: true });
-          } else {
-            navigate("/onboarding/basics", { replace: true });
+        if (data.user) {
+          setWaitingForProfile(true);
+          trackAuthSuccess('email');
+          
+          try {
+            await afterAuthRedirect(data.user.id, returnTo, navigate);
+          } catch (error) {
+            console.error('Error during post-signin redirect:', error);
+            toast.error('Error loading profile. Please try again.');
           }
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+      console.error('Error during authentication:', error);
+      toast.error(error.message || 'An error occurred during authentication');
     } finally {
       setLoading(false);
+      setWaitingForProfile(false);
     }
   };
 
@@ -292,7 +263,18 @@ const Auth = () => {
               className="w-full font-sans"
               disabled={loading}
             >
-              {loading ? "processing..." : isSignUp ? "create account" : "sign in"}
+              {loading ? (
+                waitingForProfile ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    setting up your profile...
+                  </>
+                ) : (
+                  "processing..."
+                )
+              ) : (
+                isSignUp ? "create account" : "sign in"
+              )}
             </Button>
           </form>
 

@@ -31,52 +31,27 @@ const Upload = () => {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // Check authentication and onboarding status
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth", { replace: true });
-        return;
-      }
-      
-      setUser(session.user);
-      
-      // Wait briefly for profile to be available
-      let attempts = 0;
-      let profile = null;
-      
-      while (attempts < 5 && !profile) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", session.user.id)
-          .single();
-        
-        if (data) {
-          profile = data;
-          break;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-        attempts++;
-      }
-      
-      if (!profile?.onboarding_completed) {
-        navigate("/onboarding/basics", { replace: true });
+    const initUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUser(user);
       }
     };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate("/auth", { replace: true });
-      } else {
-        setUser(session.user);
+    
+    initUser();
+    
+    // Listen for sign-out only
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === 'SIGNED_OUT') {
+          navigate("/auth", { replace: true });
+        }
       }
-    });
-
-    return () => subscription.unsubscribe();
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
