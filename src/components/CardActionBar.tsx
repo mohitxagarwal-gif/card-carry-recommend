@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Heart, CheckCircle } from "lucide-react";
 import { useShortlist } from "@/hooks/useShortlist";
 import { trackEvent } from "@/lib/analytics";
+import { IssuerOutlinkModal } from "./IssuerOutlinkModal";
+import { useState } from "react";
 
 interface CardActionBarProps {
   cardId: string;
@@ -12,17 +14,48 @@ interface CardActionBarProps {
 export const CardActionBar = ({ cardId, issuer, name }: CardActionBarProps) => {
   const { isInShortlist, addToShortlist, removeFromShortlist } = useShortlist();
   const inShortlist = isInShortlist(cardId);
+  const [showOutlinkModal, setShowOutlinkModal] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState("");
+  const [pendingAction, setPendingAction] = useState<"eligibility" | "apply" | null>(null);
 
   const handleEligibilityCheck = () => {
-    trackEvent("recs_eligibility_click", { cardId, issuer });
-    // Open issuer eligibility page - placeholder URL
-    window.open(`https://${issuer.toLowerCase().replace(/\s/g, '')}.com/check-eligibility`, '_blank');
+    const hideModal = localStorage.getItem('hide_outlink_modal') === 'true';
+    const url = `https://${issuer.toLowerCase().replace(/\s/g, '')}.com/check-eligibility`;
+    
+    if (hideModal) {
+      trackEvent("recs_eligibility_click", { cardId, issuer });
+      window.open(url, '_blank');
+    } else {
+      setPendingUrl(url);
+      setPendingAction("eligibility");
+      setShowOutlinkModal(true);
+    }
   };
 
   const handleApply = () => {
-    trackEvent("recs_apply_click", { cardId, issuer });
-    // Open issuer application page - placeholder URL
-    window.open(`https://${issuer.toLowerCase().replace(/\s/g, '')}.com/apply/${cardId}`, '_blank');
+    const hideModal = localStorage.getItem('hide_outlink_modal') === 'true';
+    const url = `https://${issuer.toLowerCase().replace(/\s/g, '')}.com/apply/${cardId}`;
+    
+    if (hideModal) {
+      trackEvent("recs_apply_click", { cardId, issuer });
+      window.open(url, '_blank');
+    } else {
+      setPendingUrl(url);
+      setPendingAction("apply");
+      setShowOutlinkModal(true);
+    }
+  };
+
+  const handleModalContinue = () => {
+    if (pendingAction === "eligibility") {
+      trackEvent("recs_eligibility_click", { cardId, issuer });
+    } else if (pendingAction === "apply") {
+      trackEvent("recs_apply_click", { cardId, issuer });
+    }
+    window.open(pendingUrl, '_blank');
+    setShowOutlinkModal(false);
+    setPendingUrl("");
+    setPendingAction(null);
   };
 
   const handleShortlist = () => {
@@ -61,6 +94,18 @@ export const CardActionBar = ({ cardId, issuer, name }: CardActionBarProps) => {
       >
         <Heart className={`w-4 h-4 ${inShortlist ? 'fill-current' : ''}`} />
       </Button>
+
+      <IssuerOutlinkModal
+        isOpen={showOutlinkModal}
+        onClose={() => {
+          setShowOutlinkModal(false);
+          setPendingUrl("");
+          setPendingAction(null);
+        }}
+        onContinue={handleModalContinue}
+        issuerName={issuer}
+        cardId={cardId}
+      />
     </div>
   );
 };

@@ -65,12 +65,46 @@ export const useApplications = () => {
         trackEvent("apps_status_update", { cardId, from: 'none', to: status });
       }
     },
+    onMutate: async ({ cardId, status }) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: ["card-applications"] });
+      const previousApps = queryClient.getQueryData(["card-applications"]);
+      
+      queryClient.setQueryData(["card-applications"], (old: CardApplication[] = []) => {
+        const existing = old.find(app => app.card_id === cardId);
+        if (existing) {
+          return old.map(app => 
+            app.card_id === cardId 
+              ? { ...app, status, status_updated_at: new Date().toISOString() }
+              : app
+          );
+        }
+        return old;
+      });
+
+      return { previousApps };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["card-applications"] });
       toast.success("Status updated");
     },
-    onError: () => {
-      toast.error("Failed to update status");
+    onError: (error, variables, context) => {
+      // Revert optimistic update on error
+      if (context?.previousApps) {
+        queryClient.setQueryData(["card-applications"], context.previousApps);
+      }
+      
+      // Check if offline
+      if (!navigator.onLine) {
+        const { addToQueue } = require("@/lib/offlineQueue");
+        addToQueue({
+          type: 'status_update',
+          payload: { cardId: variables.cardId, status: variables.status }
+        });
+        toast.info("Saved locally—will sync when online");
+      } else {
+        toast.error("Failed to update status");
+      }
     },
   });
 

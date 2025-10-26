@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,10 +9,11 @@ import Header from "@/components/Header";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, User, Bell, Shield } from "lucide-react";
+import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2 } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { preferences, isLoading, updatePreferences } = useUserPreferences();
   const [profile, setProfile] = useState<any>(null);
 
@@ -214,6 +216,90 @@ const Profile = () => {
               <Button variant="link" className="p-0 h-auto">Terms of Service</Button>
               <Button variant="link" className="p-0 h-auto">Privacy Policy</Button>
               <Button variant="link" className="p-0 h-auto">Affiliate Disclosure</Button>
+            </CardContent>
+          </Card>
+
+          {/* Data & Files */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Data & Files
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Statements</Label>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => navigate('/upload')}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Re-upload Statements
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Local Cache</Label>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    localStorage.clear();
+                    toast.success("Cache cleared");
+                    trackEvent("data_cache_clear");
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear Local Cache
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Export Data</Label>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={async () => {
+                    try {
+                      const { exportUserData } = await import("@/lib/exportUserData");
+                      await exportUserData();
+                      toast.success("Data exported");
+                      trackEvent("data_export");
+                    } catch (error) {
+                      toast.error("Export failed");
+                    }
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export My Data (JSON)
+                </Button>
+              </div>
+
+              <div className="pt-4 border-t space-y-2">
+                <Label className="text-destructive">Danger Zone</Label>
+                <Button 
+                  variant="destructive" 
+                  className="w-full justify-start"
+                  onClick={async () => {
+                    if (confirm("Are you sure? This will permanently delete your account and all data. This action cannot be undone.")) {
+                      try {
+                        const { error } = await supabase.functions.invoke('delete-user-data');
+                        if (error) throw error;
+                        toast.success("Account deleted");
+                        trackEvent("data_delete_request");
+                        navigate('/auth');
+                      } catch (error) {
+                        toast.error("Failed to delete account");
+                      }
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Account
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

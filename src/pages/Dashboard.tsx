@@ -182,6 +182,18 @@ const Dashboard = () => {
               </Card>
             </div>
 
+            {/* My Cards */}
+            <MyCardsModule />
+
+            {/* Fee Waiver Goals */}
+            <FeeWaiverGoalsModule />
+
+            {/* Reminders */}
+            <RemindersModule />
+
+            {/* Content Feed */}
+            <ContentFeedModule />
+
             {/* Data Freshness */}
             {latestSnapshot && (
               <Card>

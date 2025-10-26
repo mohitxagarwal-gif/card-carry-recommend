@@ -35,13 +35,45 @@ export const useShortlist = () => {
       if (error) throw error;
       trackEvent("recs_shortlist_add", { cardId });
     },
+    onMutate: async (cardId) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: ["user-shortlist"] });
+      const previousShortlist = queryClient.getQueryData(["user-shortlist"]);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        queryClient.setQueryData(["user-shortlist"], (old: UserShortlist[] = []) => [
+          ...old,
+          {
+            id: `temp-${Date.now()}`,
+            user_id: user.id,
+            card_id: cardId,
+            added_at: new Date().toISOString()
+          }
+        ]);
+      }
+
+      return { previousShortlist };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-shortlist"] });
       toast.success("Added to shortlist");
     },
-    onError: (error: any) => {
+    onError: (error: any, cardId, context) => {
+      // Revert optimistic update on error
+      if (context?.previousShortlist) {
+        queryClient.setQueryData(["user-shortlist"], context.previousShortlist);
+      }
+      
       if (error.message?.includes("duplicate")) {
         toast.info("Already in your shortlist");
+      } else if (!navigator.onLine) {
+        const { addToQueue } = require("@/lib/offlineQueue");
+        addToQueue({
+          type: 'shortlist_add',
+          payload: { cardId }
+        });
+        toast.info("Saved locally—will sync when online");
       } else {
         toast.error("Failed to add to shortlist");
       }

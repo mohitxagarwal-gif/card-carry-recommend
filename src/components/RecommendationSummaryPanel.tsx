@@ -3,26 +3,78 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, Mail, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { exportRecommendationsPDF } from "@/lib/exportPDF";
+import { trackEvent } from "@/lib/analytics";
 
 interface RecommendationSummaryPanelProps {
   savingsMin: number;
   savingsMax: number;
   confidence: 'low' | 'medium' | 'high';
   nextAction?: string;
+  snapshotId?: string;
+  recommendedCards?: any[];
 }
 
 export const RecommendationSummaryPanel = ({
   savingsMin,
   savingsMax,
   confidence,
-  nextAction
+  nextAction,
+  snapshotId,
+  recommendedCards = []
 }: RecommendationSummaryPanelProps) => {
-  const handleEmailSummary = () => {
-    toast.info("Email feature coming soon!");
+  const handleEmailSummary = async () => {
+    if (!snapshotId) {
+      toast.error("No snapshot available");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('email-summary', {
+        body: { snapshotId }
+      });
+
+      if (error) throw error;
+      
+      toast.success("Email sent successfully!");
+      trackEvent("recs_email_summary", { snapshotId });
+    } catch (error: any) {
+      console.error("Email error:", error);
+      if (error.message?.includes("not configured")) {
+        toast.error("Email service not configured");
+      } else {
+        toast.error("Failed to send email");
+      }
+    }
   };
 
-  const handleDownloadPDF = () => {
-    toast.info("PDF export coming soon!");
+  const handleDownloadPDF = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .single();
+
+      exportRecommendationsPDF(
+        { savings_min: savingsMin, savings_max: savingsMax, confidence } as any,
+        recommendedCards,
+        profile || { full_name: null, email: user.email || "" }
+      );
+
+      toast.success("PDF downloaded!");
+      trackEvent("recs_export_pdf");
+    } catch (error) {
+      console.error("PDF error:", error);
+      toast.error("Failed to generate PDF");
+    }
   };
 
   const confidenceColor = {
