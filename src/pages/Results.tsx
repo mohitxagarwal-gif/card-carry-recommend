@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { CardActionBar } from "@/components/CardActionBar";
+import { EligibilityIndicator } from "@/components/EligibilityIndicator";
+import { CardStatusDropdown } from "@/components/CardStatusDropdown";
+import { RecommendationSummaryPanel } from "@/components/RecommendationSummaryPanel";
+import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -65,6 +71,7 @@ const Results = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const analysisId = location.state?.analysisId;
+  const { createSnapshot } = useRecommendationSnapshot();
   
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
@@ -72,6 +79,7 @@ const Results = () => {
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
   const [showOtherWarning, setShowOtherWarning] = useState(false);
+  const [userIncome, setUserIncome] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -93,6 +101,20 @@ const Results = () => {
         const analysisData = data.analysis_data as unknown as AnalysisData;
         setAnalysis(analysisData);
         setEditedTransactions(analysisData.transactions || []);
+        
+        // Fetch user profile for income info
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('income_band_inr')
+            .eq('id', user.id)
+            .single();
+          
+          if (profile) {
+            setUserIncome(profile.income_band_inr);
+          }
+        }
       } catch (error: any) {
         console.error('Error fetching analysis:', error);
         toast.error('Failed to load analysis');
@@ -180,14 +202,37 @@ const Results = () => {
 
       // Update the local state with recommendations
       if (data.recommendations) {
+        const recs = data.recommendations;
+        
         setAnalysis(prev => prev ? {
           ...prev,
-          recommendedCards: data.recommendations.recommendedCards,
+          recommendedCards: recs.recommendedCards,
           insights: [
             ...(prev.insights || []),
-            ...(data.recommendations.additionalInsights || [])
+            ...(recs.additionalInsights || [])
           ]
         } : null);
+        
+        // Create snapshot for dashboard
+        const savings = recs.recommendedCards?.reduce((acc: any, card: any) => {
+          const match = card.estimatedSavings?.match(/₹([\d,]+)/);
+          if (match) {
+            const amount = parseInt(match[1].replace(/,/g, ''));
+            return { min: Math.min(acc.min, amount), max: Math.max(acc.max, amount) };
+          }
+          return acc;
+        }, { min: Infinity, max: 0 });
+        
+        const hasLowConfidence = editedTransactions.length < 20 || otherCount > editedTransactions.length * 0.3;
+        
+        createSnapshot({
+          analysisId,
+          savingsMin: savings.min === Infinity ? 0 : savings.min,
+          savingsMax: savings.max === 0 ? 10000 : savings.max,
+          confidence: hasLowConfidence ? 'low' : editedTransactions.length > 100 ? 'high' : 'medium',
+          recommendedCards: recs.recommendedCards || [],
+        });
+        
         setShowRecommendations(true);
         toast.success("Recommendations generated successfully!");
         
@@ -362,66 +407,117 @@ const Results = () => {
 
           {/* Recommended Cards */}
           {showRecommendations && analysis.recommendedCards && analysis.recommendedCards.length > 0 && (
-            <div id="recommendations-section"></div>
-          )}
-          {showRecommendations && analysis.recommendedCards && analysis.recommendedCards.length > 0 && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-playfair italic font-medium text-foreground">
-                recommended credit cards
-              </h3>
-              <div className="grid md:grid-cols-2 gap-6">
-                {analysis.recommendedCards.map((card, index) => (
-                  <Card key={index} className="p-8 border-border hover:border-primary/50 transition-colors">
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="bg-primary/10 p-2 rounded-lg">
-                          <CreditCardIcon className="h-5 w-5 text-primary" />
+            <>
+              <div id="recommendations-section"></div>
+              
+              {/* Low Confidence Warning */}
+              {(editedTransactions.length < 20 || otherCount > editedTransactions.length * 0.3) && (
+                <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-900 dark:text-amber-100">
+                    These recommendations are based on limited data. Upload more statements or recategorize "Other" transactions for better accuracy.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Summary Panel */}
+              <RecommendationSummaryPanel
+                savingsMin={analysis.recommendedCards.reduce((min, card) => {
+                  const match = card.estimatedSavings?.match(/₹([\d,]+)/);
+                  if (match) {
+                    const amount = parseInt(match[1].replace(/,/g, ''));
+                    return Math.min(min, amount);
+                  }
+                  return min;
+                }, Infinity)}
+                savingsMax={analysis.recommendedCards.reduce((max, card) => {
+                  const match = card.estimatedSavings?.match(/₹([\d,]+)/);
+                  if (match) {
+                    const amount = parseInt(match[1].replace(/,/g, ''));
+                    return Math.max(max, amount);
+                  }
+                  return max;
+                }, 0)}
+                confidence={
+                  editedTransactions.length < 20 || otherCount > editedTransactions.length * 0.3
+                    ? 'low'
+                    : editedTransactions.length > 100
+                    ? 'high'
+                    : 'medium'
+                }
+                nextAction={analysis.recommendedCards[0] ? `Apply for ${analysis.recommendedCards[0].name} first` : undefined}
+              />
+              
+              <div className="space-y-6">
+                <h3 className="text-2xl font-playfair italic font-medium text-foreground">
+                  recommended credit cards
+                </h3>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {analysis.recommendedCards.map((card, index) => (
+                    <Card key={index} className="p-8 border-border hover:border-primary/50 transition-colors">
+                      <div className="space-y-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <div className="bg-primary/10 p-2 rounded-lg">
+                              <CreditCardIcon className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="text-lg font-playfair italic font-medium text-foreground">
+                                {card.name}
+                              </h4>
+                              <p className="text-sm font-sans text-muted-foreground">
+                                {card.issuer}
+                              </p>
+                            </div>
+                          </div>
+                          <EligibilityIndicator userIncome={userIncome} />
                         </div>
-                        <div className="flex-1">
-                          <h4 className="text-lg font-playfair italic font-medium text-foreground">
-                            {card.name}
-                          </h4>
-                          <p className="text-sm font-sans text-muted-foreground">
-                            {card.issuer}
-                          </p>
+                        
+                        <p className="text-sm font-sans text-foreground/80 leading-relaxed">
+                          {card.reason}
+                        </p>
+                        
+                        {card.benefits && card.benefits.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-sans font-medium text-muted-foreground uppercase">
+                              benefits
+                            </p>
+                            <ul className="space-y-1">
+                              {card.benefits.slice(0, 3).map((benefit, i) => (
+                                <li key={i} className="text-sm font-sans text-foreground/70 flex items-start gap-2">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{benefit}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {card.estimatedSavings && (
+                          <div className="pt-4 border-t border-border">
+                            <p className="text-xs font-sans font-medium text-muted-foreground uppercase mb-1">
+                              estimated savings
+                            </p>
+                            <p className="text-lg font-playfair font-semibold text-primary">
+                              {card.estimatedSavings}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div className="space-y-3">
+                          <CardStatusDropdown cardId={`${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()} />
+                          <CardActionBar 
+                            cardId={`${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()}
+                            issuer={card.issuer}
+                            name={card.name}
+                          />
                         </div>
                       </div>
-                      
-                      <p className="text-sm font-sans text-foreground/80 leading-relaxed">
-                        {card.reason}
-                      </p>
-                      
-                      {card.benefits && card.benefits.length > 0 && (
-                        <div className="space-y-2">
-                          <p className="text-xs font-sans font-medium text-muted-foreground uppercase">
-                            benefits
-                          </p>
-                          <ul className="space-y-1">
-                            {card.benefits.map((benefit, i) => (
-                              <li key={i} className="text-sm font-sans text-foreground/70 flex items-start gap-2">
-                                <span className="text-primary mt-1">•</span>
-                                <span>{benefit}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {card.estimatedSavings && (
-                        <div className="pt-4 border-t border-border">
-                          <p className="text-xs font-sans font-medium text-muted-foreground uppercase mb-1">
-                            estimated savings
-                          </p>
-                          <p className="text-lg font-playfair font-semibold text-primary">
-                            {card.estimatedSavings}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* Insights */}

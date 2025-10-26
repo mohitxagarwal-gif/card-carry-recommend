@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_applications: {
+        Row: {
+          applied_date: string | null
+          card_id: string
+          created_at: string
+          docs_checklist: Json | null
+          id: string
+          issuer_link: string | null
+          notes: string | null
+          status: string
+          status_updated_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          applied_date?: string | null
+          card_id: string
+          created_at?: string
+          docs_checklist?: Json | null
+          id?: string
+          issuer_link?: string | null
+          notes?: string | null
+          status?: string
+          status_updated_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          applied_date?: string | null
+          card_id?: string
+          created_at?: string
+          docs_checklist?: Json | null
+          id?: string
+          issuer_link?: string | null
+          notes?: string | null
+          status?: string
+          status_updated_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      content_feed: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_evergreen: boolean | null
+          tag: string | null
+          target_categories: string[] | null
+          target_income_bands: string[] | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_evergreen?: boolean | null
+          tag?: string | null
+          target_categories?: string[] | null
+          target_income_bands?: string[] | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_evergreen?: boolean | null
+          tag?: string | null
+          target_categories?: string[] | null
+          target_income_bands?: string[] | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       credit_cards: {
         Row: {
           annual_fee: number
@@ -98,6 +176,39 @@ export type Database = {
         }
         Relationships: []
       }
+      fee_waiver_goals: {
+        Row: {
+          card_id: string
+          created_at: string
+          current_amount: number | null
+          id: string
+          target_amount: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          current_amount?: number | null
+          id?: string
+          target_amount: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          current_amount?: number | null
+          id?: string
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       phone_verifications: {
         Row: {
           created_at: string | null
@@ -179,6 +290,50 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_snapshots: {
+        Row: {
+          analysis_id: string | null
+          confidence: string
+          created_at: string
+          id: string
+          recommended_cards: Json
+          savings_max: number
+          savings_min: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          confidence: string
+          created_at?: string
+          id?: string
+          recommended_cards?: Json
+          savings_max: number
+          savings_min: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string | null
+          confidence?: string
+          created_at?: string
+          id?: string
+          recommended_cards?: Json
+          savings_max?: number
+          savings_min?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_snapshots_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "spending_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spending_analyses: {
         Row: {
           analysis_data: Json
@@ -214,6 +369,123 @@ export type Database = {
           },
         ]
       }
+      user_cards: {
+        Row: {
+          card_id: string
+          created_at: string
+          forex_pct: number | null
+          id: string
+          is_active: boolean | null
+          lounge_quota_total: number | null
+          lounge_used: number | null
+          opened_month: string | null
+          renewal_month: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          forex_pct?: number | null
+          id?: string
+          is_active?: boolean | null
+          lounge_quota_total?: number | null
+          lounge_used?: number | null
+          opened_month?: string | null
+          renewal_month?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          forex_pct?: number | null
+          id?: string
+          is_active?: boolean | null
+          lounge_quota_total?: number | null
+          lounge_used?: number | null
+          opened_month?: string | null
+          renewal_month?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          email_marketing: boolean | null
+          email_reminders: boolean | null
+          fee_sensitivity: string | null
+          id: string
+          lounge_importance: string | null
+          preference_type: string | null
+          travel_frequency: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_marketing?: boolean | null
+          email_reminders?: boolean | null
+          fee_sensitivity?: string | null
+          id?: string
+          lounge_importance?: string | null
+          preference_type?: string | null
+          travel_frequency?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_marketing?: boolean | null
+          email_reminders?: boolean | null
+          fee_sensitivity?: string | null
+          id?: string
+          lounge_importance?: string | null
+          preference_type?: string | null
+          travel_frequency?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_reminders: {
+        Row: {
+          card_id: string | null
+          created_at: string
+          description: string | null
+          dismissed: boolean | null
+          id: string
+          reminder_date: string
+          reminder_type: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          card_id?: string | null
+          created_at?: string
+          description?: string | null
+          dismissed?: boolean | null
+          id?: string
+          reminder_date: string
+          reminder_type: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string | null
+          created_at?: string
+          description?: string | null
+          dismissed?: boolean | null
+          id?: string
+          reminder_date?: string
+          reminder_type?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -231,6 +503,27 @@ export type Database = {
           created_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_shortlist: {
+        Row: {
+          added_at: string
+          card_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          card_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          card_id?: string
+          id?: string
           user_id?: string
         }
         Relationships: []

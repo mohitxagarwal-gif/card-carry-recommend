@@ -10,6 +10,9 @@ import OnboardingBasics from "./pages/OnboardingBasics";
 import OnboardingFirstCard from "./pages/OnboardingFirstCard";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Applications from "./pages/Applications";
 import CardsPage from "./pages/CardsPage";
 import Admin from "./pages/Admin";
 import AdminCardForm from "./pages/AdminCardForm";
@@ -38,12 +41,32 @@ const App = () => (
             </ProtectedRoute>
           } />
           <Route path="/cards" element={<CardsPage />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute requireOnboarding={true}>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute requireOnboarding={true}>
+              <Profile />
+            </ProtectedRoute>
+          } />
+          <Route path="/apps" element={
+            <ProtectedRoute requireOnboarding={true}>
+              <Applications />
+            </ProtectedRoute>
+          } />
           <Route path="/upload" element={
             <ProtectedRoute requireOnboarding={true}>
               <Upload />
             </ProtectedRoute>
           } />
           <Route path="/results" element={
+            <ProtectedRoute requireOnboarding={true}>
+              <Results />
+            </ProtectedRoute>
+          } />
+          <Route path="/recs" element={
             <ProtectedRoute requireOnboarding={true}>
               <Results />
             </ProtectedRoute>
