@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
@@ -10,14 +12,179 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { CreditCard } from "@/hooks/useCards";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+// Validation schema for credit card form
+const cardFormSchema = z.object({
+  card_id: z.string()
+    .trim()
+    .min(1, "Card ID is required")
+    .max(50, "Card ID must be less than 50 characters")
+    .regex(/^[a-zA-Z0-9_-]+$/, "Card ID must be alphanumeric (can include _ and -)"),
+  name: z.string()
+    .trim()
+    .min(2, "Card name must be at least 2 characters")
+    .max(100, "Card name must be less than 100 characters"),
+  issuer: z.string()
+    .trim()
+    .min(2, "Issuer must be at least 2 characters")
+    .max(50, "Issuer must be less than 50 characters"),
+  network: z.string()
+    .trim()
+    .min(2, "Network must be at least 2 characters")
+    .max(30, "Network must be less than 30 characters"),
+  annual_fee: z.number()
+    .int("Annual fee must be a whole number")
+    .min(0, "Annual fee cannot be negative")
+    .max(100000, "Annual fee cannot exceed ₹1,00,000"),
+  popular_score: z.number()
+    .int("Popularity score must be a whole number")
+    .min(1, "Popularity score must be at least 1")
+    .max(10, "Popularity score cannot exceed 10"),
+  forex_markup: z.string()
+    .trim()
+    .min(1, "Forex markup is required")
+    .max(100, "Forex markup must be less than 100 characters"),
+  forex_markup_pct: z.number()
+    .min(0, "Forex markup percentage cannot be negative")
+    .max(10, "Forex markup percentage cannot exceed 10%"),
+  welcome_bonus: z.string()
+    .trim()
+    .min(1, "Welcome bonus is required")
+    .max(500, "Welcome bonus must be less than 500 characters"),
+  reward_structure: z.string()
+    .trim()
+    .min(1, "Reward structure is required")
+    .max(2000, "Reward structure must be less than 2000 characters"),
+  lounge_access: z.string()
+    .trim()
+    .min(1, "Lounge access is required")
+    .max(200, "Lounge access must be less than 200 characters"),
+  reward_type: z.string()
+    .trim()
+    .min(1, "At least one reward type is required")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim()).filter(s => s);
+      return items.length > 0 && items.length <= 10;
+    }, "Must have 1-10 reward types")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim());
+      return items.every(item => item.length <= 50);
+    }, "Each reward type must be less than 50 characters"),
+  key_perks: z.string()
+    .trim()
+    .min(1, "At least one key perk is required")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim()).filter(s => s);
+      return items.length > 0 && items.length <= 20;
+    }, "Must have 1-20 key perks")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim());
+      return items.every(item => item.length <= 200);
+    }, "Each key perk must be less than 200 characters"),
+  ideal_for: z.string()
+    .trim()
+    .min(1, "At least one ideal use case is required")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim()).filter(s => s);
+      return items.length > 0 && items.length <= 10;
+    }, "Must have 1-10 ideal use cases")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim());
+      return items.every(item => item.length <= 100);
+    }, "Each ideal use case must be less than 100 characters"),
+  downsides: z.string()
+    .trim()
+    .min(1, "At least one downside is required")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim()).filter(s => s);
+      return items.length > 0 && items.length <= 10;
+    }, "Must have 1-10 downsides")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim());
+      return items.every(item => item.length <= 200);
+    }, "Each downside must be less than 200 characters"),
+  category_badges: z.string()
+    .trim()
+    .min(1, "At least one category badge is required")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim()).filter(s => s);
+      return items.length > 0 && items.length <= 10;
+    }, "Must have 1-10 category badges")
+    .refine((val) => {
+      const items = val.split(',').map(s => s.trim());
+      return items.every(item => item.length <= 50);
+    }, "Each category badge must be less than 50 characters"),
+  image_url: z.string()
+    .trim()
+    .url("Must be a valid URL")
+    .max(500, "Image URL must be less than 500 characters")
+    .optional()
+    .or(z.literal("")),
+  waiver_rule: z.string()
+    .trim()
+    .max(300, "Waiver rule must be less than 300 characters")
+    .optional()
+    .or(z.literal("")),
+  eligibility: z.string()
+    .trim()
+    .max(500, "Eligibility must be less than 500 characters")
+    .optional()
+    .or(z.literal("")),
+  docs_required: z.string()
+    .trim()
+    .max(500, "Documents required must be less than 500 characters")
+    .optional()
+    .or(z.literal("")),
+  tnc_url: z.string()
+    .trim()
+    .url("Must be a valid URL")
+    .max(500, "T&C URL must be less than 500 characters")
+    .optional()
+    .or(z.literal("")),
+});
+
+type CardFormData = z.infer<typeof cardFormSchema>;
 
 const AdminCardForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: role, isLoading: roleLoading } = useUserRole();
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, reset, setValue } = useForm<Partial<CreditCard>>();
+  
+  const form = useForm<CardFormData>({
+    resolver: zodResolver(cardFormSchema),
+    defaultValues: {
+      card_id: "",
+      name: "",
+      issuer: "",
+      network: "",
+      annual_fee: 0,
+      popular_score: 5,
+      forex_markup: "",
+      forex_markup_pct: 0,
+      welcome_bonus: "",
+      reward_structure: "",
+      lounge_access: "",
+      reward_type: "",
+      key_perks: "",
+      ideal_for: "",
+      downsides: "",
+      category_badges: "",
+      image_url: "",
+      waiver_rule: "",
+      eligibility: "",
+      docs_required: "",
+      tnc_url: "",
+    },
+  });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -54,61 +221,79 @@ const AdminCardForm = () => {
       toast.error("Failed to load card");
       navigate("/admin");
     } else {
-      reset(data);
+      // Convert arrays to comma-separated strings for form display
+      form.reset({
+        ...data,
+        reward_type: Array.isArray(data.reward_type) ? data.reward_type.join(', ') : data.reward_type,
+        key_perks: Array.isArray(data.key_perks) ? data.key_perks.join(', ') : data.key_perks,
+        ideal_for: Array.isArray(data.ideal_for) ? data.ideal_for.join(', ') : data.ideal_for,
+        downsides: Array.isArray(data.downsides) ? data.downsides.join(', ') : data.downsides,
+        category_badges: Array.isArray(data.category_badges) ? data.category_badges.join(', ') : data.category_badges,
+      });
     }
   };
 
-  const onSubmit = async (formData: any) => {
+  const onSubmit = async (formData: CardFormData) => {
     setLoading(true);
 
-    // Convert comma-separated strings to arrays
-    const formattedData = {
-      ...formData,
-      reward_type: Array.isArray(formData.reward_type) 
-        ? formData.reward_type 
-        : formData.reward_type.split(',').map((s: string) => s.trim()),
-      key_perks: Array.isArray(formData.key_perks)
-        ? formData.key_perks
-        : formData.key_perks.split(',').map((s: string) => s.trim()),
-      ideal_for: Array.isArray(formData.ideal_for)
-        ? formData.ideal_for
-        : formData.ideal_for.split(',').map((s: string) => s.trim()),
-      downsides: Array.isArray(formData.downsides)
-        ? formData.downsides
-        : formData.downsides.split(',').map((s: string) => s.trim()),
-      category_badges: Array.isArray(formData.category_badges)
-        ? formData.category_badges
-        : formData.category_badges.split(',').map((s: string) => s.trim()),
-    };
+    try {
+      // Convert comma-separated strings to arrays and sanitize
+      const formattedData = {
+        card_id: formData.card_id.trim(),
+        name: formData.name.trim(),
+        issuer: formData.issuer.trim(),
+        network: formData.network.trim(),
+        annual_fee: formData.annual_fee,
+        popular_score: formData.popular_score,
+        forex_markup: formData.forex_markup.trim(),
+        forex_markup_pct: formData.forex_markup_pct,
+        welcome_bonus: formData.welcome_bonus.trim(),
+        reward_structure: formData.reward_structure.trim(),
+        lounge_access: formData.lounge_access.trim(),
+        reward_type: formData.reward_type.split(',').map((s: string) => s.trim()).filter((s: string) => s),
+        key_perks: formData.key_perks.split(',').map((s: string) => s.trim()).filter((s: string) => s),
+        ideal_for: formData.ideal_for.split(',').map((s: string) => s.trim()).filter((s: string) => s),
+        downsides: formData.downsides.split(',').map((s: string) => s.trim()).filter((s: string) => s),
+        category_badges: formData.category_badges.split(',').map((s: string) => s.trim()).filter((s: string) => s),
+        image_url: formData.image_url?.trim() || null,
+        waiver_rule: formData.waiver_rule?.trim() || null,
+        eligibility: formData.eligibility?.trim() || null,
+        docs_required: formData.docs_required?.trim() || null,
+        tnc_url: formData.tnc_url?.trim() || null,
+      };
 
-    if (id) {
-      const { error } = await supabase
-        .from("credit_cards")
-        .update(formattedData)
-        .eq("id", id);
+      if (id) {
+        const { error } = await supabase
+          .from("credit_cards")
+          .update(formattedData)
+          .eq("id", id);
 
-      if (error) {
-        toast.error("Failed to update card");
-        console.error(error);
+        if (error) {
+          toast.error("Failed to update card");
+          console.error(error);
+        } else {
+          toast.success("Card updated successfully");
+          navigate("/admin");
+        }
       } else {
-        toast.success("Card updated successfully");
-        navigate("/admin");
-      }
-    } else {
-      const { error } = await supabase
-        .from("credit_cards")
-        .insert([formattedData]);
+        const { error } = await supabase
+          .from("credit_cards")
+          .insert([formattedData]);
 
-      if (error) {
-        toast.error("Failed to create card");
-        console.error(error);
-      } else {
-        toast.success("Card created successfully");
-        navigate("/admin");
+        if (error) {
+          toast.error("Failed to create card");
+          console.error(error);
+        } else {
+          toast.success("Card created successfully");
+          navigate("/admin");
+        }
       }
+    } catch (error) {
+      toast.error("An error occurred while saving the card");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   if (roleLoading) {
@@ -127,102 +312,279 @@ const AdminCardForm = () => {
             <CardTitle>{id ? "Edit Card" : "Add New Card"}</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="card_id">Card ID*</Label>
-                  <Input id="card_id" {...register("card_id", { required: true })} />
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="card_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Card ID*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., hdfc-regalia" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Card Name*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., HDFC Regalia" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="issuer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Issuer*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., HDFC Bank" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="network"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Network*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Visa, Mastercard, etc." />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="annual_fee"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Annual Fee (₹)*</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="popular_score"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Popularity Score (1-10)*</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="forex_markup"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Forex Markup*</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., 1.0% - 2.0%" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="forex_markup_pct"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Forex Markup %*</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.1"
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <div>
-                  <Label htmlFor="name">Card Name*</Label>
-                  <Input id="name" {...register("name", { required: true })} />
+
+                <FormField
+                  control={form.control}
+                  name="welcome_bonus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Welcome Bonus*</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="reward_structure"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reward Structure*</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} rows={3} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="lounge_access"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lounge Access*</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="reward_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reward Types* (comma-separated)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Cashback, Travel, etc." />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="key_perks"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Key Perks* (comma-separated)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="ideal_for"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ideal For* (comma-separated)</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="downsides"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Downsides* (comma-separated)</FormLabel>
+                      <FormControl>
+                        <Textarea {...field} rows={2} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="category_badges"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category Badges* (comma-separated)</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="image_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Image URL (optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="waiver_rule"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Waiver Rule (optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-4">
+                  <Button type="submit" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {id ? "Update Card" : "Create Card"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => navigate("/admin")}>
+                    Cancel
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="issuer">Issuer*</Label>
-                  <Input id="issuer" {...register("issuer", { required: true })} />
-                </div>
-                <div>
-                  <Label htmlFor="network">Network*</Label>
-                  <Input id="network" {...register("network", { required: true })} placeholder="Visa, Mastercard, etc." />
-                </div>
-                <div>
-                  <Label htmlFor="annual_fee">Annual Fee*</Label>
-                  <Input id="annual_fee" type="number" {...register("annual_fee", { required: true, valueAsNumber: true })} />
-                </div>
-                <div>
-                  <Label htmlFor="popular_score">Popularity Score (1-10)*</Label>
-                  <Input id="popular_score" type="number" {...register("popular_score", { required: true, valueAsNumber: true })} />
-                </div>
-                <div>
-                  <Label htmlFor="forex_markup">Forex Markup*</Label>
-                  <Input id="forex_markup" {...register("forex_markup", { required: true })} placeholder="e.g., 1.0% - 2.0%" />
-                </div>
-                <div>
-                  <Label htmlFor="forex_markup_pct">Forex Markup %*</Label>
-                  <Input id="forex_markup_pct" type="number" step="0.1" {...register("forex_markup_pct", { required: true, valueAsNumber: true })} />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="welcome_bonus">Welcome Bonus*</Label>
-                <Input id="welcome_bonus" {...register("welcome_bonus", { required: true })} />
-              </div>
-
-              <div>
-                <Label htmlFor="reward_structure">Reward Structure*</Label>
-                <Textarea id="reward_structure" {...register("reward_structure", { required: true })} rows={3} />
-              </div>
-
-              <div>
-                <Label htmlFor="lounge_access">Lounge Access*</Label>
-                <Input id="lounge_access" {...register("lounge_access", { required: true })} />
-              </div>
-
-              <div>
-                <Label htmlFor="reward_type">Reward Types* (comma-separated)</Label>
-                <Input id="reward_type" {...register("reward_type", { required: true })} placeholder="Cashback, Travel, etc." />
-              </div>
-
-              <div>
-                <Label htmlFor="key_perks">Key Perks* (comma-separated)</Label>
-                <Textarea id="key_perks" {...register("key_perks", { required: true })} rows={2} />
-              </div>
-
-              <div>
-                <Label htmlFor="ideal_for">Ideal For* (comma-separated)</Label>
-                <Input id="ideal_for" {...register("ideal_for", { required: true })} />
-              </div>
-
-              <div>
-                <Label htmlFor="downsides">Downsides* (comma-separated)</Label>
-                <Textarea id="downsides" {...register("downsides", { required: true })} rows={2} />
-              </div>
-
-              <div>
-                <Label htmlFor="category_badges">Category Badges* (comma-separated)</Label>
-                <Input id="category_badges" {...register("category_badges", { required: true })} />
-              </div>
-
-              <div>
-                <Label htmlFor="image_url">Image URL (optional)</Label>
-                <Input id="image_url" {...register("image_url")} />
-              </div>
-
-              <div>
-                <Label htmlFor="waiver_rule">Waiver Rule (optional)</Label>
-                <Input id="waiver_rule" {...register("waiver_rule")} />
-              </div>
-
-              <div className="flex gap-4">
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {id ? "Update Card" : "Create Card"}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => navigate("/admin")}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </div>
