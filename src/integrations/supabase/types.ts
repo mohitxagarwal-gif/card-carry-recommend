@@ -98,29 +98,83 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_verifications: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          otp_code: string
+          phone_e164: string
+          user_id: string
+          verified: boolean | null
+          verified_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          otp_code: string
+          phone_e164: string
+          user_id: string
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          otp_code?: string
+          phone_e164?: string
+          user_id?: string
+          verified?: boolean | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          age_range: string | null
           avatar_url: string | null
+          city: string | null
           created_at: string
           email: string
           full_name: string | null
           id: string
+          income_band_inr: string | null
+          marketing_consent: boolean | null
+          onboarding_completed: boolean | null
+          onboarding_completed_at: string | null
+          phone_e164: string | null
           updated_at: string
         }
         Insert: {
+          age_range?: string | null
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
           email: string
           full_name?: string | null
           id: string
+          income_band_inr?: string | null
+          marketing_consent?: boolean | null
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          phone_e164?: string | null
           updated_at?: string
         }
         Update: {
+          age_range?: string | null
           avatar_url?: string | null
+          city?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
+          income_band_inr?: string | null
+          marketing_consent?: boolean | null
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          phone_e164?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -186,6 +240,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_phone_verifications: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

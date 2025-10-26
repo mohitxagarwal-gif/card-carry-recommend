@@ -39,7 +39,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/upload`,
+          redirectTo: `${window.location.origin}/onboarding/basics`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -77,7 +77,7 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/upload`,
+            emailRedirectTo: `${window.location.origin}/onboarding/basics`,
           },
         });
 
@@ -89,7 +89,7 @@ const Auth = () => {
           }
         } else {
           toast.success("Account created successfully! Redirecting...");
-          navigate("/upload");
+          navigate("/onboarding/basics");
         }
       } else {
         // Sign in validation
@@ -110,8 +110,14 @@ const Auth = () => {
             toast.error(error.message);
           }
         } else {
-          toast.success("Signed in successfully!");
-          navigate("/upload");
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("onboarding_completed")
+            .eq("id", (await supabase.auth.getUser()).data.user?.id!)
+            .single();
+
+          toast.success("Signed in successfully! Redirecting...");
+          navigate(profile?.onboarding_completed ? "/upload" : "/onboarding/basics");
         }
       }
     } catch (error: any) {

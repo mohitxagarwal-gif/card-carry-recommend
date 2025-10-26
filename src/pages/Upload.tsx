@@ -31,12 +31,24 @@ const Upload = () => {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // Check authentication
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Check authentication and onboarding status
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
-      } else {
-        setUser(session.user);
+        return;
+      }
+      
+      setUser(session.user);
+      
+      // Check if onboarding is completed
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (!profile?.onboarding_completed) {
+        navigate("/onboarding/basics");
       }
     });
 
