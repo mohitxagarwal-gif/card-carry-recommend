@@ -25,12 +25,39 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Listen for auth changes and check profile
+    const checkAuthAndRedirect = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/upload");
+        // Wait briefly for profile creation
+        let attempts = 0;
+        let profile = null;
+        
+        while (attempts < 5 && !profile) {
+          const { data } = await supabase
+            .from("profiles")
+            .select("onboarding_completed")
+            .eq("id", session.user.id)
+            .single();
+          
+          if (data) {
+            profile = data;
+            break;
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 300));
+          attempts++;
+        }
+
+        if (profile?.onboarding_completed) {
+          navigate("/upload", { replace: true });
+        } else {
+          navigate("/onboarding/basics", { replace: true });
+        }
       }
-    });
+    };
+
+    checkAuthAndRedirect();
   }, [navigate]);
 
   const handleGoogleSignIn = async () => {
@@ -39,7 +66,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/onboarding/basics`,
+          redirectTo: `${window.location.origin}/auth`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -77,7 +104,7 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/onboarding/basics`,
+            emailRedirectTo: `${window.location.origin}/auth`,
           },
         });
 
@@ -89,7 +116,31 @@ const Auth = () => {
           }
         } else {
           toast.success("Account created successfully! Redirecting...");
-          navigate("/onboarding/basics");
+          
+          // Wait for profile creation, then redirect based on onboarding status
+          let attempts = 0;
+          let profile = null;
+          
+          while (attempts < 5 && !profile) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data } = await supabase
+                .from("profiles")
+                .select("onboarding_completed")
+                .eq("id", user.id)
+                .single();
+              
+              if (data) {
+                profile = data;
+                break;
+              }
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+            attempts++;
+          }
+
+          navigate("/onboarding/basics", { replace: true });
         }
       } else {
         // Sign in validation
@@ -98,7 +149,7 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -110,14 +161,33 @@ const Auth = () => {
             toast.error(error.message);
           }
         } else {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("onboarding_completed")
-            .eq("id", (await supabase.auth.getUser()).data.user?.id!)
-            .single();
-
           toast.success("Signed in successfully! Redirecting...");
-          navigate(profile?.onboarding_completed ? "/upload" : "/onboarding/basics");
+          
+          // Wait for profile to be available, then redirect based on onboarding status
+          let attempts = 0;
+          let profile = null;
+          
+          while (attempts < 5 && !profile) {
+            const { data: profileData } = await supabase
+              .from("profiles")
+              .select("onboarding_completed")
+              .eq("id", data.user.id)
+              .single();
+            
+            if (profileData) {
+              profile = profileData;
+              break;
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+            attempts++;
+          }
+
+          if (profile?.onboarding_completed) {
+            navigate("/upload", { replace: true });
+          } else {
+            navigate("/onboarding/basics", { replace: true });
+          }
         }
       }
     } catch (error: any) {

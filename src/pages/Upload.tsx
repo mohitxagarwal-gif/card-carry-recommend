@@ -32,29 +32,45 @@ const Upload = () => {
 
   useEffect(() => {
     // Check authentication and onboarding status
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate("/auth");
+        navigate("/auth", { replace: true });
         return;
       }
       
       setUser(session.user);
       
-      // Check if onboarding is completed
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", session.user.id)
-        .single();
+      // Wait briefly for profile to be available
+      let attempts = 0;
+      let profile = null;
+      
+      while (attempts < 5 && !profile) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (data) {
+          profile = data;
+          break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+        attempts++;
+      }
       
       if (!profile?.onboarding_completed) {
-        navigate("/onboarding/basics");
+        navigate("/onboarding/basics", { replace: true });
       }
-    });
+    };
+
+    checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
-        navigate("/auth");
+        navigate("/auth", { replace: true });
       } else {
         setUser(session.user);
       }

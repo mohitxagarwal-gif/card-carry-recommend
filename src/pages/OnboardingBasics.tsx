@@ -57,20 +57,34 @@ export default function OnboardingBasics() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate("/auth");
+        navigate("/auth", { replace: true });
         return;
       }
 
       setUserId(session.user.id);
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("id", session.user.id)
-        .single();
+      // Wait briefly for profile to be created
+      let attempts = 0;
+      let profile = null;
+      
+      while (attempts < 5 && !profile) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (data) {
+          profile = data;
+          break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+        attempts++;
+      }
 
       if (profile?.onboarding_completed) {
-        navigate("/upload");
+        navigate("/upload", { replace: true });
         return;
       }
 
