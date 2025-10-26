@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,13 +50,14 @@ serve(async (req) => {
     }
 
     const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashed_otp = await bcrypt.hash(otp_code);
 
     const { error: insertError } = await supabase
       .from("phone_verifications")
       .insert({
         user_id: user.id,
         phone_e164,
-        otp_code,
+        otp_code: hashed_otp,
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       });
 
@@ -63,13 +65,13 @@ serve(async (req) => {
       throw insertError;
     }
 
+    // Log OTP server-side only for development/debugging
     console.log(`OTP for ${phone_e164.replace(/\d(?=\d{4})/g, "*")}: ${otp_code}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: "OTP sent successfully",
-        dev_otp: otp_code
+        message: "OTP sent successfully"
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

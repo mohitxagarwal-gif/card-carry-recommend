@@ -138,6 +138,21 @@ export default function OnboardingBasics() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
+      // Server-side verification: Check if phone is actually verified
+      if (data.phone_e164) {
+        const { data: verification, error: verifyError } = await supabase
+          .from('phone_verifications')
+          .select('verified')
+          .eq('user_id', session.user.id)
+          .eq('phone_e164', data.phone_e164)
+          .eq('verified', true)
+          .single();
+        
+        if (verifyError || !verification) {
+          throw new Error('Phone number not verified. Please complete verification.');
+        }
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({

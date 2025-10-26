@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,12 +37,12 @@ serve(async (req) => {
       throw new Error("Missing phone number or OTP code");
     }
 
+    // Find the most recent unverified OTP for this user and phone
     const { data: verification, error: findError } = await supabase
       .from("phone_verifications")
       .select("*")
       .eq("user_id", user.id)
       .eq("phone_e164", phone_e164)
-      .eq("otp_code", otp_code)
       .eq("verified", false)
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
@@ -49,6 +50,13 @@ serve(async (req) => {
       .single();
 
     if (findError || !verification) {
+      throw new Error("Invalid or expired OTP");
+    }
+
+    // Compare submitted OTP with hashed OTP
+    const isValidOtp = await bcrypt.compare(otp_code, verification.otp_code);
+    
+    if (!isValidOtp) {
       throw new Error("Invalid or expired OTP");
     }
 

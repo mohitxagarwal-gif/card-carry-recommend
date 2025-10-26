@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,46 @@ interface UploadResult {
   errors: string[];
 }
 
+// Zod schema for validating card data
+const CardSchema = z.object({
+  card_id: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, "Card ID must be lowercase alphanumeric with hyphens"),
+  name: z.string().min(1).max(200),
+  issuer: z.string().min(1).max(100),
+  network: z.string().min(1).max(50),
+  annual_fee: z.number().int().min(0).max(1000000),
+  welcome_bonus: z.string().max(500),
+  reward_type: z.array(z.string().max(100)).min(1).max(10),
+  reward_structure: z.string().max(2000),
+  key_perks: z.array(z.string().max(200)).min(0).max(20),
+  lounge_access: z.string().max(200),
+  forex_markup: z.string().max(100),
+  forex_markup_pct: z.number().min(0).max(100),
+  ideal_for: z.array(z.string().max(100)).min(0).max(10),
+  downsides: z.array(z.string().max(200)).min(0).max(10),
+  category_badges: z.array(z.string().max(50)).min(0).max(10),
+  popular_score: z.number().int().min(0).max(100),
+  waiver_rule: z.string().max(500).optional(),
+  eligibility: z.string().max(500).optional(),
+  docs_required: z.string().max(500).optional(),
+  tnc_url: z.string().url().max(500).optional().or(z.literal('')),
+  image_url: z.string().url().max(500).optional().or(z.literal('')),
+});
+
+// Sanitize CSV cells to prevent formula injection
+const sanitizeCell = (value: any): any => {
+  if (typeof value !== 'string') return value;
+  // Strip leading formula characters to prevent CSV injection
+  if (/^[=+\-@\t\r]/.test(value)) {
+    return "'" + value;
+  }
+  return value;
+};
+
+// Sanitize array of strings
+const sanitizeArray = (arr: string[]): string[] => {
+  return arr.map(item => sanitizeCell(item));
+};
+
 const AdminBulkUpload = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -72,26 +113,104 @@ const AdminBulkUpload = () => {
     const file = acceptedFiles[0];
     if (!file) return;
 
+    // File size limit: 5MB
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: "File too large",
+        description: "CSV file must be under 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
     Papa.parse(file, {
       header: true,
       complete: (results) => {
-        const data = results.data.map((row: any) => ({
-          ...row,
-          annual_fee: parseInt(row.annual_fee) || 0,
-          forex_markup_pct: parseFloat(row.forex_markup_pct) || 0,
-          popular_score: parseInt(row.popular_score) || 0,
-          reward_type: row.reward_type?.split(',').map((s: string) => s.trim()) || [],
-          key_perks: row.key_perks?.split(',').map((s: string) => s.trim()) || [],
-          ideal_for: row.ideal_for?.split(',').map((s: string) => s.trim()) || [],
-          downsides: row.downsides?.split(',').map((s: string) => s.trim()) || [],
-          category_badges: row.category_badges?.split(',').map((s: string) => s.trim()) || [],
-        })).filter((row: any) => row.card_id && row.name);
+        try {
+          // Row limit: 1000
+          const MAX_ROWS = 1000;
+          if (results.data.length > MAX_ROWS) {
+            toast({
+              title: "Too many rows",
+              description: `Maximum ${MAX_ROWS} cards per upload. Please split into multiple files.`,
+              variant: "destructive",
+            });
+            return;
+          }
 
-        setParsedData(data);
-        toast({
-          title: "CSV parsed successfully",
-          description: `${data.length} cards ready to upload`,
-        });
+          const validationErrors: string[] = [];
+          const validatedData: CardData[] = [];
+
+          results.data.forEach((row: any, index: number) => {
+            if (!row.card_id || !row.name) return; // Skip empty rows
+
+            try {
+              // Parse and sanitize data
+              const parsedRow = {
+                card_id: sanitizeCell(row.card_id),
+                name: sanitizeCell(row.name),
+                issuer: sanitizeCell(row.issuer),
+                network: sanitizeCell(row.network),
+                annual_fee: parseInt(row.annual_fee) || 0,
+                welcome_bonus: sanitizeCell(row.welcome_bonus),
+                forex_markup: sanitizeCell(row.forex_markup),
+                forex_markup_pct: parseFloat(row.forex_markup_pct) || 0,
+                popular_score: parseInt(row.popular_score) || 0,
+                reward_structure: sanitizeCell(row.reward_structure),
+                lounge_access: sanitizeCell(row.lounge_access),
+                reward_type: sanitizeArray(row.reward_type?.split(',').map((s: string) => s.trim()) || []),
+                key_perks: sanitizeArray(row.key_perks?.split(',').map((s: string) => s.trim()) || []),
+                ideal_for: sanitizeArray(row.ideal_for?.split(',').map((s: string) => s.trim()) || []),
+                downsides: sanitizeArray(row.downsides?.split(',').map((s: string) => s.trim()) || []),
+                category_badges: sanitizeArray(row.category_badges?.split(',').map((s: string) => s.trim()) || []),
+                waiver_rule: row.waiver_rule ? sanitizeCell(row.waiver_rule) : undefined,
+                eligibility: row.eligibility ? sanitizeCell(row.eligibility) : undefined,
+                docs_required: row.docs_required ? sanitizeCell(row.docs_required) : undefined,
+                tnc_url: row.tnc_url || undefined,
+                image_url: row.image_url || undefined,
+              };
+
+              // Validate with zod schema
+              const validated = CardSchema.parse(parsedRow);
+              validatedData.push(validated as CardData);
+            } catch (error) {
+              if (error instanceof z.ZodError) {
+                validationErrors.push(`Row ${index + 2}: ${error.errors[0].message}`);
+              } else {
+                validationErrors.push(`Row ${index + 2}: Validation failed`);
+              }
+            }
+          });
+
+          if (validationErrors.length > 0 && validatedData.length === 0) {
+            toast({
+              title: "Validation failed",
+              description: `${validationErrors.length} errors found. Check console for details.`,
+              variant: "destructive",
+            });
+            console.error("Validation errors:", validationErrors);
+            return;
+          }
+
+          setParsedData(validatedData);
+          toast({
+            title: "CSV parsed successfully",
+            description: validationErrors.length > 0 
+              ? `${validatedData.length} valid cards, ${validationErrors.length} rows skipped`
+              : `${validatedData.length} cards ready to upload`,
+          });
+
+          if (validationErrors.length > 0) {
+            console.warn("Validation warnings:", validationErrors);
+          }
+        } catch (error: any) {
+          toast({
+            title: "Processing error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       },
       error: (error) => {
         toast({

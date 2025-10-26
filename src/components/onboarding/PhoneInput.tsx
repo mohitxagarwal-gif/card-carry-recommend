@@ -17,7 +17,6 @@ export const PhoneInput = ({ value, onChange, onVerified, verified }: PhoneInput
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [devOtp, setDevOtp] = useState("");
 
   const formatPhoneNumber = (input: string) => {
     const digits = input.replace(/\D/g, "");
@@ -63,7 +62,6 @@ export const PhoneInput = ({ value, onChange, onVerified, verified }: PhoneInput
         throw new Error(result.error || "Failed to send OTP");
       }
 
-      setDevOtp(result.dev_otp);
       setOtpSent(true);
       toast.success("OTP sent successfully");
     } catch (error: any) {
@@ -140,12 +138,6 @@ export const PhoneInput = ({ value, onChange, onVerified, verified }: PhoneInput
           </div>
         )}
       </div>
-
-      {devOtp && (
-        <p className="text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800">
-          Dev OTP: <strong>{devOtp}</strong>
-        </p>
-      )}
 
       {otpSent && !verified && (
         <div className="space-y-2">
