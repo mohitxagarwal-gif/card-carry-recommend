@@ -32,16 +32,18 @@ const Auth = () => {
     const handleOAuthCallback = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if this is an OAuth callback
-        const returnTo = sessionStorage.getItem('oauth_returnTo');
-        if (returnTo) {
-          sessionStorage.removeItem('oauth_returnTo');
-          
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const isOAuthCallback = hashParams.has('access_token');
+        
+        if (isOAuthCallback) {
           setLoading(true);
           setWaitingForProfile(true);
+          
           try {
             trackAuthSuccess('google');
-            await afterAuthRedirect(session.user.id, returnTo, navigate);
+            
+            // Wait for profile to be created
+            const profile = await afterAuthRedirect(session.user.id, null, navigate);
           } catch (error) {
             console.error('Error during OAuth redirect:', error);
             toast.error('Error completing sign-in. Please try again.');
@@ -58,10 +60,6 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      
-      // Store returnTo in sessionStorage before OAuth redirect
-      const returnTo = getReturnToFromQuery();
-      sessionStorage.setItem('oauth_returnTo', returnTo || '/upload');
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
