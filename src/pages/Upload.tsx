@@ -11,16 +11,13 @@ import { TransactionReview, ExtractedData } from "@/components/TransactionReview
 import { Progress } from "@/components/ui/progress";
 import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { checkPDFEncryption, decryptAndExtractPDF, extractTransactions, analyzeTransactions } from "@/lib/pdfProcessor";
-
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
-
 interface FileWithStatus {
   file: File;
   status: FileStatus;
   progress: number;
   error?: string;
 }
-
 const Upload = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,26 +30,31 @@ const Upload = () => {
   const [overallProgress, setOverallProgress] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [mode, setMode] = useState<'bank' | 'credit' | 'mixed' | null>(null);
-
   useEffect(() => {
     const initUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
       }
     };
-    
     initUser();
-    
+
     // Listen for sign-out only
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === 'SIGNED_OUT') {
-          navigate("/auth", { replace: true });
-        }
+    const {
+      data: {
+        subscription
       }
-    );
-    
+    } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'SIGNED_OUT') {
+        navigate("/auth", {
+          replace: true
+        });
+      }
+    });
     return () => {
       subscription.unsubscribe();
     };
@@ -62,7 +64,6 @@ const Upload = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const modeParam = params.get('mode');
-    
     if (modeParam === 'bank' || modeParam === 'credit' || modeParam === 'mixed') {
       setMode(modeParam);
     } else if (user) {
@@ -76,19 +77,16 @@ const Upload = () => {
       }
     }
   }, [location.search, user]);
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      
+
       // Validate file types - only PDFs
       const invalidFiles = selectedFiles.filter(file => !file.type.includes('pdf') && !file.name.endsWith('.pdf'));
-      
       if (invalidFiles.length > 0) {
         toast.error('Please upload only PDF files');
         return;
       }
-
       if (selectedFiles.length > 3) {
         toast.error('Please upload a maximum of 3 statement files');
         return;
@@ -97,13 +95,12 @@ const Upload = () => {
       // Gentle validation nudges based on mode
       if (mode === 'bank' && selectedFiles.length < 2) {
         toast.info('Tip: Upload 2-3 months of statements for better recommendations', {
-          duration: 4000,
+          duration: 4000
         });
       }
-
       if (mode === 'credit' && selectedFiles.length === 1) {
         toast.info('Have more cards? Add their statements too for accurate savings estimates', {
-          duration: 4000,
+          duration: 4000
         });
       }
 
@@ -111,9 +108,8 @@ const Upload = () => {
       const filesWithInitialStatus: FileWithStatus[] = selectedFiles.map(file => ({
         file,
         status: 'selected' as FileStatus,
-        progress: 0,
+        progress: 0
       }));
-      
       setFilesWithStatus(filesWithInitialStatus);
       toast.success(`${selectedFiles.length} PDF file(s) selected`);
 
@@ -121,33 +117,36 @@ const Upload = () => {
       await checkFilesForEncryption(selectedFiles);
     }
   };
-
   const checkFilesForEncryption = async (files: File[]) => {
-    setFilesWithStatus(prev => prev.map(f => ({ ...f, status: 'checking' as FileStatus })));
-    
+    setFilesWithStatus(prev => prev.map(f => ({
+      ...f,
+      status: 'checking' as FileStatus
+    })));
     const encrypted: File[] = [];
     const nonEncrypted: File[] = [];
-    
     for (const file of files) {
       try {
         const result = await checkPDFEncryption(file);
-        
         if (result.needsPassword) {
           encrypted.push(file);
-          setFilesWithStatus(prev => prev.map(f => 
-            f.file.name === file.name ? { ...f, status: 'encrypted' as FileStatus } : f
-          ));
+          setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+            ...f,
+            status: 'encrypted' as FileStatus
+          } : f));
         } else {
           nonEncrypted.push(file);
-          setFilesWithStatus(prev => prev.map(f => 
-            f.file.name === file.name ? { ...f, status: 'selected' as FileStatus } : f
-          ));
+          setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+            ...f,
+            status: 'selected' as FileStatus
+          } : f));
         }
       } catch (error) {
         console.error(`Error checking ${file.name}:`, error);
-        setFilesWithStatus(prev => prev.map(f => 
-          f.file.name === file.name ? { ...f, status: 'error' as FileStatus, error: 'Failed to check encryption' } : f
-        ));
+        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+          ...f,
+          status: 'error' as FileStatus,
+          error: 'Failed to check encryption'
+        } : f));
       }
     }
 
@@ -162,11 +161,9 @@ const Upload = () => {
       setShowPasswordModal(true);
     }
   };
-
   const handlePasswordSubmit = async (passwords: Map<string, string>) => {
     setShowPasswordModal(false);
     setProcessing(true);
-    
     try {
       await processAllFiles(passwords);
     } catch (error) {
@@ -176,97 +173,84 @@ const Upload = () => {
       setProcessing(false);
     }
   };
-
   const processAllFiles = async (passwords: Map<string, string>) => {
     const allExtractedData: ExtractedData[] = [];
     let completed = 0;
     const total = filesWithStatus.length;
-
     for (const fileWithStatus of filesWithStatus) {
-      const { file, status } = fileWithStatus;
-      
+      const {
+        file,
+        status
+      } = fileWithStatus;
+
       // Skip files that are already in error state
       if (status === 'error') {
         completed++;
         continue;
       }
-
       const password = passwords.get(file.name);
       const isEncrypted = status === 'encrypted';
-
-      setFilesWithStatus(prev => prev.map(f => 
-        f.file.name === file.name ? { 
-          ...f, 
-          status: isEncrypted ? 'decrypting' as FileStatus : 'processing' as FileStatus, 
-          progress: 0 
-        } : f
-      ));
-
-      const result = await decryptAndExtractPDF(file, password, (progress) => {
-        setFilesWithStatus(prev => prev.map(f => 
-          f.file.name === file.name ? { ...f, progress } : f
-        ));
+      setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+        ...f,
+        status: isEncrypted ? 'decrypting' as FileStatus : 'processing' as FileStatus,
+        progress: 0
+      } : f));
+      const result = await decryptAndExtractPDF(file, password, progress => {
+        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+          ...f,
+          progress
+        } : f));
       });
-
       if (!result.success) {
         const errorMessage = result.error || 'Unknown error';
-        setFilesWithStatus(prev => prev.map(f => 
-          f.file.name === file.name ? { 
-            ...f, 
-            status: 'error' as FileStatus, 
-            error: errorMessage 
-          } : f
-        ));
+        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+          ...f,
+          status: 'error' as FileStatus,
+          error: errorMessage
+        } : f));
         toast.error(`Failed to process ${file.name}: ${errorMessage}`, {
           description: "Check the password and try again, or re-upload the file.",
-          duration: 5000,
+          duration: 5000
         });
         completed++;
         continue;
       }
-
-      setFilesWithStatus(prev => prev.map(f => 
-        f.file.name === file.name ? { ...f, status: 'processing' as FileStatus } : f
-      ));
-
+      setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+        ...f,
+        status: 'processing' as FileStatus
+      } : f));
       try {
         // Extract transactions
         const transactions = extractTransactions(result.text, file.name);
-        
         if (transactions.length === 0) {
           throw new Error('No transactions found in statement');
         }
-
         const analysis = analyzeTransactions(transactions);
-
         allExtractedData.push({
           fileName: file.name,
           transactions,
-          ...analysis,
+          ...analysis
         });
-
-        setFilesWithStatus(prev => prev.map(f => 
-          f.file.name === file.name ? { ...f, status: 'success' as FileStatus, progress: 100 } : f
-        ));
+        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+          ...f,
+          status: 'success' as FileStatus,
+          progress: 100
+        } : f));
       } catch (error: any) {
         const errorMessage = error.message || 'Failed to extract transactions';
-        setFilesWithStatus(prev => prev.map(f => 
-          f.file.name === file.name ? { 
-            ...f, 
-            status: 'error' as FileStatus, 
-            error: errorMessage 
-          } : f
-        ));
+        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
+          ...f,
+          status: 'error' as FileStatus,
+          error: errorMessage
+        } : f));
         toast.error(`Failed to analyze ${file.name}: ${errorMessage}`, {
           description: "The statement format may not be supported.",
-          duration: 5000,
+          duration: 5000
         });
       }
-
       completed++;
-      setOverallProgress((completed / total) * 100);
+      setOverallProgress(completed / total * 100);
     }
-
     if (allExtractedData.length > 0) {
       setExtractedData(allExtractedData);
       setShowReview(true);
@@ -275,61 +259,60 @@ const Upload = () => {
       toast.error('Failed to process any statements. Please check your files and try again.');
     }
   };
-
   const handleSubmitForAnalysis = async () => {
     if (!user) {
       toast.error('Please sign in first');
       navigate("/auth");
       return;
     }
-
     setShowReview(false);
     setProcessing(true);
-
     try {
       // Call the analysis function with extracted data
-      const { data, error } = await supabase.functions.invoke('analyze-statements', {
-        body: { 
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('analyze-statements', {
+        body: {
           extractedData: extractedData.map(ed => ({
             fileName: ed.fileName,
             transactions: ed.transactions,
             totalAmount: ed.totalAmount,
             dateRange: ed.dateRange,
-            categoryTotals: ed.categoryTotals,
+            categoryTotals: ed.categoryTotals
           }))
         }
       });
-
       if (error) {
         console.error('Analysis error details:', error);
         toast.error(`Failed to analyze statements: ${error.message || 'Unknown error'}`, {
           description: "Please try again or contact support if the issue persists.",
-          duration: 6000,
+          duration: 6000
         });
         setProcessing(false);
         return;
       }
-
       if (!data?.analysis?.id) {
         console.error('No analysis ID returned:', data);
         toast.error('Analysis completed but failed to save results');
         setProcessing(false);
         return;
       }
-
       toast.success('Analysis complete!');
-      navigate('/results', { state: { analysisId: data.analysis.id } });
-
+      navigate('/results', {
+        state: {
+          analysisId: data.analysis.id
+        }
+      });
     } catch (error: any) {
       console.error('Unexpected error during analysis:', error);
       toast.error(`An unexpected error occurred: ${error.message || 'Unknown error'}`, {
         description: "Please check the console for details and try again.",
-        duration: 6000,
+        duration: 6000
       });
       setProcessing(false);
     }
   };
-
   const getStatusIcon = (status: FileStatus) => {
     switch (status) {
       case 'selected':
@@ -349,7 +332,6 @@ const Upload = () => {
         return <FileText className="h-5 w-5 text-primary" />;
     }
   };
-
   const getStatusText = (status: FileStatus) => {
     switch (status) {
       case 'selected':
@@ -370,27 +352,19 @@ const Upload = () => {
         return 'unknown';
     }
   };
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
   };
-
   if (showReview) {
-    return (
-      <div className="min-h-screen bg-background">
+    return <div className="min-h-screen bg-background">
         <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
           <div className="container mx-auto px-6 lg:px-12 py-6">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-heading font-bold text-foreground">
                 card & carry.
               </h1>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSignOut}
-                className="border-foreground/20 hover:bg-foreground/5"
-              >
+              <Button variant="outline" size="sm" onClick={handleSignOut} className="border-foreground/20 hover:bg-foreground/5">
                 <LogOut className="h-4 w-4 mr-2" />
                 sign out
               </Button>
@@ -400,35 +374,23 @@ const Upload = () => {
 
         <main className="container mx-auto px-6 lg:px-12 py-16">
           <div className="max-w-4xl mx-auto">
-            <TransactionReview
-              extractedData={extractedData}
-              onSubmit={handleSubmitForAnalysis}
-              onCancel={() => {
-                setShowReview(false);
-                setFilesWithStatus([]);
-                setExtractedData([]);
-              }}
-            />
+            <TransactionReview extractedData={extractedData} onSubmit={handleSubmitForAnalysis} onCancel={() => {
+            setShowReview(false);
+            setFilesWithStatus([]);
+            setExtractedData([]);
+          }} />
           </div>
         </main>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-6 lg:px-12 py-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-heading font-bold text-foreground">
               card & carry.
             </h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSignOut}
-              className="border-foreground/20 hover:bg-foreground/5"
-            >
+            <Button variant="outline" size="sm" onClick={handleSignOut} className="border-foreground/20 hover:bg-foreground/5">
               <LogOut className="h-4 w-4 mr-2" />
               sign out
             </Button>
@@ -456,41 +418,26 @@ const Upload = () => {
           <Card className="p-8 md:p-12 border-border">
             <div className="space-y-8">
               {/* Inline mode chooser if no mode specified */}
-              {!mode && (
-                <div className="mb-6 p-4 border border-border rounded-lg bg-card">
+              {!mode && <div className="mb-6 p-4 border border-border rounded-lg bg-card">
                   <Label className="text-sm font-medium mb-3 block">
                     What type of statements will you upload?
                   </Label>
-                  <SegmentedControl
-                    name="upload-mode"
-                    options={[
-                      { value: "bank", label: "Bank statements" },
-                      { value: "credit", label: "Credit card statements" },
-                    ]}
-                    value=""
-                    onValueChange={(value) => {
-                      setMode(value as 'bank' | 'credit');
-                      if (user) {
-                        localStorage.setItem(`first_card_choice_${user.id}`, value);
-                      }
-                    }}
-                  />
-                </div>
-              )}
+                  <SegmentedControl name="upload-mode" options={[{
+                value: "bank",
+                label: "Bank statements"
+              }, {
+                value: "credit",
+                label: "Credit card statements"
+              }]} value="" onValueChange={value => {
+                setMode(value as 'bank' | 'credit');
+                if (user) {
+                  localStorage.setItem(`first_card_choice_${user.id}`, value);
+                }
+              }} />
+                </div>}
               <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 transition-colors">
-                <input
-                  type="file"
-                  id="file-upload"
-                  multiple
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  disabled={processing}
-                />
-                <label
-                  htmlFor="file-upload"
-                  className={`cursor-pointer flex flex-col items-center gap-4 ${processing ? 'opacity-50 pointer-events-none' : ''}`}
-                >
+                <input type="file" id="file-upload" multiple accept=".pdf" onChange={handleFileChange} className="hidden" disabled={processing} />
+                <label htmlFor="file-upload" className={`cursor-pointer flex flex-col items-center gap-4 ${processing ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="bg-primary/10 p-4 rounded-full">
                     <UploadIcon className="h-8 w-8 text-primary" />
                   </div>
@@ -505,21 +452,17 @@ const Upload = () => {
                 </label>
               </div>
 
-              {filesWithStatus.length > 0 && (
-                <div className="space-y-3">
+              {filesWithStatus.length > 0 && <div className="space-y-3">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-sm font-sans font-medium text-foreground">
                       selected files:
                     </p>
-                    {processing && (
-                      <p className="text-sm font-sans text-muted-foreground">
+                    {processing && <p className="text-sm font-sans text-muted-foreground">
                         processing {filesWithStatus.filter(f => f.status === 'success').length} of {filesWithStatus.length}
-                      </p>
-                    )}
+                      </p>}
                   </div>
                   
-                  {filesWithStatus.map((fileWithStatus, index) => (
-                    <div key={index} className="space-y-2">
+                  {filesWithStatus.map((fileWithStatus, index) => <div key={index} className="space-y-2">
                       <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
                         {getStatusIcon(fileWithStatus.status)}
                         <div className="flex-1 min-w-0">
@@ -536,26 +479,20 @@ const Upload = () => {
                         </span>
                       </div>
                       
-                      {(fileWithStatus.status === 'decrypting' || fileWithStatus.status === 'processing') && (
-                        <Progress value={fileWithStatus.progress} className="h-1" />
-                      )}
-                    </div>
-                  ))}
+                      {(fileWithStatus.status === 'decrypting' || fileWithStatus.status === 'processing') && <Progress value={fileWithStatus.progress} className="h-1" />}
+                    </div>)}
 
-                  {processing && overallProgress > 0 && (
-                    <div className="pt-4">
+                  {processing && overallProgress > 0 && <div className="pt-4">
                       <div className="flex justify-between text-sm font-sans text-muted-foreground mb-2">
                         <span>overall progress</span>
                         <span>{Math.round(overallProgress)}%</span>
                       </div>
                       <Progress value={overallProgress} className="h-2" />
-                    </div>
-                  )}
-                </div>
-              )}
+                    </div>}
+                </div>}
 
               <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                <p className="text-sm font-sans text-foreground">
+                <p className="font-sans text-foreground text-sm">
                   <Lock className="h-4 w-4 inline mr-2 text-primary" />
                   <strong>Privacy First:</strong> Your statements are processed entirely in your browser. 
                   Passwords and files never leave your device until you submit.
@@ -566,18 +503,11 @@ const Upload = () => {
         </div>
       </main>
 
-      <PasswordInputModal
-        open={showPasswordModal}
-        encryptedFiles={encryptedFiles}
-        onSubmit={handlePasswordSubmit}
-        onCancel={() => {
-          setShowPasswordModal(false);
-          setFilesWithStatus([]);
-          setEncryptedFiles([]);
-        }}
-      />
-    </div>
-  );
+      <PasswordInputModal open={showPasswordModal} encryptedFiles={encryptedFiles} onSubmit={handlePasswordSubmit} onCancel={() => {
+      setShowPasswordModal(false);
+      setFilesWithStatus([]);
+      setEncryptedFiles([]);
+    }} />
+    </div>;
 };
-
 export default Upload;
