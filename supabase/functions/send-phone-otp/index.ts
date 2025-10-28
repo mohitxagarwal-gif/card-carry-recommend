@@ -52,6 +52,42 @@ serve(async (req) => {
     const otp_code = Math.floor(100000 + Math.random() * 900000).toString();
     const hashed_otp = await bcrypt.hash(otp_code);
 
+    // Get Twilio credentials
+    const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const twilioAuthToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const twilioPhoneNumber = Deno.env.get("TWILIO_PHONE_NUMBER");
+
+    // Validate Twilio credentials are configured
+    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+      throw new Error("Twilio credentials not configured");
+    }
+
+    // Send SMS via Twilio
+    const twilioResponse = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          To: phone_e164,
+          From: twilioPhoneNumber,
+          Body: `Your Card Carry verification code is: ${otp_code}. Valid for 10 minutes. Do not share this code.`,
+        }),
+      }
+    );
+
+    if (!twilioResponse.ok) {
+      const errorData = await twilioResponse.text();
+      console.error(`[Twilio Error] Status: ${twilioResponse.status}, Response: ${errorData}`);
+      throw new Error("Failed to send SMS verification code");
+    }
+
+    const twilioData = await twilioResponse.json();
+    console.log(`SMS sent successfully. Message SID: ${twilioData.sid}`);
+
     const { error: insertError } = await supabase
       .from("phone_verifications")
       .insert({
