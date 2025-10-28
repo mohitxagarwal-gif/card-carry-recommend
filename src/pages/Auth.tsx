@@ -30,27 +30,51 @@ const Auth = () => {
   // Handle OAuth callback
   useEffect(() => {
     const handleOAuthCallback = async () => {
+      console.log('[Auth.tsx:33] OAuth callback handler started');
+      console.log('[Auth.tsx:34] Getting session...');
+      
       const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log('[Auth.tsx:37] Session retrieved:', session ? 'Session exists' : 'No session');
       if (session) {
+        console.log('[Auth.tsx:39] User ID:', session.user.id);
+        console.log('[Auth.tsx:40] User email:', session.user.email);
+        
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const isOAuthCallback = hashParams.has('access_token');
         
+        console.log('[Auth.tsx:45] Window hash:', window.location.hash);
+        console.log('[Auth.tsx:46] Is OAuth callback:', isOAuthCallback);
+        console.log('[Auth.tsx:47] Hash params:', Object.fromEntries(hashParams.entries()));
+        
         if (isOAuthCallback) {
+          console.log('[Auth.tsx:50] OAuth callback detected, processing...');
           setLoading(true);
           setWaitingForProfile(true);
           
           try {
+            console.log('[Auth.tsx:55] Tracking auth success for Google');
             trackAuthSuccess('google');
             
+            console.log('[Auth.tsx:58] Calling afterAuthRedirect with userId:', session.user.id);
             // Wait for profile to be created
-            const profile = await afterAuthRedirect(session.user.id, null, navigate);
+            await afterAuthRedirect(session.user.id, null, navigate);
+            console.log('[Auth.tsx:61] afterAuthRedirect completed successfully');
           } catch (error) {
-            console.error('Error during OAuth redirect:', error);
+            console.error('[Auth.tsx:63] Error during OAuth redirect:', error);
+            console.error('[Auth.tsx:64] Error details:', {
+              message: error instanceof Error ? error.message : 'Unknown error',
+              stack: error instanceof Error ? error.stack : undefined
+            });
             toast.error('Error completing sign-in. Please try again.');
             setLoading(false);
             setWaitingForProfile(false);
           }
+        } else {
+          console.log('[Auth.tsx:73] Not an OAuth callback, regular page load with existing session');
         }
+      } else {
+        console.log('[Auth.tsx:76] No session found, user needs to authenticate');
       }
     };
 
@@ -58,13 +82,20 @@ const Auth = () => {
   }, [navigate]);
 
   const handleGoogleSignIn = async () => {
+    console.log('[Auth.tsx:85] handleGoogleSignIn called');
     try {
       setLoading(true);
+      console.log('[Auth.tsx:88] Loading state set to true');
       
+      const redirectUrl = `${window.location.origin}/auth`;
+      console.log('[Auth.tsx:91] Redirect URL:', redirectUrl);
+      console.log('[Auth.tsx:92] Window origin:', window.location.origin);
+      
+      console.log('[Auth.tsx:94] Calling supabase.auth.signInWithOAuth...');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -72,9 +103,19 @@ const Auth = () => {
         }
       });
 
-      if (error) throw error;
+      console.log('[Auth.tsx:105] signInWithOAuth response:', error ? 'Error' : 'Success');
+      if (error) {
+        console.error('[Auth.tsx:107] OAuth initiation error:', error);
+        throw error;
+      }
+      console.log('[Auth.tsx:110] User should be redirecting to Google...');
     } catch (error: any) {
-      console.error('Error signing in with Google:', error);
+      console.error('[Auth.tsx:112] Error signing in with Google:', error);
+      console.error('[Auth.tsx:113] Error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.status
+      });
       toast.error(error.message || 'Failed to sign in with Google');
       setLoading(false);
     }
