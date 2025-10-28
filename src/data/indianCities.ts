@@ -1,4 +1,9 @@
-export const TOP_INDIAN_CITIES = [
+export const METRO_CITIES = [
+  "Mumbai", "Delhi", "Bengaluru", "Hyderabad", "Chennai", 
+  "Kolkata", "Pune", "Ahmedabad"
+];
+
+const ALL_CITIES = [
   "Ahmedabad", "Agra", "Ajmer", "Aligarh", "Allahabad", "Amravati", "Amritsar", 
   "Asansol", "Aurangabad", "Bareilly", "Belgaum", "Bengaluru", "Bhavnagar", 
   "Bhilai", "Bhopal", "Bhubaneswar", "Bikaner", "Bokaro", "Chandigarh", 
@@ -15,4 +20,10 @@ export const TOP_INDIAN_CITIES = [
   "Thane", "Thiruvananthapuram", "Thrissur", "Tiruchirappalli", "Tiruppur", 
   "Ujjain", "Vadodara", "Varanasi", "Vasai-Virar", "Vijayawada", 
   "Visakhapatnam", "Warangal"
-].sort();
+];
+
+export const OTHER_CITIES = ALL_CITIES
+  .filter(city => !METRO_CITIES.includes(city))
+  .sort();
+
+export const TOP_INDIAN_CITIES = ALL_CITIES.sort();

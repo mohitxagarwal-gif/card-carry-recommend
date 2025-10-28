@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TOP_INDIAN_CITIES } from "@/data/indianCities";
+import { METRO_CITIES, OTHER_CITIES } from "@/data/indianCities";
 
 interface CityComboboxProps {
   value: string;
@@ -32,8 +32,29 @@ export const CityCombobox = ({ value, onChange }: CityComboboxProps) => {
           <CommandInput placeholder="Search city..." />
           <CommandList>
             <CommandEmpty>No city found.</CommandEmpty>
-            <CommandGroup>
-              {TOP_INDIAN_CITIES.map((city) => (
+            <CommandGroup heading="Top Metro Cities">
+              {METRO_CITIES.map((city) => (
+                <CommandItem
+                  key={city}
+                  value={city}
+                  onSelect={() => {
+                    onChange(city);
+                    setOpen(false);
+                  }}
+                  className="font-medium"
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === city ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {city}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandGroup heading="Other Cities">
+              {OTHER_CITIES.map((city) => (
                 <CommandItem
                   key={city}
                   value={city}
