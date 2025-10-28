@@ -29,56 +29,59 @@ const Auth = () => {
 
   // Handle OAuth callback
   useEffect(() => {
-    const handleOAuthCallback = async () => {
-      console.log('[Auth.tsx:33] OAuth callback handler started');
-      console.log('[Auth.tsx:34] Getting session...');
+    console.log('[Auth.tsx:33] OAuth callback handler started');
+    
+    // Check if this is an OAuth callback FIRST (before checking session)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const isOAuthCallback = hashParams.has('access_token');
+    
+    console.log('[Auth.tsx:38] Window hash:', window.location.hash);
+    console.log('[Auth.tsx:39] Is OAuth callback:', isOAuthCallback);
+    
+    if (!isOAuthCallback) {
+      console.log('[Auth.tsx:42] Not an OAuth callback, nothing to do');
+      return;
+    }
+    
+    console.log('[Auth.tsx:46] OAuth callback detected! Setting up auth state listener...');
+    setLoading(true);
+    setWaitingForProfile(true);
+    
+    // Listen for auth state change - this will fire when Supabase processes the OAuth tokens
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth.tsx:53] Auth state changed:', event);
+      console.log('[Auth.tsx:54] Session:', session ? 'Session exists' : 'No session');
       
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      console.log('[Auth.tsx:37] Session retrieved:', session ? 'Session exists' : 'No session');
-      if (session) {
-        console.log('[Auth.tsx:39] User ID:', session.user.id);
-        console.log('[Auth.tsx:40] User email:', session.user.email);
+      if (event === 'SIGNED_IN' && session) {
+        console.log('[Auth.tsx:57] User signed in via OAuth');
+        console.log('[Auth.tsx:58] User ID:', session.user.id);
+        console.log('[Auth.tsx:59] User email:', session.user.email);
         
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const isOAuthCallback = hashParams.has('access_token');
-        
-        console.log('[Auth.tsx:45] Window hash:', window.location.hash);
-        console.log('[Auth.tsx:46] Is OAuth callback:', isOAuthCallback);
-        console.log('[Auth.tsx:47] Hash params:', Object.fromEntries(hashParams.entries()));
-        
-        if (isOAuthCallback) {
-          console.log('[Auth.tsx:50] OAuth callback detected, processing...');
-          setLoading(true);
-          setWaitingForProfile(true);
+        try {
+          console.log('[Auth.tsx:62] Tracking auth success for Google');
+          trackAuthSuccess('google');
           
-          try {
-            console.log('[Auth.tsx:55] Tracking auth success for Google');
-            trackAuthSuccess('google');
-            
-            console.log('[Auth.tsx:58] Calling afterAuthRedirect with userId:', session.user.id);
-            // Wait for profile to be created
-            await afterAuthRedirect(session.user.id, null, navigate);
-            console.log('[Auth.tsx:61] afterAuthRedirect completed successfully');
-          } catch (error) {
-            console.error('[Auth.tsx:63] Error during OAuth redirect:', error);
-            console.error('[Auth.tsx:64] Error details:', {
-              message: error instanceof Error ? error.message : 'Unknown error',
-              stack: error instanceof Error ? error.stack : undefined
-            });
-            toast.error('Error completing sign-in. Please try again.');
-            setLoading(false);
-            setWaitingForProfile(false);
-          }
-        } else {
-          console.log('[Auth.tsx:73] Not an OAuth callback, regular page load with existing session');
+          console.log('[Auth.tsx:65] Calling afterAuthRedirect with userId:', session.user.id);
+          await afterAuthRedirect(session.user.id, null, navigate);
+          console.log('[Auth.tsx:67] afterAuthRedirect completed successfully');
+        } catch (error) {
+          console.error('[Auth.tsx:69] Error during OAuth redirect:', error);
+          console.error('[Auth.tsx:70] Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          });
+          toast.error('Error completing sign-in. Please try again.');
+          setLoading(false);
+          setWaitingForProfile(false);
         }
-      } else {
-        console.log('[Auth.tsx:76] No session found, user needs to authenticate');
       }
+    });
+    
+    // Cleanup subscription
+    return () => {
+      console.log('[Auth.tsx:83] Cleaning up auth state listener');
+      subscription.unsubscribe();
     };
-
-    handleOAuthCallback();
   }, [navigate]);
 
   const handleGoogleSignIn = async () => {
