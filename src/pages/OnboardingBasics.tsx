@@ -42,6 +42,7 @@ const INCOME_OPTIONS = [
 
 export default function OnboardingBasics() {
   const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
   const [loading, setLoading] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -63,16 +64,33 @@ export default function OnboardingBasics() {
       
       setUserId(user.id);
       
+      // Check if user has already completed onboarding
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed, age_range, income_band_inr, phone_e164")
+        .eq("id", user.id)
+        .single();
+      
+      if (profile?.onboarding_completed && profile.age_range && profile.income_band_inr && profile.phone_e164) {
+        // User already completed onboarding, redirect to intended destination
+        const returnTo = getReturnToFromQuery();
+        const destination = sanitizeInternalPath(returnTo) || '/upload';
+        navigate(destination, { replace: true });
+        return;
+      }
+      
       // Load saved form data from localStorage
       const saved = localStorage.getItem(`onboarding_basics_${user.id}`);
       if (saved) {
         setFormData(JSON.parse(saved));
       }
+      
+      setChecking(false);
     };
 
     loadProfile();
     trackEvent("onboarding_basics_view");
-  }, []);
+  }, [navigate]);
 
   const handleFieldChange = (field: keyof FormData, value: any) => {
     const newData = { ...formData, [field]: value };
@@ -177,6 +195,17 @@ export default function OnboardingBasics() {
       setLoading(false);
     }
   };
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
