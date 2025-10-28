@@ -26,49 +26,103 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [waitingForProfile, setWaitingForProfile] = useState(false);
+  const [passwordResetMode, setPasswordResetMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState("");
 
-  // Handle OAuth callback and session check
+  // Handle OAuth callback, email confirmation, password reset, and session check
   useEffect(() => {
-    console.log('[Auth.tsx:33] OAuth callback handler started');
+    console.log('[Auth.tsx] Auth callback handler started');
+    
+    // Check URL parameters for mode
+    const searchParams = new URLSearchParams(window.location.search);
+    const mode = searchParams.get('mode');
+    const confirmed = searchParams.get('confirmed');
+    
+    // Check hash parameters for tokens
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hasAccessToken = hashParams.has('access_token');
+    const hasError = hashParams.has('error');
+    const tokenType = hashParams.get('type');
+    
+    // Check if this is a password reset callback
+    if (mode === 'reset' && hasAccessToken) {
+      console.log('[Auth.tsx] Password reset callback detected');
+      setPasswordResetMode(true);
+      setLoading(false);
+      return;
+    }
+    
+    // Check if this is an email confirmation callback
+    if ((confirmed === 'true' || tokenType === 'signup') && hasAccessToken) {
+      console.log('[Auth.tsx] Email confirmation callback detected');
+      setLoading(true);
+      setWaitingForProfile(true);
+      
+      const handleEmailConfirmation = async () => {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session) {
+          console.error('[Auth.tsx] Error getting session after confirmation:', error);
+          toast.error('Error completing verification. Please try signing in.');
+          setLoading(false);
+          setWaitingForProfile(false);
+          return;
+        }
+        
+        toast.success('Email verified successfully!');
+        trackAuthSuccess('email');
+        
+        try {
+          await afterAuthRedirect(session.user.id, getReturnToFromQuery(), navigate);
+        } catch (error) {
+          console.error('[Auth.tsx] Error during post-confirmation redirect:', error);
+          toast.error('Error loading profile. Redirecting...');
+          navigate('/onboarding/basics', { replace: true });
+        }
+      };
+      
+      handleEmailConfirmation();
+      return;
+    }
     
     // FIRST: Check if user already has an active session
     const checkExistingSession = async () => {
       try {
-        console.log('[Auth.tsx:37] Checking for existing session...');
+        console.log('[Auth.tsx] Checking for existing session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('[Auth.tsx:41] Error checking session:', error);
+          console.error('[Auth.tsx] Error checking session:', error);
           return false;
         }
         
         if (session) {
-          console.log('[Auth.tsx:46] User already has active session, redirecting...');
-          console.log('[Auth.tsx:47] User ID:', session.user.id);
+          console.log('[Auth.tsx] User already has active session, redirecting...');
           setLoading(true);
           setWaitingForProfile(true);
           await afterAuthRedirect(session.user.id, getReturnToFromQuery(), navigate);
           return true;
         }
         
-        console.log('[Auth.tsx:54] No existing session found');
+        console.log('[Auth.tsx] No existing session found');
         return false;
       } catch (error) {
-        console.error('[Auth.tsx:57] Error in checkExistingSession:', error);
+        console.error('[Auth.tsx] Error in checkExistingSession:', error);
         return false;
       }
     };
     
-    // Check if this is an OAuth callback
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const hasAccessToken = hashParams.has('access_token');
-    const hasError = hashParams.has('error');
     const isOAuthCallback = hasAccessToken || hasError;
     
-    console.log('[Auth.tsx:67] Window hash:', window.location.hash);
-    console.log('[Auth.tsx:68] Has access token:', hasAccessToken);
-    console.log('[Auth.tsx:69] Has error:', hasError);
-    console.log('[Auth.tsx:70] Is OAuth callback:', isOAuthCallback);
+    console.log('[Auth.tsx] Window hash:', window.location.hash);
+    console.log('[Auth.tsx] Has access token:', hasAccessToken);
+    console.log('[Auth.tsx] Has error:', hasError);
+    console.log('[Auth.tsx] Is OAuth callback:', isOAuthCallback);
     
     // Handle OAuth errors
     if (hasError) {
@@ -76,19 +130,17 @@ const Auth = () => {
       const errorDescription = hashParams.get('error_description');
       const error = hashParams.get('error');
       
-      console.error('[Auth.tsx:78] OAuth error detected:', {
+      console.error('[Auth.tsx] OAuth error detected:', {
         error,
         errorCode,
         errorDescription
       });
       
-      // Clear the hash to prevent repeated error displays
       window.history.replaceState(null, '', window.location.pathname);
       
-      // Show user-friendly error message
       if (errorDescription?.includes('Unable to exchange external code')) {
         toast.error('Google sign-in configuration error. Please contact support or use email/password sign-in.');
-        console.error('[Auth.tsx:90] DIAGNOSIS: Invalid OAuth client credentials in Supabase. Check Google Client ID/Secret in Lovable Cloud backend settings.');
+        console.error('[Auth.tsx] DIAGNOSIS: Invalid OAuth client credentials');
       } else {
         toast.error(`Sign-in failed: ${errorDescription || error || 'Unknown error'}`);
       }
@@ -98,114 +150,51 @@ const Auth = () => {
     
     // If this is an OAuth callback, handle it
     if (isOAuthCallback) {
-      console.log('[Auth.tsx:100] OAuth callback detected! Processing...');
+      console.log('[Auth.tsx] OAuth callback detected! Processing...');
       setLoading(true);
       setWaitingForProfile(true);
       
-      // Immediately check for session after OAuth callback
       const handleOAuthCallback = async () => {
-        console.log('[Auth.tsx:106] Checking session after OAuth callback...');
-        
-        // Wait a moment for Supabase to process the tokens
         await new Promise(resolve => setTimeout(resolve, 500));
         
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('[Auth.tsx:113] Error getting session after OAuth:', error);
+        if (error || !session) {
+          console.error('[Auth.tsx] Error getting session after OAuth:', error);
           toast.error('Error completing sign-in. Please try again.');
           setLoading(false);
           setWaitingForProfile(false);
           return;
         }
         
-        if (session) {
-          console.log('[Auth.tsx:121] Session found after OAuth callback');
-          console.log('[Auth.tsx:122] User ID:', session.user.id);
-          console.log('[Auth.tsx:123] User email:', session.user.email);
-          
-          try {
-            console.log('[Auth.tsx:126] Tracking auth success for Google');
-            trackAuthSuccess('google');
-            
-            console.log('[Auth.tsx:129] Calling afterAuthRedirect with userId:', session.user.id);
-            await afterAuthRedirect(session.user.id, getReturnToFromQuery(), navigate);
-            console.log('[Auth.tsx:131] afterAuthRedirect completed successfully');
-          } catch (error) {
-            console.error('[Auth.tsx:133] Error during OAuth redirect:', error);
-            console.error('[Auth.tsx:134] Error details:', {
-              message: error instanceof Error ? error.message : 'Unknown error',
-              stack: error instanceof Error ? error.stack : undefined
-            });
-            toast.error('Error completing sign-in. Please try again.');
-            setLoading(false);
-            setWaitingForProfile(false);
-          }
-        } else {
-          console.error('[Auth.tsx:143] No session found after OAuth callback');
-          toast.error('Failed to complete sign-in. Please try again.');
+        console.log('[Auth.tsx] Session found after OAuth callback');
+        trackAuthSuccess('google');
+        
+        try {
+          await afterAuthRedirect(session.user.id, getReturnToFromQuery(), navigate);
+        } catch (error) {
+          console.error('[Auth.tsx] Error during OAuth redirect:', error);
+          toast.error('Error completing sign-in. Please try again.');
           setLoading(false);
           setWaitingForProfile(false);
         }
       };
       
       handleOAuthCallback();
-      
-      // Also set up listener as backup
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('[Auth.tsx:154] Auth state changed:', event);
-        console.log('[Auth.tsx:155] Session:', session ? 'Session exists' : 'No session');
-        
-        if (event === 'SIGNED_IN' && session) {
-          console.log('[Auth.tsx:158] User signed in via OAuth (backup listener)');
-          console.log('[Auth.tsx:159] User ID:', session.user.id);
-          console.log('[Auth.tsx:160] User email:', session.user.email);
-          
-          try {
-            console.log('[Auth.tsx:163] Tracking auth success for Google');
-            trackAuthSuccess('google');
-            
-            console.log('[Auth.tsx:166] Calling afterAuthRedirect with userId:', session.user.id);
-            await afterAuthRedirect(session.user.id, getReturnToFromQuery(), navigate);
-            console.log('[Auth.tsx:168] afterAuthRedirect completed successfully');
-          } catch (error) {
-            console.error('[Auth.tsx:170] Error during OAuth redirect:', error);
-            console.error('[Auth.tsx:171] Error details:', {
-              message: error instanceof Error ? error.message : 'Unknown error',
-              stack: error instanceof Error ? error.stack : undefined
-            });
-            toast.error('Error completing sign-in. Please try again.');
-            setLoading(false);
-            setWaitingForProfile(false);
-          }
-        }
-      });
-      
-      // Cleanup subscription
-      return () => {
-        console.log('[Auth.tsx:184] Cleaning up auth state listener');
-        subscription.unsubscribe();
-      };
+      return;
     }
     
     // If not an OAuth callback, just check for existing session
     if (!isOAuthCallback) {
-      console.log('[Auth.tsx:191] Not an OAuth callback, checking for existing session');
       checkExistingSession();
     }
   }, [navigate]);
 
   const handleGoogleSignIn = async () => {
-    console.log('[Auth.tsx:197] handleGoogleSignIn called');
     try {
       setLoading(true);
-      console.log('[Auth.tsx:200] Loading state set to true');
-      
       const redirectUrl = `${window.location.origin}/auth`;
-      console.log('[Auth.tsx:203] Redirect URL:', redirectUrl);
-      console.log('[Auth.tsx:204] Window origin:', window.location.origin);
       
-      console.log('[Auth.tsx:206] Calling supabase.auth.signInWithOAuth...');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -217,20 +206,84 @@ const Auth = () => {
         }
       });
 
-      console.log('[Auth.tsx:217] signInWithOAuth response:', error ? 'Error' : 'Success');
-      if (error) {
-        console.error('[Auth.tsx:219] OAuth initiation error:', error);
-        throw error;
-      }
-      console.log('[Auth.tsx:222] User should be redirecting to Google...');
+      if (error) throw error;
     } catch (error: any) {
-      console.error('[Auth.tsx:224] Error signing in with Google:', error);
-      console.error('[Auth.tsx:225] Error details:', {
-        message: error.message,
-        code: error.code,
-        status: error.status
-      });
+      console.error('[Auth.tsx] Error signing in with Google:', error);
       toast.error(error.message || 'Failed to sign in with Google');
+      setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: confirmationEmail,
+      });
+      
+      if (error) throw error;
+      toast.success('Verification email sent! Please check your inbox.');
+    } catch (error: any) {
+      console.error('[Auth.tsx] Error resending confirmation:', error);
+      toast.error(error.message || 'Failed to resend verification email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Password reset email sent! Please check your inbox.');
+      setPasswordResetMode(false);
+      setEmail('');
+    } catch (error: any) {
+      console.error('[Auth.tsx] Error requesting password reset:', error);
+      toast.error(error.message || 'Failed to send password reset email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Password updated successfully! You can now sign in.');
+      setPasswordResetMode(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      window.history.replaceState(null, '', window.location.pathname);
+    } catch (error: any) {
+      console.error('[Auth.tsx] Error resetting password:', error);
+      toast.error(error.message || 'Failed to reset password');
+    } finally {
       setLoading(false);
     }
   };
@@ -264,22 +317,31 @@ const Auth = () => {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/auth?confirmed=true`,
           },
         });
 
         if (error) throw error;
 
         if (data.user) {
+          // Check if email confirmation is required
+          if (!data.session) {
+            // Email confirmation required
+            setAwaitingConfirmation(true);
+            setConfirmationEmail(email);
+            toast.success('Account created! Please check your email to verify your account.');
+            return;
+          }
+          
+          // Auto-confirmed, proceed with redirect
           toast.success("Account created! Setting up your profile...");
           setWaitingForProfile(true);
-          
           trackAuthSuccess('email');
           
           try {
             await afterAuthRedirect(data.user.id, returnTo, navigate);
           } catch (error) {
-            console.error('Error during post-signup redirect:', error);
+            console.error('[Auth.tsx] Error during post-signup redirect:', error);
             toast.error('Profile setup delayed. Redirecting to onboarding...');
             navigate('/onboarding/basics', { replace: true });
           }
@@ -320,6 +382,199 @@ const Auth = () => {
       setWaitingForProfile(false);
     }
   };
+
+  // Show email confirmation waiting screen
+  if (awaitingConfirmation) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <CreditCard className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl font-heading font-bold text-foreground">
+                card & carry.
+              </h1>
+            </div>
+          </div>
+          
+          <Card className="p-8 border-border">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              
+              <h2 className="text-2xl font-heading font-bold text-foreground">
+                verify your email
+              </h2>
+              
+              <p className="text-muted-foreground font-sans">
+                We've sent a verification link to:
+              </p>
+              
+              <p className="text-foreground font-sans font-medium">
+                {confirmationEmail}
+              </p>
+              
+              <p className="text-sm text-muted-foreground font-sans">
+                Click the link in the email to verify your account. Don't forget to check your spam folder!
+              </p>
+              
+              <div className="pt-4">
+                <Button
+                  onClick={handleResendConfirmation}
+                  variant="outline"
+                  className="w-full font-sans"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      sending...
+                    </>
+                  ) : (
+                    'resend verification email'
+                  )}
+                </Button>
+              </div>
+              
+              <button
+                onClick={() => {
+                  setAwaitingConfirmation(false);
+                  setConfirmationEmail('');
+                }}
+                className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors"
+              >
+                back to sign in
+              </button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show password reset form
+  if (passwordResetMode) {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const hasToken = hashParams.has('access_token');
+    
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <CreditCard className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl font-heading font-bold text-foreground">
+                card & carry.
+              </h1>
+            </div>
+            <h2 className="text-2xl font-heading font-bold text-foreground mb-3">
+              {hasToken ? 'set new password' : 'reset password'}
+            </h2>
+            <p className="text-muted-foreground font-sans">
+              {hasToken 
+                ? 'enter your new password below'
+                : 'enter your email to receive a password reset link'}
+            </p>
+          </div>
+          
+          <Card className="p-8 border-border">
+            {hasToken ? (
+              <form onSubmit={handlePasswordReset} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="font-sans">new password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    placeholder="enter new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="font-sans"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="font-sans">confirm password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="confirm new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="font-sans"
+                  />
+                </div>
+                
+                <Button
+                  type="submit"
+                  className="w-full font-sans"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      updating password...
+                    </>
+                  ) : (
+                    'update password'
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handlePasswordResetRequest} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="font-sans">email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="font-sans"
+                  />
+                </div>
+                
+                <Button
+                  type="submit"
+                  className="w-full font-sans"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      sending...
+                    </>
+                  ) : (
+                    'send reset link'
+                  )}
+                </Button>
+              </form>
+            )}
+            
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => {
+                  setPasswordResetMode(false);
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setEmail('');
+                  window.history.replaceState(null, '', window.location.pathname);
+                }}
+                className="text-sm font-sans text-muted-foreground hover:text-foreground transition-colors"
+              >
+                back to sign in
+              </button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
@@ -399,7 +654,18 @@ const Auth = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="font-sans">password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="font-sans">password</Label>
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => setPasswordResetMode(true)}
+                    className="text-xs font-sans text-primary hover:text-primary/80 transition-colors"
+                  >
+                    forgot password?
+                  </button>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
