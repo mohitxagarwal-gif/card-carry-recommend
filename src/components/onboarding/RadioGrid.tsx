@@ -20,7 +20,7 @@ export const RadioGrid = ({ options, value, onValueChange, name }: RadioGridProp
           />
           <Label
             htmlFor={`${name}-${option.value}`}
-            className="flex h-20 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-muted bg-card hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:text-primary transition-all"
+            className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-muted bg-card hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 peer-data-[state=checked]:text-primary transition-all"
           >
             <span className="text-sm font-medium text-center">{option.label}</span>
           </Label>
