@@ -1,11 +1,19 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Helper function to hash OTP using native crypto API
+async function hashOtp(otp: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(otp);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -54,7 +62,8 @@ serve(async (req) => {
     }
 
     // Compare submitted OTP with hashed OTP
-    const isValidOtp = await bcrypt.compare(otp_code, verification.otp_code);
+    const hashedInput = await hashOtp(otp_code);
+    const isValidOtp = hashedInput === verification.otp_code;
     
     if (!isValidOtp) {
       throw new Error("Invalid or expired OTP");
