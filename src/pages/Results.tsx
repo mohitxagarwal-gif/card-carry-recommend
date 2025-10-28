@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
 import { toast } from "sonner";
 import { CardActionBar } from "@/components/CardActionBar";
 import { EligibilityIndicator } from "@/components/EligibilityIndicator";
@@ -234,7 +234,7 @@ const Results = () => {
         });
         
         setShowRecommendations(true);
-        toast.success("Recommendations generated successfully!");
+        toast.success("Recommendations saved! View them anytime from your dashboard.");
         
         // Scroll to recommendations
         setTimeout(() => {
@@ -277,15 +277,26 @@ const Results = () => {
             <h1 className="text-2xl font-heading font-bold text-foreground">
               card & carry.
             </h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSignOut}
-              className="border-foreground/20 hover:bg-foreground/5"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              sign out
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/dashboard")}
+                className="border-foreground/20 hover:bg-foreground/5"
+              >
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                dashboard
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="border-foreground/20 hover:bg-foreground/5"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                sign out
+              </Button>
+            </div>
           </div>
         </div>
       </header>
