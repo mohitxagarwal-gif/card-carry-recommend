@@ -33,13 +33,43 @@ const Auth = () => {
     
     // Check if this is an OAuth callback FIRST (before checking session)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const isOAuthCallback = hashParams.has('access_token');
+    const hasAccessToken = hashParams.has('access_token');
+    const hasError = hashParams.has('error');
+    const isOAuthCallback = hasAccessToken || hasError;
     
-    console.log('[Auth.tsx:38] Window hash:', window.location.hash);
-    console.log('[Auth.tsx:39] Is OAuth callback:', isOAuthCallback);
+    console.log('[Auth.tsx:40] Window hash:', window.location.hash);
+    console.log('[Auth.tsx:41] Has access token:', hasAccessToken);
+    console.log('[Auth.tsx:42] Has error:', hasError);
+    console.log('[Auth.tsx:43] Is OAuth callback:', isOAuthCallback);
+    
+    // Handle OAuth errors
+    if (hasError) {
+      const errorCode = hashParams.get('error_code');
+      const errorDescription = hashParams.get('error_description');
+      const error = hashParams.get('error');
+      
+      console.error('[Auth.tsx:50] OAuth error detected:', {
+        error,
+        errorCode,
+        errorDescription
+      });
+      
+      // Clear the hash to prevent repeated error displays
+      window.history.replaceState(null, '', window.location.pathname);
+      
+      // Show user-friendly error message
+      if (errorDescription?.includes('Unable to exchange external code')) {
+        toast.error('Google sign-in configuration error. Please contact support or use email/password sign-in.');
+        console.error('[Auth.tsx:62] DIAGNOSIS: Invalid OAuth client credentials in Supabase. Check Google Client ID/Secret in Lovable Cloud backend settings.');
+      } else {
+        toast.error(`Sign-in failed: ${errorDescription || error || 'Unknown error'}`);
+      }
+      
+      return;
+    }
     
     if (!isOAuthCallback) {
-      console.log('[Auth.tsx:42] Not an OAuth callback, nothing to do');
+      console.log('[Auth.tsx:71] Not an OAuth callback, nothing to do');
       return;
     }
     
