@@ -127,7 +127,12 @@ const handler = async (req: Request): Promise<Response> => {
 CRITICAL RULES:
 1. Extract ALL transactions from the entire document - do not skip any
 2. Dates: Convert to DD/MM/YYYY format (15-Jan-2025 → 15/01/2025, 15/01/2025 stays as is)
-3. Merchants: Clean and normalize names:
+3. Transaction Type Detection: 
+   - DEBIT (money out): Purchases, payments, withdrawals, bills, shopping - use keywords like "Dr", "Debit", "Purchase", "Payment to", "Withdrawal"
+   - CREDIT (money in): Refunds, cashback, salary, deposits, reversals - use keywords like "Cr", "Credit", "Refund", "Reversal", "Payment Received", "Salary", "Cashback"
+   - Credit card statements: Most transactions are DEBIT (spending), payments TO the card are CREDIT
+   - Bank statements: Withdrawals/purchases are DEBIT, deposits/salary/refunds are CREDIT
+4. Merchants: Clean and normalize names:
    - "AMAZONPAY*GROCERIES REF:12345" → "Amazon Pay"
    - "SWIGGY*ORDER*BANGALORE" → "Swiggy"
    - "UPI/PHONEPE-ZOMATO" → "Zomato"
@@ -199,13 +204,18 @@ Analyze the entire text carefully and extract every transaction with date, clean
                     type: "number",
                     description: "Transaction amount as positive number in INR"
                   },
+                  transactionType: {
+                    type: "string",
+                    enum: ["debit", "credit"],
+                    description: "Transaction type: 'debit' for money going out (purchases, payments), 'credit' for money coming in (refunds, cashback, salary)"
+                  },
                   category: { 
                     type: "string",
                     enum: CATEGORY_OPTIONS,
                     description: "Transaction category based on merchant and context"
                   }
                 },
-                required: ["date", "merchant", "amount", "category"]
+                required: ["date", "merchant", "amount", "transactionType", "category"]
               }
             },
             metadata: {
@@ -349,13 +359,33 @@ Analyze the entire text carefully and extract every transaction with date, clean
 
     console.log(`[extraction-success] ${uniqueTransactions.length} unique transactions in ${processingTime}ms`);
 
-    // PHASE 4: Re-categorize each transaction using merchant intelligence
+    // PHASE 4: Re-categorize each transaction using merchant intelligence with context
     console.log('[categorization-start]', { totalTransactions: uniqueTransactions.length });
+    
+    // Build context: group by merchant to detect recurring patterns
+    const merchantFrequency = new Map<string, number>();
+    uniqueTransactions.forEach((t: any) => {
+      merchantFrequency.set(t.merchant, (merchantFrequency.get(t.merchant) || 0) + 1);
+    });
+    
     const enhancedTransactions = await Promise.all(
-      uniqueTransactions.map(async (txn: any) => {
+      uniqueTransactions.map(async (txn: any, idx: number) => {
         try {
+          // Provide context for better categorization
+          const recentTransactions = uniqueTransactions
+            .slice(Math.max(0, idx - 5), idx) // Last 5 transactions
+            .map((t: any) => ({ merchant: t.merchant, amount: t.amount, category: t.category }));
+          
+          const isRecurring = (merchantFrequency.get(txn.merchant) || 0) >= 2;
+          
           const catResponse = await supabase.functions.invoke('categorize-merchant', {
-            body: { merchantName: txn.merchant }
+            body: { 
+              merchantName: txn.merchant,
+              amount: txn.amount,
+              transactionType: txn.transactionType,
+              date: txn.date,
+              recentTransactions
+            }
           });
 
           if (catResponse.data && !catResponse.error) {
@@ -364,8 +394,9 @@ Analyze the entire text carefully and extract every transaction with date, clean
               category: catResponse.data.category,
               subcategory: catResponse.data.subcategory,
               merchant_normalized: catResponse.data.merchant_normalized,
-              categorization_confidence: catResponse.data.confidence,
-              categorization_source: catResponse.data.source
+              categoryConfidence: catResponse.data.confidence,
+              categorization_source: catResponse.data.source,
+              isRecurring
             };
           }
         } catch (e) {
@@ -373,7 +404,7 @@ Analyze the entire text carefully and extract every transaction with date, clean
         }
         
         // Fallback to original categorization
-        return txn;
+        return { ...txn, categoryConfidence: 0.5 };
       })
     );
     console.log('[categorization-complete]', { 

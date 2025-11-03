@@ -10,9 +10,10 @@ const corsHeaders = {
 // Input validation schema
 const TransactionSchema = z.object({
   date: z.string().max(50),
-  description: z.string().max(500),
+  merchant: z.string().max(500),
   amount: z.number().positive(),
-  category: z.string().max(100)
+  category: z.string().max(100),
+  transactionType: z.enum(['debit', 'credit']).optional()
 });
 
 const GenerateRecommendationsSchema = z.object({
@@ -45,12 +46,36 @@ serve(async (req) => {
     const { analysisId, transactions } = GenerateRecommendationsSchema.parse(body);
     console.log('Generating recommendations for user:', user.id, 'Analysis:', analysisId);
 
-    // Calculate spending summary from transactions
-    const totalSpending = transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    // Calculate spending summary from transactions (only debits = actual spending)
+    const debitTransactions = transactions.filter((t: any) => t.transactionType !== 'credit');
+    const creditTransactions = transactions.filter((t: any) => t.transactionType === 'credit');
+    
+    const totalSpending = debitTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const totalCredits = creditTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    
     const categoryTotals: Record<string, number> = {};
-    transactions.forEach((t: any) => {
+    debitTransactions.forEach((t: any) => {
       categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
     });
+    
+    // Get top merchants by spending
+    const merchantTotals: Record<string, number> = {};
+    debitTransactions.forEach((t: any) => {
+      merchantTotals[t.merchant] = (merchantTotals[t.merchant] || 0) + t.amount;
+    });
+    const topMerchants = Object.entries(merchantTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, amount]) => `${name} (₹${(amount as number).toLocaleString('en-IN')})`);
+    
+    // Detect recurring expenses
+    const merchantFrequency = new Map<string, number>();
+    debitTransactions.forEach((t: any) => {
+      merchantFrequency.set(t.merchant, (merchantFrequency.get(t.merchant) || 0) + 1);
+    });
+    const recurringMerchants = Array.from(merchantFrequency.entries())
+      .filter(([_, count]) => count >= 2)
+      .map(([name]) => name);
 
     const categories = Object.entries(categoryTotals)
       .map(([name, amount]) => ({
@@ -62,15 +87,25 @@ serve(async (req) => {
 
     const topCategories = categories.slice(0, 5);
 
-    // Format data for AI
+    // Format data for AI with enhanced context
     const spendingSummary = `
-Total Spending: ₹${totalSpending.toLocaleString('en-IN')}
-Number of Transactions: ${transactions.length}
+SPENDING OVERVIEW:
+Total Debits (Spending): ₹${totalSpending.toLocaleString('en-IN')}
+Total Credits (Refunds/Income): ₹${totalCredits.toLocaleString('en-IN')}
+Net Spending: ₹${(totalSpending - totalCredits).toLocaleString('en-IN')}
+Number of Transactions: ${debitTransactions.length} debits, ${creditTransactions.length} credits
+Average Transaction Size: ₹${(totalSpending / debitTransactions.length).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
 
-Top Spending Categories:
-${topCategories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')} (${cat.percentage.toFixed(1)}%)`).join('\n')}
+TOP MERCHANTS (by spending):
+${topMerchants.join('\n')}
 
-All Categories:
+RECURRING EXPENSES:
+${recurringMerchants.length > 0 ? recurringMerchants.slice(0, 5).join(', ') : 'None detected'}
+
+TOP SPENDING CATEGORIES:
+${topCategories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')} (${cat.percentage.toFixed(1)}% of total spending)`).join('\n')}
+
+ALL CATEGORIES BREAKDOWN:
 ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')}`).join('\n')}
     `.trim();
 
@@ -91,23 +126,38 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         messages: [
           {
             role: 'system',
-            content: `You are a credit card recommendation expert for Indian users. Based on spending patterns, recommend the most suitable Indian credit cards.
+            content: `You are a credit card recommendation expert for Indian users. Based on ACTUAL spending patterns (debits only, excluding refunds), recommend the most suitable Indian credit cards.
+
+CRITICAL ANALYSIS RULES:
+- Only consider DEBIT transactions (actual spending) for recommendations
+- Exclude CREDIT transactions (refunds, cashback, salary) from spending calculations
+- Focus recommendations on the TOP MERCHANTS where they spend the most
+- Calculate savings based on REAL category percentages, not generic estimates
+- Consider recurring expenses separately (subscriptions, bills, etc.)
 
 Return ONLY valid JSON with this EXACT structure (no markdown, no code blocks):
 {
   "recommendedCards": [
     {
-      "name": "string (e.g., HDFC Diners Club Black, AMEX Platinum Travel, ICICI Amazon Pay, Axis Magnus)",
+      "name": "string (e.g., HDFC Swiggy Credit Card, AMEX Platinum Travel, ICICI Amazon Pay, Axis Magnus, SBI Cashback)",
       "issuer": "string (HDFC, ICICI, Axis, SBI, AMEX, etc.)",
-      "reason": "string explaining why this card perfectly matches their spending pattern",
-      "benefits": ["specific benefit 1", "specific benefit 2", "specific benefit 3"],
-      "estimatedSavings": "string (e.g., ₹15,000-20,000/year)"
+      "reason": "string explaining why this card perfectly matches their TOP spending categories and merchants",
+      "benefits": ["specific benefit tied to their spending", "benefit 2", "benefit 3"],
+      "estimatedSavings": "string with CALCULATED savings (e.g., ₹15,000-20,000/year based on their ₹X spending on category Y)",
+      "matchScore": number 1-100 (how well this card matches their spending pattern)
     }
   ],
-  "additionalInsights": ["insight 1 about optimization", "insight 2 about savings potential"]
+  "additionalInsights": [
+    "insight about their spending pattern",
+    "specific optimization suggestion based on top merchants",
+    "potential savings opportunity"
+  ]
 }
 
-Recommend 3-4 actual Indian credit cards based on their top spending categories. Be specific about benefits that match their spending. Calculate realistic savings based on typical cashback/rewards for those categories.`
+Recommend 3-4 actual Indian credit cards. Prioritize cards that give maximum rewards on their TOP categories and merchants. For each card, show HOW you calculated estimated savings.
+
+Example calculation format:
+"HDFC Swiggy Card gives 10% cashback on Swiggy. You spend ₹12,400/month on Swiggy, so savings = ₹1,240/month = ₹14,880/year"`
           },
           {
             role: 'user',

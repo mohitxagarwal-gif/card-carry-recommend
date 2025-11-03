@@ -31,9 +31,12 @@ import {
 
 interface Transaction {
   date: string;
-  description: string;
+  merchant: string;
   amount: number;
   category: string;
+  transactionType?: 'debit' | 'credit';
+  categoryConfidence?: number;
+  isRecurring?: boolean;
 }
 
 interface AnalysisData {
@@ -636,8 +639,8 @@ const Results = () => {
                         <td className="py-3 px-4">
                           <input
                             type="text"
-                            value={transaction.description}
-                            onChange={(e) => handleEditTransaction(index, 'description', e.target.value)}
+                            value={transaction.merchant}
+                            onChange={(e) => handleEditTransaction(index, 'merchant', e.target.value)}
                             className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
                           />
                         </td>

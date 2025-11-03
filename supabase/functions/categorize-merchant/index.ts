@@ -17,7 +17,14 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const { merchantName } = await req.json();
+    const body = await req.json();
+    const { 
+      merchantName, 
+      amount, 
+      transactionType, 
+      date, 
+      recentTransactions 
+    } = body;
     
     if (!merchantName || typeof merchantName !== 'string') {
       return new Response(
@@ -27,7 +34,12 @@ serve(async (req) => {
     }
 
     const normalizedName = merchantName.toLowerCase().trim();
-    console.log('[categorize-start]', { merchantName, normalizedName });
+    console.log('[categorize-start]', { 
+      merchantName, 
+      normalizedName,
+      amount,
+      transactionType
+    });
 
     // STEP 1: Exact match lookup
     const { data: exactMatch } = await supabaseClient
@@ -98,7 +110,32 @@ serve(async (req) => {
       );
     }
 
-    // STEP 3: AI-powered categorization for unknown merchants
+    // STEP 3: AI-powered categorization with enhanced context
+    console.log('[ai-categorize-needed]', { 
+      merchant: normalizedName,
+      amount,
+      transactionType,
+      hasContext: !!recentTransactions 
+    });
+    
+    // Build context string
+    let contextStr = '';
+    if (amount !== undefined) {
+      contextStr += `\nTransaction Amount: ₹${amount.toLocaleString('en-IN')}`;
+    }
+    if (transactionType) {
+      contextStr += `\nTransaction Type: ${transactionType} (${transactionType === 'debit' ? 'money spent' : 'money received'})`;
+    }
+    if (date) {
+      contextStr += `\nDate: ${date}`;
+    }
+    if (recentTransactions && recentTransactions.length > 0) {
+      contextStr += `\n\nRecent Transaction Context:`;
+      recentTransactions.forEach((t: any) => {
+        contextStr += `\n- ${t.merchant}: ₹${t.amount} (${t.category})`;
+      });
+    }
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
@@ -115,19 +152,42 @@ serve(async (req) => {
         messages: [{
           role: 'system',
           content: `You are a merchant categorization expert for Indian transactions. 
-Categorize the merchant and return ONLY a JSON object with this structure:
+
+Categories: Food & Dining, Shopping & E-commerce, Transportation, Utilities & Bills, Entertainment, Healthcare, Education, Groceries, Financial Services, Travel, Other
+
+IMPORTANT CONTEXT RULES:
+- Small amounts (₹50-500) at food merchants = likely snacks/quick meals
+- Medium amounts (₹500-2000) at food merchants = full meals/group orders
+- Very small amounts (₹10-100) at any merchant = likely micro-transactions, tips, or testing
+- Recurring merchants (appear in recent context) = subscriptions or regular purchases
+- Transaction type "credit" for refunds/cashback should still be categorized by merchant type
+- Amount context helps: ₹5000+ at Amazon could be electronics, ₹200-1000 is general shopping
+
+Return ONLY a JSON object:
 {
-  "category": "one of: groceries, food & dining, shopping & e-commerce, transportation, entertainment, financial services, utilities & bills, healthcare, education, travel, other",
-  "subcategory": "specific type (e.g., 'quick-commerce', 'food-delivery', 'ride-hailing')",
+  "category": "one of the categories above",
+  "subcategory": "more specific type (e.g., 'Quick Commerce' for Groceries, 'Restaurant Dining' for Food)",
   "merchant_normalized": "cleaned merchant name",
-  "confidence": 0.0-1.0,
+  "confidence": 0.0-1.0 (lower if merchant is generic or unclear),
   "reasoning": "brief explanation"
 }
+
+Common Indian merchants by category:
+- Food & Dining: Swiggy, Zomato, McDonald's, KFC, Domino's, Starbucks, local restaurants
+- Shopping & E-commerce: Amazon, Flipkart, Myntra, Ajio, Nykaa, Meesho
+- Groceries: Zepto, Blinkit (formerly Grofers), BigBasket, Swiggy Instamart, DMart
+- Transportation: Uber, Ola, Rapido, Bounce, BMTC, Delhi Metro, parking
+- Entertainment: Netflix, Prime Video, Hotstar, Spotify, BookMyShow, gaming
+- Utilities & Bills: Airtel, Jio, Vi (Vodafone Idea), BSNL, electricity boards, gas
+- Financial Services: PhonePe, Paytm, Google Pay, insurance, mutual funds
+- Healthcare: Apollo, Practo, 1mg, PharmEasy, hospitals, clinics
+- Education: Coursera, Udemy, Byju's, Unacademy, school fees
+- Travel: MakeMyTrip, Goibibo, IRCTC, OYO, hotels, airlines
 
 Use "other" category ONLY as absolute last resort when merchant is truly unidentifiable.`
         }, {
           role: 'user',
-          content: `Categorize this merchant: "${merchantName}"`
+          content: `Categorize this merchant: "${merchantName}"${contextStr}`
         }],
         temperature: 0.3
       })
