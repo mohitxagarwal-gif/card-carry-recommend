@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { trackEvent } from "@/lib/analytics";
 
 interface ContentFeed {
@@ -15,6 +16,8 @@ interface ContentFeed {
 }
 
 export const useContentFeed = () => {
+  const queryClient = useQueryClient();
+
   const { data: content = [], isLoading } = useQuery({
     queryKey: ["content-feed"],
     queryFn: async () => {
@@ -69,10 +72,66 @@ export const useContentFeed = () => {
     trackEvent("content_click", { itemId, title });
   };
 
+  const addContent = useMutation({
+    mutationFn: async (content: Omit<ContentFeed, "id" | "created_at">) => {
+      const { error } = await supabase
+        .from("content_feed")
+        .insert(content);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-feed"] });
+      toast.success("Article added successfully");
+    },
+    onError: () => {
+      toast.error("Failed to add article");
+    },
+  });
+
+  const updateContent = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<ContentFeed> }) => {
+      const { error } = await supabase
+        .from("content_feed")
+        .update(updates)
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-feed"] });
+      toast.success("Article updated successfully");
+    },
+    onError: () => {
+      toast.error("Failed to update article");
+    },
+  });
+
+  const deleteContent = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("content_feed")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-feed"] });
+      toast.success("Article deleted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to delete article");
+    },
+  });
+
   return {
     content,
     isLoading,
     isPersonalized,
     trackContentClick,
+    addContent: addContent.mutate,
+    updateContent: updateContent.mutate,
+    deleteContent: deleteContent.mutate,
   };
 };

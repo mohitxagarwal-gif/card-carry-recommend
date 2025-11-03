@@ -21,9 +21,11 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Applications from "./pages/Applications";
 import CardsPage from "./pages/CardsPage";
-import Admin from "./pages/Admin";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminCards from "./pages/AdminCards";
 import AdminCardForm from "./pages/AdminCardForm";
 import AdminBulkUpload from "./pages/AdminBulkUpload";
+import AdminContentList from "./pages/AdminContentList";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -125,7 +127,12 @@ const AppContent = () => {
       } />
       <Route path="/admin" element={
         <ProtectedRoute requireOnboarding={true}>
-          <Admin />
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/cards" element={
+        <ProtectedRoute requireOnboarding={true}>
+          <AdminCards />
         </ProtectedRoute>
       } />
       <Route path="/admin/cards/new" element={
@@ -136,6 +143,11 @@ const AppContent = () => {
       <Route path="/admin/cards/:id" element={
         <ProtectedRoute requireOnboarding={true}>
           <AdminCardForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/content" element={
+        <ProtectedRoute requireOnboarding={true}>
+          <AdminContentList />
         </ProtectedRoute>
       } />
       <Route path="/admin/bulk-upload" element={
