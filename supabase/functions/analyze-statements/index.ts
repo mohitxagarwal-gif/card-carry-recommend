@@ -10,7 +10,7 @@ const corsHeaders = {
 // Input validation schema
 const TransactionSchema = z.object({
   date: z.string().max(50),
-  description: z.string().max(500),
+  merchant: z.string().max(500),
   amount: z.number().positive(),
   category: z.string().max(100)
 });
@@ -61,7 +61,7 @@ Category Breakdown:
 ${Object.entries(ed.categoryTotals || {}).map(([cat, amt]: [string, any]) => `- ${cat}: ₹${amt.toLocaleString('en-IN')}`).join('\n')}
 
 Transactions:
-${ed.transactions.slice(0, 50).map((t: any) => `${t.date}: ${t.description} - ₹${t.amount.toLocaleString('en-IN')} (${t.category})`).join('\n')}
+${ed.transactions.slice(0, 50).map((t: any) => `${t.date}: ${t.merchant} - ₹${t.amount.toLocaleString('en-IN')} (${t.category})`).join('\n')}
 ${ed.transactions.length > 50 ? `... and ${ed.transactions.length - 50} more transactions` : ''}
       `.trim();
     }).join('\n\n---\n\n');

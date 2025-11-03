@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { formatINR } from "@/lib/pdfProcessor";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Transaction {
   date: string;
@@ -28,6 +30,7 @@ interface TransactionReviewProps {
 
 export function TransactionReview({ extractedData, onSubmit, onCancel }: TransactionReviewProps) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set([extractedData[0]?.fileName]));
+  const [localData, setLocalData] = useState(extractedData);
 
   const toggleFile = (fileName: string) => {
     const newExpanded = new Set(expandedFiles);
@@ -39,16 +42,62 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
     setExpandedFiles(newExpanded);
   };
 
-  const totalTransactions = extractedData.reduce((sum, data) => sum + data.transactions.length, 0);
-  const totalAmount = extractedData.reduce((sum, data) => sum + data.totalAmount, 0);
+  const handleCategoryChange = async (fileIndex: number, txIndex: number, newCategory: string) => {
+    const updatedData = [...localData];
+    const transaction = updatedData[fileIndex].transactions[txIndex];
+    const oldCategory = transaction.category;
+    
+    // Update local state
+    updatedData[fileIndex].transactions[txIndex].category = newCategory;
+    
+    // Recalculate category totals
+    const categoryTotals: Record<string, number> = {};
+    updatedData[fileIndex].transactions.forEach(tx => {
+      categoryTotals[tx.category] = (categoryTotals[tx.category] || 0) + tx.amount;
+    });
+    updatedData[fileIndex].categoryTotals = categoryTotals;
+    
+    setLocalData(updatedData);
+
+    // Submit feedback to improve merchant intelligence
+    try {
+      await supabase.functions.invoke('update-merchant-category', {
+        body: {
+          merchant: transaction.merchant,
+          oldCategory,
+          newCategory,
+          confidence: 1.0
+        }
+      });
+    } catch (error) {
+      console.error('Failed to update merchant category:', error);
+    }
+  };
+
+  const totalTransactions = localData.reduce((sum, data) => sum + data.transactions.length, 0);
+  const totalAmount = localData.reduce((sum, data) => sum + data.totalAmount, 0);
 
   // Aggregate category totals across all statements
   const aggregatedCategories: Record<string, number> = {};
-  extractedData.forEach(data => {
+  localData.forEach(data => {
     Object.entries(data.categoryTotals).forEach(([category, amount]) => {
       aggregatedCategories[category] = (aggregatedCategories[category] || 0) + amount;
     });
   });
+
+  const availableCategories = [
+    'groceries',
+    'food & dining',
+    'shopping & e-commerce',
+    'transportation',
+    'entertainment',
+    'utilities & bills',
+    'healthcare',
+    'education',
+    'travel',
+    'financial services',
+    'other'
+  ];
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
@@ -123,8 +172,8 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
         <h3 className="text-lg font-heading font-bold text-foreground">
           transactions by statement
         </h3>
-        {extractedData.map((data, index) => (
-          <Card key={index} className="border-border overflow-hidden">
+        {localData.map((data, fileIndex) => (
+          <Card key={fileIndex} className="border-border overflow-hidden">
             {/* File Header */}
             <button
               onClick={() => toggleFile(data.fileName)}
@@ -164,9 +213,23 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
                           <td className="p-3 text-xs font-sans text-foreground">{tx.date}</td>
                           <td className="p-3 text-xs font-sans text-foreground">{tx.merchant}</td>
                           <td className="p-3">
-                            <Badge className={`text-xs ${getCategoryColor(tx.category)}`}>
-                              {tx.category}
-                            </Badge>
+                            <Select
+                              value={tx.category}
+                              onValueChange={(newCategory) => handleCategoryChange(fileIndex, txIndex, newCategory)}
+                            >
+                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent focus:ring-0">
+                                <Badge className={`text-xs ${getCategoryColor(tx.category)}`}>
+                                  <SelectValue />
+                                </Badge>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableCategories.map(cat => (
+                                  <SelectItem key={cat} value={cat} className="text-xs">
+                                    {cat}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="p-3 text-xs font-sans text-foreground text-right font-medium">
                             {formatINR(tx.amount)}

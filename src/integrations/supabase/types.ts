@@ -266,6 +266,63 @@ export type Database = {
         }
         Relationships: []
       }
+      merchant_intelligence: {
+        Row: {
+          aliases: string[] | null
+          category: string
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          keywords: string[] | null
+          last_seen_at: string | null
+          last_verified_at: string | null
+          merchant_canonical: string | null
+          merchant_normalized: string
+          merchant_raw: string
+          merchant_type: string | null
+          subcategory: string | null
+          total_amount: number | null
+          transaction_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          aliases?: string[] | null
+          category: string
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          keywords?: string[] | null
+          last_seen_at?: string | null
+          last_verified_at?: string | null
+          merchant_canonical?: string | null
+          merchant_normalized: string
+          merchant_raw: string
+          merchant_type?: string | null
+          subcategory?: string | null
+          total_amount?: number | null
+          transaction_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          aliases?: string[] | null
+          category?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          keywords?: string[] | null
+          last_seen_at?: string | null
+          last_verified_at?: string | null
+          merchant_canonical?: string | null
+          merchant_normalized?: string
+          merchant_raw?: string
+          merchant_type?: string | null
+          subcategory?: string | null
+          total_amount?: number | null
+          transaction_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       phone_verifications: {
         Row: {
           created_at: string | null

@@ -349,19 +349,56 @@ Analyze the entire text carefully and extract every transaction with date, clean
 
     console.log(`[extraction-success] ${uniqueTransactions.length} unique transactions in ${processingTime}ms`);
 
+    // PHASE 4: Re-categorize each transaction using merchant intelligence
+    console.log('[categorization-start]', { totalTransactions: uniqueTransactions.length });
+    const enhancedTransactions = await Promise.all(
+      uniqueTransactions.map(async (txn: any) => {
+        try {
+          const catResponse = await supabase.functions.invoke('categorize-merchant', {
+            body: { merchantName: txn.merchant }
+          });
+
+          if (catResponse.data && !catResponse.error) {
+            return {
+              ...txn,
+              category: catResponse.data.category,
+              subcategory: catResponse.data.subcategory,
+              merchant_normalized: catResponse.data.merchant_normalized,
+              categorization_confidence: catResponse.data.confidence,
+              categorization_source: catResponse.data.source
+            };
+          }
+        } catch (e) {
+          console.error('[categorization-failed]', { merchant: txn.merchant, error: e });
+        }
+        
+        // Fallback to original categorization
+        return txn;
+      })
+    );
+    console.log('[categorization-complete]', { 
+      enhanced: enhancedTransactions.length,
+      dbHits: enhancedTransactions.filter((t: any) => t.categorization_source?.includes('database')).length,
+      aiHits: enhancedTransactions.filter((t: any) => t.categorization_source === 'ai-powered').length
+    });
+
     return new Response(
       JSON.stringify({ 
         success: true,
-        transactions: uniqueTransactions,
+        transactions: enhancedTransactions,
         metadata: {
           ...extracted.metadata,
           detectedFormat,
-          processingTimeMs: processingTime,
+          processingTimeMs: Date.now() - startTime,
           model: 'google/gemini-2.5-flash',
           extractedAt: new Date().toISOString(),
           duplicatesRemoved,
           totalPagesAnalyzed: 1,
-          textLengthBytes: pdfText.length
+          textLengthBytes: pdfText.length,
+          categorizationStats: {
+            dbHits: enhancedTransactions.filter((t: any) => t.categorization_source?.includes('database')).length,
+            aiHits: enhancedTransactions.filter((t: any) => t.categorization_source === 'ai-powered').length
+          }
         }
       }),
       { 

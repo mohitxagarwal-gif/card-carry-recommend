@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.generate-recommendations]
 verify_jwt = true
+
+[functions.categorize-merchant]
+verify_jwt = false
+
+[functions.update-merchant-category]
+verify_jwt = true
