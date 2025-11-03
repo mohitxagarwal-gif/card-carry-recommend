@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Upload as UploadIcon, FileText, Loader2, LogOut, Lock, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PasswordInputModal } from "@/components/PasswordInputModal";
 import { TransactionReview, ExtractedData } from "@/components/TransactionReview";
 import { Progress } from "@/components/ui/progress";
@@ -30,6 +31,8 @@ const Upload = () => {
   const [overallProgress, setOverallProgress] = useState(0);
   const [user, setUser] = useState<any>(null);
   const [mode, setMode] = useState<'bank' | 'credit' | 'mixed' | null>(null);
+  const [hasRecentAnalysis, setHasRecentAnalysis] = useState(false);
+  const [recentAnalysisId, setRecentAnalysisId] = useState<string | null>(null);
   useEffect(() => {
     const initUser = async () => {
       const {
@@ -77,6 +80,32 @@ const Upload = () => {
       }
     }
   }, [location.search, user]);
+
+  useEffect(() => {
+    const checkRecentAnalysis = async () => {
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('spending_analyses')
+        .select('id, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (data) {
+        const analysisDate = new Date(data.created_at);
+        const daysSince = (Date.now() - analysisDate.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (daysSince < 7) {
+          setHasRecentAnalysis(true);
+          setRecentAnalysisId(data.id);
+        }
+      }
+    };
+    
+    checkRecentAnalysis();
+  }, [user]);
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
@@ -299,7 +328,7 @@ const Upload = () => {
         return;
       }
       toast.success('Analysis complete!');
-      navigate('/results', {
+      navigate(`/results?analysisId=${data.analysis.id}`, {
         state: {
           analysisId: data.analysis.id
         }
@@ -414,6 +443,24 @@ const Upload = () => {
               {!mode && 'Upload up to 3 months of PDF bank or credit card statements'}
             </p>
           </div>
+
+          {/* Recent Analysis Alert */}
+          {hasRecentAnalysis && (
+            <Alert className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                You have a recent analysis. 
+                <Button 
+                  variant="link" 
+                  className="px-2 h-auto py-0" 
+                  onClick={() => navigate(`/results?analysisId=${recentAnalysisId}`)}
+                >
+                  Continue where you left off
+                </Button>
+                or upload new statements below.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Card className="p-8 md:p-12 border-border">
             <div className="space-y-8">

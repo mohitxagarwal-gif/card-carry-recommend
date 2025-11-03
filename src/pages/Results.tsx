@@ -83,17 +83,51 @@ const Results = () => {
 
   useEffect(() => {
     const fetchAnalysis = async () => {
-      if (!analysisId) {
-        toast.error("No analysis found");
-        navigate("/upload");
-        return;
-      }
-
       try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate("/auth");
+          return;
+        }
+
+        // Priority order: URL state → query param → localStorage → latest from DB
+        let currentAnalysisId = analysisId;
+        
+        if (!currentAnalysisId) {
+          const params = new URLSearchParams(location.search);
+          currentAnalysisId = params.get('analysisId');
+        }
+        
+        if (!currentAnalysisId) {
+          currentAnalysisId = localStorage.getItem(`last_analysis_${user.id}`);
+        }
+        
+        if (!currentAnalysisId) {
+          // Fetch the most recent analysis for this user
+          const { data: latestAnalysis } = await supabase
+            .from('spending_analyses')
+            .select('id')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          currentAnalysisId = latestAnalysis?.id;
+        }
+        
+        if (!currentAnalysisId) {
+          toast.error("No analysis found. Please upload statements first.");
+          navigate("/upload");
+          return;
+        }
+        
+        // Save to localStorage for future use
+        localStorage.setItem(`last_analysis_${user.id}`, currentAnalysisId);
+
         const { data, error } = await supabase
           .from('spending_analyses')
           .select('*')
-          .eq('id', analysisId)
+          .eq('id', currentAnalysisId)
           .single();
 
         if (error) throw error;
@@ -103,17 +137,14 @@ const Results = () => {
         setEditedTransactions(analysisData.transactions || []);
         
         // Fetch user profile for income info
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('income_band_inr')
-            .eq('id', user.id)
-            .single();
-          
-          if (profile) {
-            setUserIncome(profile.income_band_inr);
-          }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('income_band_inr')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setUserIncome(profile.income_band_inr);
         }
       } catch (error: any) {
         console.error('Error fetching analysis:', error);
@@ -125,7 +156,7 @@ const Results = () => {
     };
 
     fetchAnalysis();
-  }, [analysisId, navigate]);
+  }, [analysisId, navigate, location.search]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

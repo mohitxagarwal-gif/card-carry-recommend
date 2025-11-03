@@ -7,7 +7,7 @@ import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { useShortlist } from "@/hooks/useShortlist";
 import { useApplications } from "@/hooks/useApplications";
 import { useUserCards } from "@/hooks/useUserCards";
-import { Loader2, TrendingUp, Heart, FileText, Upload } from "lucide-react";
+import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
@@ -15,6 +15,8 @@ import { FeeWaiverGoalsModule } from "@/components/dashboard/FeeWaiverGoalsModul
 import { RemindersModule } from "@/components/dashboard/RemindersModule";
 import { ContentFeedModule } from "@/components/dashboard/ContentFeedModule";
 import { generateNextSteps } from "@/lib/nextStepsGenerator";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -22,10 +24,33 @@ const Dashboard = () => {
   const { shortlist, isLoading: shortlistLoading } = useShortlist();
   const { applications, isLoading: appsLoading } = useApplications();
   const { userCards, isLoading: cardsLoading } = useUserCards();
+  const [incompleteAnalysis, setIncompleteAnalysis] = useState<any>(null);
 
   useEffect(() => {
     trackEvent("dash_view");
   }, []);
+
+  useEffect(() => {
+    const checkIncompleteAnalysis = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: latestAnalysis } = await supabase
+        .from('spending_analyses')
+        .select('id, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (latestAnalysis && (!latestSnapshot || 
+          new Date(latestAnalysis.created_at) > new Date(latestSnapshot.created_at))) {
+        setIncompleteAnalysis(latestAnalysis);
+      }
+    };
+    
+    checkIncompleteAnalysis();
+  }, [latestSnapshot]);
 
   if (snapshotLoading || shortlistLoading || appsLoading || cardsLoading) {
     return (
@@ -64,6 +89,29 @@ const Dashboard = () => {
           </Card>
         ) : (
           <div className="grid gap-6">
+            {/* Incomplete Analysis Alert */}
+            {incompleteAnalysis && (
+              <Card className="border-amber-500/50 bg-amber-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                    incomplete analysis found
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    You have an analysis from {new Date(incompleteAnalysis.created_at).toLocaleDateString()} 
+                    {' '}that hasn't been completed yet. Continue to review transactions and generate recommendations.
+                  </p>
+                  <Button 
+                    onClick={() => navigate(`/results?analysisId=${incompleteAnalysis.id}`)}
+                  >
+                    Continue Analysis
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Next Steps */}
             <Card>
               <CardHeader>

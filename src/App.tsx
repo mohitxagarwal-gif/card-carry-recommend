@@ -10,6 +10,7 @@ import { processQueue } from "@/lib/offlineQueue";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/analytics";
+import { cleanupStaleAnalyses } from "@/lib/sessionManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OnboardingBasics from "./pages/OnboardingBasics";
@@ -65,6 +66,17 @@ const AppContent = () => {
       });
     }
   }, [isOnline]);
+
+  useEffect(() => {
+    const initSession = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await cleanupStaleAnalyses(user.id);
+      }
+    };
+    
+    initSession();
+  }, []);
 
   return (
     <Routes>
