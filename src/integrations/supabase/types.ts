@@ -428,6 +428,8 @@ export type Database = {
         Row: {
           analysis_data: Json
           created_at: string
+          extraction_metadata: Json | null
+          extraction_method: string | null
           id: string
           statement_paths: string[]
           updated_at: string
@@ -436,6 +438,8 @@ export type Database = {
         Insert: {
           analysis_data: Json
           created_at?: string
+          extraction_metadata?: Json | null
+          extraction_method?: string | null
           id?: string
           statement_paths: string[]
           updated_at?: string
@@ -444,6 +448,8 @@ export type Database = {
         Update: {
           analysis_data?: Json
           created_at?: string
+          extraction_metadata?: Json | null
+          extraction_method?: string | null
           id?: string
           statement_paths?: string[]
           updated_at?: string

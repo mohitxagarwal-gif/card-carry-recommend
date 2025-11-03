@@ -88,121 +88,124 @@ export async function decryptAndExtractPDF(
   }
 }
 
-export function extractTransactions(text: string, fileName: string): Transaction[] {
-  const transactions: Transaction[] = [];
-  const lines = text.split('\n').filter(line => line.trim());
-
-  // Common date patterns
-  const datePatterns = [
-    /(\d{1,2}\/\d{1,2}\/\d{2,4})/g, // MM/DD/YYYY or DD/MM/YYYY
-    /(\d{1,2}-\d{1,2}-\d{2,4})/g,   // MM-DD-YYYY or DD-MM-YYYY
-    /(\d{4}-\d{1,2}-\d{1,2})/g,     // YYYY-MM-DD
-  ];
-
-  // Amount pattern (with optional currency symbol)
-  const amountPattern = /[\$]?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
-
-  // Indian merchant keywords for categorization
-  const categories: Record<string, string[]> = {
-    'Food & Dining': [
-      'swiggy', 'zomato', 'uber eats', 'dominos', 'pizza hut', 'mcdonald', 'kfc', 'subway',
-      'cafe coffee day', 'starbucks', 'burger king', 'haldiram', 'barbeque nation',
-      'restaurant', 'cafe', 'dhaba', 'biryani', 'thali'
-    ],
-    'Shopping & E-commerce': [
-      'amazon', 'flipkart', 'myntra', 'ajio', 'meesho', 'nykaa', 'snapdeal',
-      'reliance', 'big bazaar', 'dmart', 'more megastore', 'hypercity', 'star bazaar',
-      'lifestyle', 'westside', 'pantaloons', 'max fashion', 'mall', 'store', 'shop'
-    ],
-    'Transportation': [
-      'uber', 'ola', 'rapido', 'metro', 'irctc', 'redbus', 'goibibo', 'makemytrip',
-      'indian oil', 'bharat petroleum', 'hp petrol', 'shell', 'essar',
-      'fastag', 'toll', 'parking'
-    ],
-    'Utilities & Bills': [
-      'airtel', 'jio', 'vodafone', 'idea', 'bsnl', 'tata sky', 'dish tv',
-      'electricity', 'water', 'gas', 'lpg', 'cylinder',
-      'broadband', 'wifi', 'internet', 'postpaid', 'prepaid'
-    ],
-    'Entertainment & Subscriptions': [
-      'netflix', 'amazon prime', 'hotstar', 'disney', 'zee5', 'sonyliv', 'voot',
-      'spotify', 'gaana', 'wynk', 'jiosaavn',
-      'bookmyshow', 'paytm insider', 'pvr', 'inox', 'movie', 'cinema'
-    ],
-    'Healthcare': [
-      'apollo', 'fortis', 'max hospital', 'manipal', 'medanta',
-      'pharmacy', 'medical', 'doctor', 'clinic', 'diagnostic',
-      'apollo pharmacy', 'medplus', 'netmeds', '1mg', 'pharmeasy'
-    ],
-    'Education': [
-      'byju', 'unacademy', 'vedantu', 'upgrad', 'coursera', 'udemy',
-      'school', 'college', 'university', 'tuition', 'coaching'
-    ],
-    'Groceries': [
-      'bigbasket', 'grofers', 'blinkit', 'dunzo', 'milk basket', 'jiomart',
-      'dmart', 'reliance fresh', 'more', 'spencer', 'nature basket',
-      'grocery', 'supermarket', 'kirana'
-    ],
-    'Financial Services': [
-      'sbi', 'hdfc', 'icici', 'axis', 'kotak', 'paytm', 'phonepe', 'google pay',
-      'insurance', 'lic', 'policy', 'mutual fund', 'sip', 'investment'
-    ],
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Try to find date
-    let date = '';
-    for (const pattern of datePatterns) {
-      const dateMatch = line.match(pattern);
-      if (dateMatch) {
-        date = dateMatch[0];
-        break;
-      }
-    }
-
-    if (!date) continue;
-
-    // Find amounts in the line
-    const amounts = Array.from(line.matchAll(amountPattern))
-      .map(match => parseFloat(match[1].replace(/,/g, '')))
-      .filter(amount => amount > 0);
-
-    if (amounts.length === 0) continue;
-
-    // Extract merchant name (text between date and amount)
-    const dateIndex = line.indexOf(date);
-    const amountIndex = line.lastIndexOf('$');
-    let merchant = line.substring(dateIndex + date.length, amountIndex > dateIndex ? amountIndex : line.length).trim();
-    
-    // Clean up merchant name
-    merchant = merchant.replace(/\s+/g, ' ').substring(0, 50);
-    if (!merchant) merchant = 'Unknown Merchant';
-
-    // Categorize based on merchant name
-    let category = 'Other';
-    const merchantLower = merchant.toLowerCase();
-    for (const [cat, keywords] of Object.entries(categories)) {
-      if (keywords.some(keyword => merchantLower.includes(keyword))) {
-        category = cat;
-        break;
-      }
-    }
-
-    // Use the largest amount found (likely the transaction amount)
-    const amount = Math.max(...amounts);
-
-    transactions.push({
-      date,
-      merchant,
-      amount,
-      category,
-    });
-  }
-
-  return transactions;
-}
+// DEPRECATED: This regex-based extraction has been replaced by AI-powered extraction
+// via the extract-transactions edge function. Keeping for reference/emergency fallback.
+// 
+// export function extractTransactions(text: string, fileName: string): Transaction[] {
+//   const transactions: Transaction[] = [];
+//   const lines = text.split('\n').filter(line => line.trim());
+//
+//   // Common date patterns
+//   const datePatterns = [
+//     /(\d{1,2}\/\d{1,2}\/\d{2,4})/g, // MM/DD/YYYY or DD/MM/YYYY
+//     /(\d{1,2}-\d{1,2}-\d{2,4})/g,   // MM-DD-YYYY or DD-MM-YYYY
+//     /(\d{4}-\d{1,2}-\d{1,2})/g,     // YYYY-MM-DD
+//   ];
+//
+//   // Amount pattern (with optional currency symbol)
+//   const amountPattern = /[\$]?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
+//
+//   // Indian merchant keywords for categorization
+//   const categories: Record<string, string[]> = {
+//     'Food & Dining': [
+//       'swiggy', 'zomato', 'uber eats', 'dominos', 'pizza hut', 'mcdonald', 'kfc', 'subway',
+//       'cafe coffee day', 'starbucks', 'burger king', 'haldiram', 'barbeque nation',
+//       'restaurant', 'cafe', 'dhaba', 'biryani', 'thali'
+//     ],
+//     'Shopping & E-commerce': [
+//       'amazon', 'flipkart', 'myntra', 'ajio', 'meesho', 'nykaa', 'snapdeal',
+//       'reliance', 'big bazaar', 'dmart', 'more megastore', 'hypercity', 'star bazaar',
+//       'lifestyle', 'westside', 'pantaloons', 'max fashion', 'mall', 'store', 'shop'
+//     ],
+//     'Transportation': [
+//       'uber', 'ola', 'rapido', 'metro', 'irctc', 'redbus', 'goibibo', 'makemytrip',
+//       'indian oil', 'bharat petroleum', 'hp petrol', 'shell', 'essar',
+//       'fastag', 'toll', 'parking'
+//     ],
+//     'Utilities & Bills': [
+//       'airtel', 'jio', 'vodafone', 'idea', 'bsnl', 'tata sky', 'dish tv',
+//       'electricity', 'water', 'gas', 'lpg', 'cylinder',
+//       'broadband', 'wifi', 'internet', 'postpaid', 'prepaid'
+//     ],
+//     'Entertainment & Subscriptions': [
+//       'netflix', 'amazon prime', 'hotstar', 'disney', 'zee5', 'sonyliv', 'voot',
+//       'spotify', 'gaana', 'wynk', 'jiosaavn',
+//       'bookmyshow', 'paytm insider', 'pvr', 'inox', 'movie', 'cinema'
+//     ],
+//     'Healthcare': [
+//       'apollo', 'fortis', 'max hospital', 'manipal', 'medanta',
+//       'pharmacy', 'medical', 'doctor', 'clinic', 'diagnostic',
+//       'apollo pharmacy', 'medplus', 'netmeds', '1mg', 'pharmeasy'
+//     ],
+//     'Education': [
+//       'byju', 'unacademy', 'vedantu', 'upgrad', 'coursera', 'udemy',
+//       'school', 'college', 'university', 'tuition', 'coaching'
+//     ],
+//     'Groceries': [
+//       'bigbasket', 'grofers', 'blinkit', 'dunzo', 'milk basket', 'jiomart',
+//       'dmart', 'reliance fresh', 'more', 'spencer', 'nature basket',
+//       'grocery', 'supermarket', 'kirana'
+//     ],
+//     'Financial Services': [
+//       'sbi', 'hdfc', 'icici', 'axis', 'kotak', 'paytm', 'phonepe', 'google pay',
+//       'insurance', 'lic', 'policy', 'mutual fund', 'sip', 'investment'
+//     ],
+//   };
+//
+//   for (let i = 0; i < lines.length; i++) {
+//     const line = lines[i];
+//     
+//     // Try to find date
+//     let date = '';
+//     for (const pattern of datePatterns) {
+//       const dateMatch = line.match(pattern);
+//       if (dateMatch) {
+//         date = dateMatch[0];
+//         break;
+//       }
+//     }
+//
+//     if (!date) continue;
+//
+//     // Find amounts in the line
+//     const amounts = Array.from(line.matchAll(amountPattern))
+//       .map(match => parseFloat(match[1].replace(/,/g, '')))
+//       .filter(amount => amount > 0);
+//
+//     if (amounts.length === 0) continue;
+//
+//     // Extract merchant name (text between date and amount)
+//     const dateIndex = line.indexOf(date);
+//     const amountIndex = line.lastIndexOf('$');
+//     let merchant = line.substring(dateIndex + date.length, amountIndex > dateIndex ? amountIndex : line.length).trim();
+//     
+//     // Clean up merchant name
+//     merchant = merchant.replace(/\s+/g, ' ').substring(0, 50);
+//     if (!merchant) merchant = 'Unknown Merchant';
+//
+//     // Categorize based on merchant name
+//     let category = 'Other';
+//     const merchantLower = merchant.toLowerCase();
+//     for (const [cat, keywords] of Object.entries(categories)) {
+//       if (keywords.some(keyword => merchantLower.includes(keyword))) {
+//         category = cat;
+//         break;
+//       }
+//     }
+//
+//     // Use the largest amount found (likely the transaction amount)
+//     const amount = Math.max(...amounts);
+//
+//     transactions.push({
+//       date,
+//       merchant,
+//       amount,
+//       category,
+//     });
+//   }
+//
+//   return transactions;
+// }
 
 export function analyzeTransactions(transactions: Transaction[]) {
   const totalAmount = transactions.reduce((sum, tx) => sum + tx.amount, 0);

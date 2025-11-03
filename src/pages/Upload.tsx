@@ -11,7 +11,7 @@ import { PasswordInputModal } from "@/components/PasswordInputModal";
 import { TransactionReview, ExtractedData } from "@/components/TransactionReview";
 import { Progress } from "@/components/ui/progress";
 import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
-import { checkPDFEncryption, decryptAndExtractPDF, extractTransactions, analyzeTransactions } from "@/lib/pdfProcessor";
+import { checkPDFEncryption, decryptAndExtractPDF, analyzeTransactions } from "@/lib/pdfProcessor";
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
 interface FileWithStatus {
   file: File;
@@ -206,86 +206,167 @@ const Upload = () => {
     const allExtractedData: ExtractedData[] = [];
     let completed = 0;
     const total = filesWithStatus.length;
-    for (const fileWithStatus of filesWithStatus) {
-      const {
-        file,
-        status
-      } = fileWithStatus;
 
-      // Skip files that are already in error state
+    const ERROR_HELP_TEXT: Record<string, string> = {
+      'No transactions found': 'Make sure the PDF is a valid bank or credit card statement with a transaction table.',
+      'Rate limit exceeded': 'Too many uploads at once. Please wait 30 seconds and try again.',
+      'Failed to read PDF': 'The PDF may be corrupted or password-protected. Try re-downloading it from your bank.',
+      'AI service payment required': 'Our analysis service is temporarily unavailable. Please try again later.',
+    };
+
+    for (const fileWithStatus of filesWithStatus) {
+      const { file, status } = fileWithStatus;
+
       if (status === 'error') {
         completed++;
         continue;
       }
+
       const password = passwords.get(file.name);
       const isEncrypted = status === 'encrypted';
-      setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
-        ...f,
-        status: isEncrypted ? 'decrypting' as FileStatus : 'processing' as FileStatus,
-        progress: 0
-      } : f));
+
+      setFilesWithStatus(prev => prev.map(f => 
+        f.file.name === file.name ? {
+          ...f,
+          status: isEncrypted ? 'decrypting' as FileStatus : 'processing' as FileStatus,
+          progress: 0
+        } : f
+      ));
+
+      // Step 1: Extract PDF text (30% progress)
       const result = await decryptAndExtractPDF(file, password, progress => {
-        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
-          ...f,
-          progress
-        } : f));
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? { ...f, progress: progress * 0.3 } : f
+        ));
       });
+
       if (!result.success) {
-        const errorMessage = result.error || 'Unknown error';
-        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
-          ...f,
-          status: 'error' as FileStatus,
-          error: errorMessage
-        } : f));
-        toast.error(`Failed to process ${file.name}: ${errorMessage}`, {
-          description: "Check the password and try again, or re-upload the file.",
-          duration: 5000
+        const errorMessage = result.error || 'Failed to read PDF';
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? {
+            ...f,
+            status: 'error' as FileStatus,
+            error: errorMessage
+          } : f
+        ));
+        toast.error(`${file.name}: ${errorMessage}`, {
+          description: ERROR_HELP_TEXT[errorMessage] || "Contact support if this issue persists.",
+          duration: 6000
         });
         completed++;
         continue;
       }
-      setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
-        ...f,
-        status: 'processing' as FileStatus
-      } : f));
+
+      // Step 2: AI-powered extraction (40% → 100% progress)
+      setFilesWithStatus(prev => prev.map(f => 
+        f.file.name === file.name ? {
+          ...f,
+          status: 'processing' as FileStatus,
+          progress: 40
+        } : f
+      ));
+
       try {
-        // Extract transactions
-        const transactions = extractTransactions(result.text, file.name);
-        if (transactions.length === 0) {
-          throw new Error('No transactions found in statement');
+        const extractionStart = Date.now();
+        const { data: extractData, error: extractError } = await supabase.functions.invoke(
+          'extract-transactions',
+          {
+            body: {
+              pdfText: result.text,
+              fileName: file.name,
+              statementType: mode === 'bank' ? 'bank' : mode === 'credit' ? 'credit_card' : 'unknown'
+            }
+          }
+        );
+
+        if (extractError) throw extractError;
+        if (!extractData.success) {
+          throw new Error(extractData.error || 'Extraction failed');
         }
-        const analysis = analyzeTransactions(transactions);
+
+        const { transactions, metadata } = extractData;
+
+        if (!transactions || transactions.length === 0) {
+          throw new Error('No transactions found. The statement may be empty or in an unsupported format.');
+        }
+
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? { ...f, progress: 70 } : f
+        ));
+
+        // Calculate totals for UI
+        const totalAmount = transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+        const categoryTotals: Record<string, number> = {};
+        transactions.forEach((t: any) => {
+          categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+        });
+
         allExtractedData.push({
           fileName: file.name,
           transactions,
-          ...analysis
+          totalAmount,
+          dateRange: {
+            start: metadata.dateRangeStart,
+            end: metadata.dateRangeEnd
+          },
+          categoryTotals
         });
-        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
-          ...f,
-          status: 'success' as FileStatus,
-          progress: 100
-        } : f));
+
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? {
+            ...f,
+            status: 'success' as FileStatus,
+            progress: 100
+          } : f
+        ));
+
+        const processingTime = Date.now() - extractionStart;
+        console.log('[extraction-metrics]', {
+          fileName: file.name,
+          method: 'ai_powered',
+          transactionsFound: transactions.length,
+          processingTimeMs: processingTime,
+          success: true
+        });
+
+        toast.success(`✓ ${file.name}: ${transactions.length} transactions extracted`);
+
       } catch (error: any) {
         const errorMessage = error.message || 'Failed to extract transactions';
-        setFilesWithStatus(prev => prev.map(f => f.file.name === file.name ? {
-          ...f,
-          status: 'error' as FileStatus,
-          error: errorMessage
-        } : f));
-        toast.error(`Failed to analyze ${file.name}: ${errorMessage}`, {
-          description: "The statement format may not be supported.",
-          duration: 5000
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? {
+            ...f,
+            status: 'error' as FileStatus,
+            error: errorMessage
+          } : f
+        ));
+
+        console.error('[extraction-error]', {
+          fileName: file.name,
+          error: errorMessage,
+          method: 'ai_powered'
+        });
+
+        toast.error(`${file.name}: ${errorMessage}`, {
+          description: ERROR_HELP_TEXT[errorMessage] || "Try uploading a clearer statement or contact support if the issue persists.",
+          duration: 6000
         });
       }
+
       completed++;
-      setOverallProgress(completed / total * 100);
+      setOverallProgress((completed / total) * 100);
     }
+
     if (allExtractedData.length > 0) {
       setExtractedData(allExtractedData);
       setShowReview(true);
-      toast.success(`Successfully processed ${allExtractedData.length} of ${total} statements!`);
+      toast.success(`Successfully processed ${allExtractedData.length} of ${total} statements!`, {
+        description: `${allExtractedData.reduce((sum, d) => sum + d.transactions.length, 0)} transactions extracted`
+      });
     } else {
-      toast.error('Failed to process any statements. Please check your files and try again.');
+      toast.error('Failed to process any statements', {
+        description: 'Please check that your files are valid bank/credit card statements and try again.'
+      });
     }
   };
   const handleSubmitForAnalysis = async () => {
@@ -370,9 +451,9 @@ const Upload = () => {
       case 'encrypted':
         return 'password required';
       case 'decrypting':
-        return 'decrypting...';
+        return 'decrypting PDF...';
       case 'processing':
-        return 'extracting data...';
+        return 'extracting with AI...';
       case 'success':
         return 'processed';
       case 'error':

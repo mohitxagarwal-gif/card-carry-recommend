@@ -174,6 +174,13 @@ Focus on accurate categorization. Use these standard categories when possible:
         analysis_data: {
           ...analysisData,
           transactions: allTransactions
+        },
+        extraction_method: 'ai_powered',
+        extraction_metadata: {
+          model: 'google/gemini-2.5-flash',
+          totalFiles: extractedData.length,
+          totalTransactions: allTransactions.length,
+          extractedAt: new Date().toISOString()
         }
       })
       .select()
