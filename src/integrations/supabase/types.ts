@@ -270,7 +270,9 @@ export type Database = {
         Row: {
           created_at: string | null
           expires_at: string
+          failed_attempts: number | null
           id: string
+          locked_until: string | null
           otp_code: string
           phone_e164: string
           user_id: string
@@ -280,7 +282,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           expires_at: string
+          failed_attempts?: number | null
           id?: string
+          locked_until?: string | null
           otp_code: string
           phone_e164: string
           user_id: string
@@ -290,7 +294,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           expires_at?: string
+          failed_attempts?: number | null
           id?: string
+          locked_until?: string | null
           otp_code?: string
           phone_e164?: string
           user_id?: string

@@ -1,10 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const TransactionSchema = z.object({
+  date: z.string().max(50),
+  description: z.string().max(500),
+  amount: z.number().positive(),
+  category: z.string().max(100)
+});
+
+const ExtractedDataSchema = z.object({
+  extractedData: z.array(z.object({
+    fileName: z.string().min(1).max(255),
+    transactions: z.array(TransactionSchema).min(1).max(5000),
+    totalAmount: z.number().positive(),
+    categoryTotals: z.record(z.string(), z.number())
+  })).min(1).max(3)
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -27,7 +45,8 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { extractedData } = await req.json();
+    const body = await req.json();
+    const { extractedData } = ExtractedDataSchema.parse(body);
     console.log('Analyzing statements for user:', user.id, 'Statements:', extractedData.length);
 
     // Format the extracted transaction data for AI analysis
@@ -172,15 +191,14 @@ Focus on accurate categorization. Use these standard categories when possible:
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] Error in analyze-statements:`, error);
     
-    // Return generic error message to client
+    // Return user-friendly error message (no correlation ID exposed)
     return new Response(
       JSON.stringify({ 
-        error: 'Unable to analyze statements. Please try again.',
-        correlationId 
+        error: error.message || 'Unable to analyze statements. Please try again.'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

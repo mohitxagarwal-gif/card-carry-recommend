@@ -61,19 +61,39 @@ serve(async (req) => {
       throw new Error("Invalid or expired OTP");
     }
 
+    // Check if account is locked due to too many failed attempts
+    if (verification.locked_until && new Date(verification.locked_until) > new Date()) {
+      throw new Error("Too many failed attempts. Please try again in 15 minutes.");
+    }
+
     // Compare submitted OTP with hashed OTP
     const hashedInput = await hashOtp(otp_code);
     const isValidOtp = hashedInput === verification.otp_code;
     
     if (!isValidOtp) {
-      throw new Error("Invalid or expired OTP");
+      // Increment failed attempts and lock if threshold reached
+      const newFailedAttempts = (verification.failed_attempts || 0) + 1;
+      const shouldLock = newFailedAttempts >= 3;
+      
+      await supabase
+        .from("phone_verifications")
+        .update({
+          failed_attempts: newFailedAttempts,
+          locked_until: shouldLock ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null
+        })
+        .eq("id", verification.id);
+      
+      throw new Error("Invalid OTP code");
     }
 
+    // Success: Mark as verified and reset failed attempts
     const { error: updateError } = await supabase
       .from("phone_verifications")
       .update({
         verified: true,
         verified_at: new Date().toISOString(),
+        failed_attempts: 0,
+        locked_until: null
       })
       .eq("id", verification.id);
 
@@ -95,11 +115,10 @@ serve(async (req) => {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] Error in verify-phone-otp:`, error);
     
-    // Return generic error message to client
+    // Return user-friendly error message (no correlation ID exposed)
     return new Response(
       JSON.stringify({ 
-        error: "Verification failed. Please check your code and try again.",
-        correlationId 
+        error: error.message || "Verification failed. Please check your code and try again."
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

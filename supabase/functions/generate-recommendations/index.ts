@@ -1,10 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const TransactionSchema = z.object({
+  date: z.string().max(50),
+  description: z.string().max(500),
+  amount: z.number().positive(),
+  category: z.string().max(100)
+});
+
+const GenerateRecommendationsSchema = z.object({
+  analysisId: z.string().uuid(),
+  transactions: z.array(TransactionSchema).min(1).max(5000)
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -27,7 +41,8 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { analysisId, transactions } = await req.json();
+    const body = await req.json();
+    const { analysisId, transactions } = GenerateRecommendationsSchema.parse(body);
     console.log('Generating recommendations for user:', user.id, 'Analysis:', analysisId);
 
     // Calculate spending summary from transactions
@@ -175,15 +190,14 @@ Recommend 3-4 actual Indian credit cards based on their top spending categories.
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] Error in generate-recommendations:`, error);
     
-    // Return generic error message to client
+    // Return user-friendly error message (no correlation ID exposed)
     return new Response(
       JSON.stringify({ 
-        error: 'Unable to generate recommendations. Please try again.',
-        correlationId 
+        error: error.message || 'Unable to generate recommendations. Please try again.'
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

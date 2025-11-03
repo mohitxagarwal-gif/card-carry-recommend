@@ -1,10 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Input validation schema
+const SendOtpSchema = z.object({
+  phone_e164: z.string().regex(/^\+91[6-9]\d{9}$/, "Invalid Indian phone number format")
+});
 
 // Helper function to hash OTP using native crypto API
 async function hashOtp(otp: string): Promise<string> {
@@ -39,12 +45,24 @@ serve(async (req) => {
       throw new Error("Unauthorized");
     }
 
-    const { phone_e164 } = await req.json();
+    const body = await req.json();
+    const { phone_e164 } = SendOtpSchema.parse(body);
 
-    if (!phone_e164 || !/^\+91[6-9]\d{9}$/.test(phone_e164)) {
-      throw new Error("Invalid phone number format");
+    // Check daily quota (max 5 OTPs per user per day)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const { data: todayOtps, error: countError } = await supabase
+      .from('phone_verifications')
+      .select('id', { count: 'exact', head: false })
+      .eq('user_id', user.id)
+      .gte('created_at', todayStart.toISOString());
+
+    if (todayOtps && todayOtps.length >= 5) {
+      throw new Error('Daily OTP limit reached. Please try again tomorrow.');
     }
 
+    // Check rate limiting (60 seconds between requests)
     const { data: recentOtp } = await supabase
       .from("phone_verifications")
       .select("created_at")
@@ -126,11 +144,10 @@ serve(async (req) => {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] Error in send-phone-otp:`, error);
     
-    // Return generic error message to client
+    // Return user-friendly error message (no correlation ID exposed)
     return new Response(
       JSON.stringify({ 
-        error: "Unable to send verification code. Please try again.",
-        correlationId 
+        error: error.message || "Unable to send verification code. Please try again."
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
