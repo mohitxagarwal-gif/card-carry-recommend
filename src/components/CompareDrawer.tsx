@@ -16,15 +16,15 @@ export const CompareDrawer = () => {
   return (
     <>
       {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-primary/95 backdrop-blur-md border-t border-border/30 px-6 py-4 animate-in slide-in-from-bottom duration-300">
+      <div className="fixed bottom-0 left-0 right-0 z-40 glass-surface glass-highlight border-t border-white/20 px-6 py-4 animate-slide-up-fade">
         <div className="container mx-auto flex items-center justify-between">
-          <span className="text-sm md:text-base font-sans text-primary-foreground">
+          <span className="text-sm md:text-base font-sans text-foreground">
             {selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected
           </span>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="secondary" size="sm" className="font-sans">
-                compare now →
+              <Button variant="secondary" size="sm" className="font-sans gloss-band">
+                compare {selectedCards.length} {selectedCards.length === 1 ? 'card' : 'cards'} →
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">

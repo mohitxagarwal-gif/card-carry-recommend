@@ -27,33 +27,49 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="container mx-auto px-6 lg:px-12 py-24 md:py-32 lg:py-40">
-      <div className="max-w-5xl mx-auto text-center">
-        <h1 className="text-5xl md:text-6xl lg:text-7xl font-heading font-extrabold text-ink mb-6 leading-tight animate-fade-in">
+    <section className="relative overflow-hidden px-6 lg:px-12 py-24 md:py-32 lg:py-48 text-center">
+      {/* Ambient parallax background */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-primary/3 blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-primary/4 blur-3xl animate-pulse" style={{ animationDuration: '5s', animationDelay: '1s' }} />
+      </div>
+
+      <div className="container mx-auto max-w-4xl relative z-10">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-foreground mb-6 leading-tight animate-fade-up" style={{ animationDelay: '0ms' }}>
           {content.headline}
         </h1>
-        <p className="text-lg md:text-xl lg:text-2xl font-body text-subtle mb-12 leading-relaxed max-w-3xl mx-auto animate-fade-in">
+        
+        <p className="text-base md:text-xl font-sans text-muted-foreground mb-6 md:mb-8 leading-relaxed max-w-3xl mx-auto animate-fade-up" style={{ animationDelay: '60ms' }}>
           {content.subheadline}
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6 animate-scale-in">
+        
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-8 text-xs font-sans text-subtle animate-fade-up" style={{ animationDelay: '180ms' }}>
+          <span className="px-3 py-1 rounded-pill bg-muted">free</span>
+          <span className="px-3 py-1 rounded-pill bg-muted">no credit score impact</span>
+          <span className="px-3 py-1 rounded-pill bg-muted">under 2 minutes</span>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up" style={{ animationDelay: '120ms' }}>
           <Button 
-            size="lg"
+            size="lg" 
             onClick={() => navigate("/auth")}
-            className="group font-body transition-all duration-150 px-8 py-6 text-base hover:-translate-y-0.5"
+            className="group font-sans px-8 py-6 text-base gloss-band"
           >
             {content.cta_text}
-            <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-150" />
+            <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-300" />
           </Button>
+          
           <Button 
-            size="lg"
-            variant="ghost"
+            size="lg" 
+            variant="outline"
             onClick={scrollToExplore}
-            className="font-body transition-all duration-150 px-8 py-6 text-base"
+            className="group font-sans px-8 py-6 text-base border-foreground/20 hover:bg-foreground/5"
           >
             {content.secondary_cta}
           </Button>
         </div>
-        <p className="text-xs md:text-sm font-body text-subtle">
+
+        <p className="text-sm font-sans text-muted-foreground mt-8 max-w-xl mx-auto">
           {content.footer_text}
         </p>
       </div>

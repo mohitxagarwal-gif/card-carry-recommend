@@ -26,6 +26,7 @@ import AdminCards from "./pages/AdminCards";
 import AdminCardForm from "./pages/AdminCardForm";
 import AdminBulkUpload from "./pages/AdminBulkUpload";
 import AdminContentList from "./pages/AdminContentList";
+import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -82,8 +83,9 @@ const AppContent = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<Index />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/auth" element={<Auth />} />
       <Route path="/onboarding/basics" element={
         <ProtectedRoute requireOnboarding={false}>
           <OnboardingBasics />

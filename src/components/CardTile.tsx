@@ -33,9 +33,9 @@ export const CardTile = ({ card }: CardTileProps) => {
 
   return (
     <>
-      <div className="group bg-card rounded-card border border-hairline hover:shadow-elevated transition-all duration-220 p-6 flex flex-col cc-card-hover">
+      <div className="group glass-surface glass-highlight rounded-card border border-hairline hover:shadow-glass-elevated transition-all duration-220 p-6 flex flex-col gloss-band hover:-translate-y-1.5">
         <div className="mb-4">
-          <h3 className="text-xl font-heading font-bold text-ink mb-1">
+          <h3 className="text-xl font-heading font-bold text-ink mb-1 card-emboss-title">
             {card.name}
           </h3>
           <div className="flex items-center gap-2 mt-2">
@@ -58,7 +58,7 @@ export const CardTile = ({ card }: CardTileProps) => {
         </ul>
 
         <div className="mb-4">
-          <p className="text-base font-body text-ink font-semibold tabular-nums">
+          <p className="text-base font-body text-ink font-semibold tabular-nums card-emboss-badge inline-block px-3 py-1 rounded-pill bg-muted">
             {card.annual_fee === 0 ? "free" : `₹${card.annual_fee.toLocaleString('en-IN')}/yr`}
           </p>
           {card.waiver_rule && (
@@ -104,7 +104,7 @@ export const CardTile = ({ card }: CardTileProps) => {
             variant="secondary" 
             size="sm"
             onClick={() => navigate("/auth")}
-            className="w-full text-sm font-body"
+            className="w-full text-sm font-body gloss-band"
           >
             check fit →
           </Button>

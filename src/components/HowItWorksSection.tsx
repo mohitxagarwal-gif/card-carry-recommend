@@ -1,4 +1,6 @@
 import { useSiteContent } from "@/hooks/useSiteContent";
+import { GlassCard } from "./ui/glass-card";
+import { SparklesIcon, RewardsIcon, CashbackIcon } from "./icons";
 
 interface SiteContent {
   content: any;
@@ -12,21 +14,35 @@ const HowItWorksSection = () => {
     steps: [
       {
         number: "01",
-        title: "tell us your basics",
-        description: "spending categories, travel, dining, online shopping — share your habits with us."
+        title: "tell us about you",
+        description: "spend categories, travel, dining, online shopping — share your habits with us.",
+        icon: "sparkles"
       },
       {
         number: "02",
-        title: "we match your benefits",
-        description: "rewards, lounge, cashback, forex, co-brands — we find what fits your lifestyle."
+        title: "we crunch the benefits",
+        description: "rewards, lounges, cashback, forex, co-brands — we find what fits your lifestyle.",
+        icon: "rewards"
       },
       {
         number: "03",
-        title: "compare & apply",
-        description: "fit score + clear fee/perk breakdown for confident decisions."
+        title: "see your picks",
+        description: "fit score, fees, perks — compare & apply.",
+        icon: "cashback"
       }
     ],
     cta_text: "try the recommender →"
+  };
+
+  const getIcon = (iconName: string) => {
+    switch (iconName) {
+      case "rewards":
+        return <RewardsIcon className="w-12 h-12 text-primary" />;
+      case "cashback":
+        return <CashbackIcon className="w-12 h-12 text-primary" />;
+      default:
+        return <SparklesIcon className="w-12 h-12 text-primary" />;
+    }
   };
 
   return (
@@ -37,20 +53,30 @@ const HowItWorksSection = () => {
         </h2>
 
         <div className="grid md:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
-          {content.steps.map((step: any) => (
-            <div key={step.number} className="group hover:scale-105 transition-transform duration-300">
-              <div className="text-7xl md:text-8xl font-heading font-bold text-primary/10 mb-4">{step.number}</div>
+          {content.steps.map((step: any, idx: number) => (
+            <GlassCard
+              key={step.number}
+              variant="elevated"
+              className="p-8 group cursor-pointer animate-fade-up"
+              style={{ animationDelay: `${idx * 60}ms` }}
+            >
+              <div className="mb-6 group-hover:rotate-[10deg] transition-transform duration-140">
+                {getIcon(step.icon)}
+              </div>
+              <div className="text-6xl md:text-7xl font-heading font-bold text-primary/10 mb-4">
+                {step.number}
+              </div>
               <h3 className="text-2xl md:text-3xl font-heading font-bold text-foreground mb-4">
                 {step.title}
               </h3>
               <p className="text-base md:text-lg font-sans text-muted-foreground leading-relaxed">
                 {step.description}
               </p>
-            </div>
+            </GlassCard>
           ))}
         </div>
         
-        <div className="text-center mt-12">
+        <div className="text-center mt-12 animate-fade-up" style={{ animationDelay: '180ms' }}>
           <a 
             href="/auth"
             className="inline-flex items-center text-base md:text-lg font-sans text-primary hover:text-primary/80 transition-colors duration-300 underline underline-offset-4"

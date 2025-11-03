@@ -102,11 +102,23 @@ export default {
         'elevated': 'var(--shadow-elevated)',
       },
       transitionDuration: {
+        '140': '140ms',
         '150': '150ms',
+        '180': '180ms',
+        '200': '200ms',
         '220': '220ms',
+        '280': '280ms',
+        '300': '300ms',
       },
       transitionTimingFunction: {
         'smooth': 'cubic-bezier(.2,.8,.2,1)',
+        'entrance': 'cubic-bezier(0.22, 1, 0.36, 1)',
+        'hover': 'cubic-bezier(0.2, 0, 0, 1)',
+        'standard': 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+      },
+      boxShadow: {
+        'glass': 'var(--shadow-glass)',
+        'glass-elevated': 'var(--shadow-glass-elevated)',
       },
       keyframes: {
         "accordion-down": {
@@ -125,10 +137,35 @@ export default {
             height: "0",
           },
         },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" }
+        },
+        "sweep": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" }
+        },
+        "shimmer": {
+          "0%, 100%": { opacity: "0" },
+          "50%": { opacity: "0.08" }
+        },
+        "tilt": {
+          "0%": { transform: "perspective(1000px) rotateY(0deg)" },
+          "100%": { transform: "perspective(1000px) rotateY(1.5deg)" }
+        },
+        "slide-up-fade": {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" }
+        },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
+        "accordion-down": "accordion-down 0.22s ease-out",
+        "accordion-up": "accordion-up 0.22s ease-out",
+        "fade-up": "fade-up 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
+        "sweep": "sweep 0.22s cubic-bezier(0.2, 0, 0, 1)",
+        "shimmer": "shimmer 1.2s ease-in-out infinite",
+        "tilt": "tilt 0.14s cubic-bezier(0.2, 0, 0, 1)",
+        "slide-up-fade": "slide-up-fade 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
       },
     },
   },

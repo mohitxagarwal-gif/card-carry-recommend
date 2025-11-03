@@ -50,10 +50,12 @@ const Footer = () => {
               conditions, fees, and eligibility criteria directly with card issuers before applying.
             </p>
             <div className="flex items-center justify-center gap-2 pt-2">
-              <Lock className="h-4 w-4 text-primary" />
-              <p className="privacy-chip text-ink inline-flex items-center gap-1.5 bg-primary-ghost border border-primary rounded-pill px-3 py-1.5">
-                privacy commitment: we never store account numbers or passwords
-              </p>
+              <div className="inline-flex items-center gap-2 glass-surface glass-highlight rounded-pill px-4 py-2 group cursor-pointer gloss-band">
+                <Lock className="h-4 w-4 text-primary" />
+                <p className="privacy-chip text-ink">
+                  privacy commitment: we never store account numbers or passwords
+                </p>
+              </div>
             </div>
           </div>
         </div>
