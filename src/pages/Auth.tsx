@@ -138,13 +138,19 @@ const Auth = () => {
       
       window.history.replaceState(null, '', window.location.pathname);
       
-      if (errorDescription?.includes('Unable to exchange external code')) {
-        toast.error('Google sign-in configuration error. Please contact support or use email/password sign-in.');
-        console.error('[Auth.tsx] DIAGNOSIS: Invalid OAuth client credentials');
+      if (errorDescription?.includes('Unable to exchange external code') || 
+          errorDescription?.includes('invalid_client') ||
+          error === 'server_error') {
+        toast.error(
+          'Google sign-in is currently unavailable. Please use email/password to sign in.',
+          { duration: 6000 }
+        );
+        console.error('[Auth.tsx] CRITICAL: Google OAuth credentials not configured or invalid in backend');
       } else {
         toast.error(`Sign-in failed: ${errorDescription || error || 'Unknown error'}`);
       }
       
+      setLoading(false);
       return;
     }
     
