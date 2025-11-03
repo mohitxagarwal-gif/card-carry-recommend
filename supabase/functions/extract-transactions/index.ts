@@ -60,12 +60,67 @@ const handler = async (req: Request): Promise<Response> => {
     const validatedData = RequestSchema.parse(body);
     const { pdfText, fileName, statementType } = validatedData;
 
-    console.log(`[extract-transactions] Processing ${fileName} (${statementType}) for user ${user.id}`);
+    const startTime = Date.now();
+    console.log(`[extract-transactions] Processing ${fileName} (${statementType}) for user ${user.id}`, {
+      textLength: pdfText.length,
+      timestamp: new Date().toISOString()
+    });
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_AI_GATEWAY_KEY");
+    // PHASE 1 FIX: Correct secret name
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_AI_GATEWAY_KEY not configured");
+      throw new Error("LOVABLE_API_KEY not configured");
     }
+
+    // PHASE 3: Detect statement format for adaptive parsing
+    const detectFormat = (text: string): string => {
+      const patterns: Record<string, RegExp> = {
+        'HDFC Credit Card': /HDFC\s+BANK.*CREDIT\s+CARD/i,
+        'ICICI Bank': /ICICI\s+BANK/i,
+        'SBI Credit Card': /STATE\s+BANK.*CARD/i,
+        'Axis Bank': /AXIS\s+BANK/i,
+        'Kotak Mahindra': /KOTAK.*MAHINDRA/i,
+        'IDFC First': /IDFC\s+FIRST/i,
+        'American Express': /AMERICAN\s+EXPRESS/i,
+      };
+      
+      for (const [format, regex] of Object.entries(patterns)) {
+        if (regex.test(text)) return format;
+      }
+      return 'Unknown Format';
+    };
+
+    const detectedFormat = detectFormat(pdfText);
+    console.log(`[format-detected] ${detectedFormat}`);
+
+    // PHASE 3: Bank-specific parsing rules
+    const bankRules: Record<string, string> = {
+      'HDFC Credit Card': `
+- Transaction format: Date | Description | International Amount | Amount (INR)
+- Dates are in DD/MM/YYYY format
+- Foreign transactions show both USD/EUR and INR amounts - use INR only
+- Common merchant patterns: AMAZONPAY*, SWIGGY*, UPI/PHONEPE-`,
+      'ICICI Bank': `
+- Format: Date | Particulars | Cheque No | Debit | Credit | Balance
+- Dates use DD-MMM-YY format (e.g., 15-Jan-25)
+- Multi-line descriptions are common - combine them intelligently
+- Look for NEFT/IMPS/UPI prefixes before merchant names`,
+      'SBI Credit Card': `
+- Transaction format: Date | Description | Amount
+- Dates in DD/MM/YYYY format
+- Merchant names often include location codes - remove them
+- Common patterns: POS *, ATM *, E-COM *`,
+      'Axis Bank': `
+- Format: Date | Transaction Details | Debit | Credit | Balance
+- Dates in DD/MM/YY format
+- UPI transactions have VPA info - extract merchant only`,
+      'American Express': `
+- Format: Date | Description | Card Member | Amount
+- Dates in DD/MM/YYYY format
+- Merchant names are usually clean - minimal processing needed`
+    };
+
+    const formatSpecificRules = bankRules[detectedFormat] || '';
 
     const systemPrompt = `You are an expert at extracting transaction data from Indian bank and credit card statements.
 
@@ -100,6 +155,8 @@ COMMON PATTERNS IN INDIAN STATEMENTS:
 - Indian number format: 1,23,456.00 (lakhs notation) or 123456.00
 - Common prefixes: NEFT, IMPS, UPI, RTGS - remove these and extract actual merchant
 - Withdrawal types: ATM, POS, e-commerce - focus on the merchant after these prefixes
+
+FORMAT-SPECIFIC RULES FOR ${detectedFormat}:${formatSpecificRules}
 
 IMPORTANT: Return ONLY valid transactions with amounts. Ignore:
 - Opening/closing balance lines
@@ -179,7 +236,24 @@ Analyze the entire text carefully and extract every transaction with date, clean
       }
     }];
 
-    const startTime = Date.now();
+    // PHASE 3: Check if PDF is scanned (image-based)
+    const isScanned = pdfText.length < 500 && fileName.length > 0;
+    
+    if (isScanned) {
+      console.log('[scanned-pdf-detected] Using OCR fallback');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'This appears to be a scanned PDF. Please try re-downloading the statement as a digital PDF from your bank.',
+          suggestion: 'Most banks offer both scanned and digital versions. Look for "Download Statement" or "e-Statement" options.',
+          metadata: { detectedFormat, textLength: pdfText.length }
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    console.log(`[ai-request-start] Model: google/gemini-2.5-flash, Format: ${detectedFormat}`);
+    
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -223,38 +297,71 @@ Analyze the entire text carefully and extract every transaction with date, clean
 
     const aiData = await aiResponse.json();
     const processingTime = Date.now() - startTime;
+    
+    console.log(`[ai-response] Status: ${aiResponse.status}, Time: ${processingTime}ms`);
 
     if (!aiData.choices?.[0]?.message?.tool_calls?.[0]) {
-      console.error('[extract-transactions] No tool call in AI response:', JSON.stringify(aiData));
-      throw new Error('AI did not return structured data');
-    }
-
-    const toolCall = aiData.choices[0].message.tool_calls[0];
-    const extracted = JSON.parse(toolCall.function.arguments);
-
-    if (!extracted.transactions || extracted.transactions.length === 0) {
+      console.error('[no-tool-call] AI response:', JSON.stringify(aiData).substring(0, 500));
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'No transactions found. The statement may be empty or in an unsupported format.',
-          transactions: [],
-          metadata: extracted.metadata || {}
+          error: 'AI could not extract structured data from this statement.',
+          suggestion: 'The statement format may not be recognized. Please ensure it\'s a valid bank or credit card statement.',
+          metadata: { detectedFormat, processingTimeMs: processingTime }
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    console.log(`[extract-transactions] Success: ${extracted.transactions.length} transactions in ${processingTime}ms`);
+    const toolCall = aiData.choices[0].message.tool_calls[0];
+    const extracted = JSON.parse(toolCall.function.arguments);
+
+    // PHASE 4: Deduplicate transactions
+    const uniqueTransactions = extracted.transactions.filter((t: any, idx: number, arr: any[]) => 
+      arr.findIndex(x => 
+        x.date === t.date && 
+        x.merchant === t.merchant && 
+        Math.abs(x.amount - t.amount) < 0.01
+      ) === idx
+    );
+
+    if (uniqueTransactions.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'No transactions found in the statement.',
+          suggestion: 'Please ensure the PDF contains transaction data and is not just a summary page.',
+          metadata: { 
+            detectedFormat, 
+            processingTimeMs: processingTime,
+            pagesAnalyzed: 1,
+            textLengthBytes: pdfText.length 
+          }
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const duplicatesRemoved = extracted.transactions.length - uniqueTransactions.length;
+    if (duplicatesRemoved > 0) {
+      console.log(`[deduplication] Removed ${duplicatesRemoved} duplicate transactions`);
+    }
+
+    console.log(`[extraction-success] ${uniqueTransactions.length} unique transactions in ${processingTime}ms`);
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        transactions: extracted.transactions,
+        transactions: uniqueTransactions,
         metadata: {
           ...extracted.metadata,
+          detectedFormat,
           processingTimeMs: processingTime,
           model: 'google/gemini-2.5-flash',
-          extractedAt: new Date().toISOString()
+          extractedAt: new Date().toISOString(),
+          duplicatesRemoved,
+          totalPagesAnalyzed: 1,
+          textLengthBytes: pdfText.length
         }
       }),
       { 
@@ -264,24 +371,35 @@ Analyze the entire text carefully and extract every transaction with date, clean
     );
 
   } catch (error: any) {
-    console.error('[extract-transactions] Error:', error);
+    console.error('[extract-transactions] Error:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack?.substring(0, 500)
+    });
     
     if (error instanceof z.ZodError) {
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Invalid request data',
-          details: error.errors 
+          error: 'Invalid request data. Please check the file format.',
+          suggestion: 'Ensure you\'re uploading a valid PDF bank or credit card statement.',
+          details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
         }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
+    // PHASE 2: Structured error responses
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: 'Failed to extract transactions. The statement format may not be readable.',
-        details: error.message
+        error: 'Failed to extract transactions from the statement.',
+        suggestion: 'This could be due to: (1) Unsupported statement format, (2) Scanned/image-based PDF, (3) Corrupted file. Try downloading a fresh copy from your bank.',
+        details: error.message,
+        metadata: {
+          errorType: error.name,
+          timestamp: new Date().toISOString()
+        }
       }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

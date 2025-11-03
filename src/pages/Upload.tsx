@@ -207,11 +207,30 @@ const Upload = () => {
     let completed = 0;
     const total = filesWithStatus.length;
 
-    const ERROR_HELP_TEXT: Record<string, string> = {
-      'No transactions found': 'Make sure the PDF is a valid bank or credit card statement with a transaction table.',
-      'Rate limit exceeded': 'Too many uploads at once. Please wait 30 seconds and try again.',
-      'Failed to read PDF': 'The PDF may be corrupted or password-protected. Try re-downloading it from your bank.',
-      'AI service payment required': 'Our analysis service is temporarily unavailable. Please try again later.',
+    // PHASE 2: Enhanced error messages with HTTP status awareness
+    const getErrorMessage = (error: any, extractData?: any): string => {
+      // Check for structured error response from edge function
+      if (extractData?.error) return extractData.error;
+      
+      // Check for HTTP status codes
+      if (error.status === 401) return 'Authentication failed. Please log in again.';
+      if (error.status === 402) return 'AI service credits exhausted. Please contact support.';
+      if (error.status === 429) return 'Too many requests. Please wait 30 seconds and try again.';
+      if (error.status === 503) return 'AI service temporarily unavailable. Please try again in a few minutes.';
+      
+      // Fallback to error message
+      return error.message || 'Failed to extract transactions';
+    };
+
+    const getErrorSuggestion = (error: any, extractData?: any): string => {
+      if (extractData?.suggestion) return extractData.suggestion;
+      
+      if (error.status === 401) return 'Please refresh the page and log in again.';
+      if (error.status === 402) return 'Top up your account or contact support@example.com';
+      if (error.status === 429) return 'Wait 30 seconds before uploading more statements.';
+      if (error.status === 503) return 'Our AI service is under high load. Try again in a few minutes.';
+      
+      return 'Ensure the PDF is a valid bank/credit card statement. Try re-downloading from your bank.';
     };
 
     for (const fileWithStatus of filesWithStatus) {
@@ -242,6 +261,8 @@ const Upload = () => {
 
       if (!result.success) {
         const errorMessage = result.error || 'Failed to read PDF';
+        const suggestion = getErrorSuggestion({ message: errorMessage });
+        
         setFilesWithStatus(prev => prev.map(f => 
           f.file.name === file.name ? {
             ...f,
@@ -250,7 +271,7 @@ const Upload = () => {
           } : f
         ));
         toast.error(`${file.name}: ${errorMessage}`, {
-          description: ERROR_HELP_TEXT[errorMessage] || "Contact support if this issue persists.",
+          description: suggestion,
           duration: 6000
         });
         completed++;
@@ -279,9 +300,46 @@ const Upload = () => {
           }
         );
 
-        if (extractError) throw extractError;
+        // PHASE 2: Better error handling with specific messages
+        if (extractError) {
+          const errorMessage = getErrorMessage(extractError, extractData);
+          const suggestion = getErrorSuggestion(extractError, extractData);
+          
+          console.error('[http-error]', { 
+            status: extractError.status, 
+            message: extractError.message,
+            fileName: file.name 
+          });
+          
+          throw new Error(errorMessage);
+        }
+        
         if (!extractData.success) {
-          throw new Error(extractData.error || 'Extraction failed');
+          const errorMessage = extractData.error || 'Extraction failed';
+          const suggestion = extractData.suggestion || getErrorSuggestion({}, extractData);
+          
+          console.error('[extraction-failed]', { 
+            fileName: file.name,
+            error: errorMessage,
+            metadata: extractData.metadata 
+          });
+          
+          setFilesWithStatus(prev => prev.map(f => 
+            f.file.name === file.name ? {
+              ...f,
+              status: 'error' as FileStatus,
+              error: errorMessage
+            } : f
+          ));
+          
+          toast.error(`${file.name}: ${errorMessage}`, {
+            description: suggestion,
+            duration: 6000
+          });
+          
+          completed++;
+          setOverallProgress((completed / total) * 100);
+          continue;
         }
 
         const { transactions, metadata } = extractData;
@@ -321,18 +379,30 @@ const Upload = () => {
         ));
 
         const processingTime = Date.now() - extractionStart;
-        console.log('[extraction-metrics]', {
+        
+        // PHASE 2: Show extraction metadata to users
+        console.log('[extraction-success]', {
           fileName: file.name,
           method: 'ai_powered',
           transactionsFound: transactions.length,
           processingTimeMs: processingTime,
+          detectedFormat: metadata.detectedFormat,
+          duplicatesRemoved: metadata.duplicatesRemoved || 0,
           success: true
         });
 
-        toast.success(`✓ ${file.name}: ${transactions.length} transactions extracted`);
+        // Show format info in toast if available
+        const formatInfo = metadata.detectedFormat && metadata.detectedFormat !== 'Unknown Format' 
+          ? ` (${metadata.detectedFormat})` 
+          : '';
+        toast.success(`✓ ${file.name}${formatInfo}`, {
+          description: `${transactions.length} transactions extracted in ${Math.round(processingTime / 1000)}s`
+        });
 
       } catch (error: any) {
         const errorMessage = error.message || 'Failed to extract transactions';
+        const suggestion = getErrorSuggestion(error);
+        
         setFilesWithStatus(prev => prev.map(f => 
           f.file.name === file.name ? {
             ...f,
@@ -344,11 +414,12 @@ const Upload = () => {
         console.error('[extraction-error]', {
           fileName: file.name,
           error: errorMessage,
+          status: error.status,
           method: 'ai_powered'
         });
 
         toast.error(`${file.name}: ${errorMessage}`, {
-          description: ERROR_HELP_TEXT[errorMessage] || "Try uploading a clearer statement or contact support if the issue persists.",
+          description: suggestion,
           duration: 6000
         });
       }
