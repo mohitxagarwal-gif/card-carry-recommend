@@ -6,6 +6,7 @@ import { useState } from "react";
 import { formatINR } from "@/lib/pdfProcessor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
 
 export interface Transaction {
   date: string;
@@ -37,7 +38,7 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
       ...data,
       transactions: data.transactions.map(t => ({
         ...t,
-        category: t.category || "other",
+        category: normalizeCategory(t.category),
         transactionType: (t.transactionType || t.type || "debit") as 'debit' | 'credit'
       }))
     }))
@@ -96,19 +97,7 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
     });
   });
 
-  const availableCategories = [
-    'groceries',
-    'food & dining',
-    'shopping & e-commerce',
-    'transportation',
-    'entertainment',
-    'utilities & bills',
-    'healthcare',
-    'education',
-    'travel',
-    'financial services',
-    'other'
-  ];
+  const availableCategories = STANDARD_CATEGORIES;
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {

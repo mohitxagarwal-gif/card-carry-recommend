@@ -11,3 +11,21 @@ verify_jwt = false
 
 [functions.update-merchant-category]
 verify_jwt = true
+
+[functions.create-analysis-run]
+verify_jwt = true
+
+[functions.extract-transactions]
+verify_jwt = true
+
+[functions.send-phone-otp]
+verify_jwt = true
+
+[functions.verify-phone-otp]
+verify_jwt = true
+
+[functions.email-summary]
+verify_jwt = true
+
+[functions.delete-user-data]
+verify_jwt = true

@@ -11,6 +11,8 @@ import { CardStatusDropdown } from "@/components/CardStatusDropdown";
 import { RecommendationSummaryPanel } from "@/components/RecommendationSummaryPanel";
 import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
+import { includeInSpending, calculateTotalSpending, groupByCategory } from "@/lib/transactionRules";
 import {
   Select,
   SelectContent,
@@ -56,19 +58,7 @@ interface AnalysisData {
   transactions?: Transaction[];
 }
 
-const CATEGORY_OPTIONS = [
-  "Food & Dining",
-  "Shopping & E-commerce",
-  "Transportation",
-  "Utilities & Bills",
-  "Entertainment & Subscriptions",
-  "Healthcare",
-  "Education",
-  "Groceries",
-  "Financial Services",
-  "Travel",
-  "Other"
-];
+const CATEGORY_OPTIONS = STANDARD_CATEGORIES;
 
 const Results = () => {
   const navigate = useNavigate();

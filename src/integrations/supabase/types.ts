@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_runs: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          period_end: string | null
+          period_start: string | null
+          status: string
+          transaction_count: number
+          transaction_ids: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          transaction_count?: number
+          transaction_ids?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          transaction_count?: number
+          transaction_ids?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string | null
@@ -362,6 +401,48 @@ export type Database = {
         }
         Relationships: []
       }
+      processed_transactions: {
+        Row: {
+          amount_minor: number
+          category: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          normalized_merchant: string
+          occurrence_count: number
+          posted_date: string
+          transaction_hash: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_minor: number
+          category: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          normalized_merchant: string
+          occurrence_count?: number
+          posted_date: string
+          transaction_hash: string
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          amount_minor?: number
+          category?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          normalized_merchant?: string
+          occurrence_count?: number
+          posted_date?: string
+          transaction_hash?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           age_range: string | null
@@ -484,6 +565,7 @@ export type Database = {
       spending_analyses: {
         Row: {
           analysis_data: Json
+          analysis_run_id: string | null
           created_at: string
           extraction_metadata: Json | null
           extraction_method: string | null
@@ -494,6 +576,7 @@ export type Database = {
         }
         Insert: {
           analysis_data: Json
+          analysis_run_id?: string | null
           created_at?: string
           extraction_metadata?: Json | null
           extraction_method?: string | null
@@ -504,6 +587,7 @@ export type Database = {
         }
         Update: {
           analysis_data?: Json
+          analysis_run_id?: string | null
           created_at?: string
           extraction_metadata?: Json | null
           extraction_method?: string | null
@@ -513,6 +597,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "spending_analyses_analysis_run_id_fkey"
+            columns: ["analysis_run_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_runs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "spending_analyses_user_id_fkey"
             columns: ["user_id"]

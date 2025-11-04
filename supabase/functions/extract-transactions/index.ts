@@ -13,19 +13,56 @@ const RequestSchema = z.object({
   statementType: z.enum(['credit_card', 'bank', 'unknown']).default('unknown')
 });
 
-const CATEGORY_OPTIONS = [
+// Phase 0: Standard categories
+const STANDARD_CATEGORIES = [
   "Food & Dining",
   "Shopping & E-commerce",
-  "Transportation",
-  "Utilities & Bills",
-  "Entertainment",
-  "Healthcare",
+  "Travel & Transport",
+  "Bills & Utilities",
+  "Entertainment & Subscriptions",
+  "Health & Wellness",
   "Education",
-  "Groceries",
-  "Financial Services",
-  "Travel",
+  "Investments & Savings",
   "Other"
 ];
+
+// Phase 1: Transaction ID generation (Deno version)
+async function generateTransactionId(params: {
+  userId: string;
+  batchId: string;
+  postedDate: string;
+  amountMinor: number;
+  normalizedMerchant: string;
+  lineNumber: number;
+}): Promise<string> {
+  const { userId, batchId, postedDate, amountMinor, normalizedMerchant, lineNumber } = params;
+  const composite = `${userId}|${batchId}|${postedDate}|${amountMinor}|${normalizedMerchant}|${lineNumber}`;
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(composite);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return `txn_${hashHex}`;
+}
+
+async function generateTransactionHash(params: {
+  postedDate: string;
+  amountMinor: number;
+  normalizedMerchant: string;
+}): Promise<string> {
+  const { postedDate, amountMinor, normalizedMerchant } = params;
+  const composite = `${postedDate}|${amountMinor}|${normalizedMerchant}`;
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(composite);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return hashHex;
+}
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -59,20 +96,21 @@ const handler = async (req: Request): Promise<Response> => {
     const body = await req.json();
     const validatedData = RequestSchema.parse(body);
     const { pdfText, fileName, statementType } = validatedData;
+    const batchId = `batch_${Date.now()}`;
 
     const startTime = Date.now();
     console.log(`[extract-transactions] Processing ${fileName} (${statementType}) for user ${user.id}`, {
       textLength: pdfText.length,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      batchId
     });
 
-    // PHASE 1 FIX: Correct secret name
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    // PHASE 3: Detect statement format for adaptive parsing
+    // Detect statement format
     const detectFormat = (text: string): string => {
       const patterns: Record<string, RegExp> = {
         'HDFC Credit Card': /HDFC\s+BANK.*CREDIT\s+CARD/i,
@@ -93,97 +131,25 @@ const handler = async (req: Request): Promise<Response> => {
     const detectedFormat = detectFormat(pdfText);
     console.log(`[format-detected] ${detectedFormat}`);
 
-    // PHASE 3: Bank-specific parsing rules
-    const bankRules: Record<string, string> = {
-      'HDFC Credit Card': `
-- Transaction format: Date | Description | International Amount | Amount (INR)
-- Dates are in DD/MM/YYYY format
-- Foreign transactions show both USD/EUR and INR amounts - use INR only
-- Common merchant patterns: AMAZONPAY*, SWIGGY*, UPI/PHONEPE-`,
-      'ICICI Bank': `
-- Format: Date | Particulars | Cheque No | Debit | Credit | Balance
-- Dates use DD-MMM-YY format (e.g., 15-Jan-25)
-- Multi-line descriptions are common - combine them intelligently
-- Look for NEFT/IMPS/UPI prefixes before merchant names`,
-      'SBI Credit Card': `
-- Transaction format: Date | Description | Amount
-- Dates in DD/MM/YYYY format
-- Merchant names often include location codes - remove them
-- Common patterns: POS *, ATM *, E-COM *`,
-      'Axis Bank': `
-- Format: Date | Transaction Details | Debit | Credit | Balance
-- Dates in DD/MM/YY format
-- UPI transactions have VPA info - extract merchant only`,
-      'American Express': `
-- Format: Date | Description | Card Member | Amount
-- Dates in DD/MM/YYYY format
-- Merchant names are usually clean - minimal processing needed`
-    };
-
-    const formatSpecificRules = bankRules[detectedFormat] || '';
-
     const systemPrompt = `You are an expert at extracting transaction data from Indian bank and credit card statements.
 
 CRITICAL RULES:
-1. Extract ALL transactions from the entire document - do not skip any
-2. Dates: Convert to DD/MM/YYYY format (15-Jan-2025 → 15/01/2025, 15/01/2025 stays as is)
-3. Transaction Type Detection: 
-   - DEBIT (money out): Purchases, payments, withdrawals, bills, shopping - use keywords like "Dr", "Debit", "Purchase", "Payment to", "Withdrawal"
-   - CREDIT (money in): Refunds, cashback, salary, deposits, reversals - use keywords like "Cr", "Credit", "Refund", "Reversal", "Payment Received", "Salary", "Cashback"
-   - Credit card statements: Most transactions are DEBIT (spending), payments TO the card are CREDIT
-   - Bank statements: Withdrawals/purchases are DEBIT, deposits/salary/refunds are CREDIT
-4. Merchants: Clean and normalize names:
-   - "AMAZONPAY*GROCERIES REF:12345" → "Amazon Pay"
-   - "SWIGGY*ORDER*BANGALORE" → "Swiggy"
-   - "UPI/PHONEPE-ZOMATO" → "Zomato"
-   - "NEFT IMPS UPI/MERCHANT*ADDRESS*CITY" → "Merchant"
-   - Remove: reference numbers (REF:, TXN:, ID:), transaction IDs, city names, timestamps, asterisks
-   - Keep brand names clean and professional
-4. Amounts: Extract as positive numbers in INR (₹2,450.00 → 2450.00, ignore commas)
-5. Categories: Assign based on merchant AND transaction context:
-   - Food & Dining: Swiggy, Zomato, restaurants, cafes, food delivery
-   - Shopping & E-commerce: Amazon, Flipkart, Myntra, malls, online shopping
-   - Transportation: Uber, Ola, fuel, petrol, diesel, tolls, metro, parking
-   - Utilities & Bills: Electricity, mobile, broadband, DTH, gas, water
-   - Entertainment: Netflix, Prime Video, Hotstar, movie tickets, Spotify, gaming
-   - Healthcare: Pharmacies, Apollo, hospitals, doctors, medical
-   - Education: Schools, colleges, courses, tuition, books
-   - Groceries: BigBasket, Blinkit, Zepto, DMart, supermarkets, vegetables
-   - Financial Services: Insurance, LIC, mutual funds, investments, loan EMI
-   - Travel: Flights, hotels, IRCTC, MakeMyTrip, booking.com
-   - Other: Only if truly unidentifiable
-
-COMMON PATTERNS IN INDIAN STATEMENTS:
-- Debit cards: Date | Description | Amount Dr/Cr | Balance
-- Credit cards: Date | Description | Amount (often no currency symbol)
-- Multi-line transactions: Merchant name may span 2-3 lines - combine them intelligently
-- Indian number format: 1,23,456.00 (lakhs notation) or 123456.00
-- Common prefixes: NEFT, IMPS, UPI, RTGS - remove these and extract actual merchant
-- Withdrawal types: ATM, POS, e-commerce - focus on the merchant after these prefixes
-
-FORMAT-SPECIFIC RULES FOR ${detectedFormat}:${formatSpecificRules}
-
-IMPORTANT: Return ONLY valid transactions with amounts. Ignore:
-- Opening/closing balance lines
-- Interest charges or fees (unless specifically a transaction)
-- Header/footer text
-- Statement dates or account numbers
+1. Extract ALL transactions from the entire document
+2. Dates: Convert to DD/MM/YYYY format
+3. Transaction Type: DEBIT (money out) or CREDIT (money in)
+4. Merchants: Clean and normalize names (remove refs, IDs, cities)
+5. Amounts: Positive numbers in INR
+6. Categories: Use ONLY these: ${STANDARD_CATEGORIES.join(', ')}
 
 Return JSON only. No markdown formatting.`;
 
-    const userPrompt = `Extract ALL transactions from this ${statementType} statement:
-
-${pdfText}
-
-Statement file: ${fileName}
-
-Analyze the entire text carefully and extract every transaction with date, clean merchant name, amount, and appropriate category.`;
+    const userPrompt = `Extract ALL transactions from this ${statementType} statement:\n\n${pdfText}\n\nStatement file: ${fileName}`;
 
     const tools = [{
       type: "function",
       function: {
         name: "extract_transactions",
-        description: "Extract structured transaction data from bank/credit card statement",
+        description: "Extract structured transaction data",
         parameters: {
           type: "object",
           properties: {
@@ -192,28 +158,11 @@ Analyze the entire text carefully and extract every transaction with date, clean
               items: {
                 type: "object",
                 properties: {
-                  date: { 
-                    type: "string", 
-                    description: "Transaction date in DD/MM/YYYY format"
-                  },
-                  merchant: { 
-                    type: "string",
-                    description: "Cleaned merchant name, maximum 50 characters, no reference numbers"
-                  },
-                  amount: { 
-                    type: "number",
-                    description: "Transaction amount as positive number in INR"
-                  },
-                  transactionType: {
-                    type: "string",
-                    enum: ["debit", "credit"],
-                    description: "Transaction type: 'debit' for money going out (purchases, payments), 'credit' for money coming in (refunds, cashback, salary)"
-                  },
-                  category: { 
-                    type: "string",
-                    enum: CATEGORY_OPTIONS,
-                    description: "Transaction category based on merchant and context"
-                  }
+                  date: { type: "string", description: "DD/MM/YYYY format" },
+                  merchant: { type: "string", description: "Cleaned merchant name" },
+                  amount: { type: "number", description: "Positive number in INR" },
+                  transactionType: { type: "string", enum: ["debit", "credit"] },
+                  category: { type: "string", enum: STANDARD_CATEGORIES }
                 },
                 required: ["date", "merchant", "amount", "transactionType", "category"]
               }
@@ -221,22 +170,10 @@ Analyze the entire text carefully and extract every transaction with date, clean
             metadata: {
               type: "object",
               properties: {
-                totalTransactions: { 
-                  type: "number",
-                  description: "Total number of transactions extracted"
-                },
-                dateRangeStart: { 
-                  type: "string",
-                  description: "Earliest transaction date in DD/MM/YYYY format"
-                },
-                dateRangeEnd: { 
-                  type: "string",
-                  description: "Latest transaction date in DD/MM/YYYY format"
-                },
-                statementFormat: { 
-                  type: "string",
-                  description: "Detected format: e.g. 'HDFC Credit Card', 'ICICI Bank', 'SBI'"
-                }
+                totalTransactions: { type: "number" },
+                dateRangeStart: { type: "string" },
+                dateRangeEnd: { type: "string" },
+                statementFormat: { type: "string" }
               },
               required: ["totalTransactions", "dateRangeStart", "dateRangeEnd"]
             }
@@ -246,23 +183,20 @@ Analyze the entire text carefully and extract every transaction with date, clean
       }
     }];
 
-    // PHASE 3: Check if PDF is scanned (image-based)
-    const isScanned = pdfText.length < 500 && fileName.length > 0;
-    
+    const isScanned = pdfText.length < 500;
     if (isScanned) {
-      console.log('[scanned-pdf-detected] Using OCR fallback');
+      console.log('[scanned-pdf-detected]');
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'This appears to be a scanned PDF. Please try re-downloading the statement as a digital PDF from your bank.',
-          suggestion: 'Most banks offer both scanned and digital versions. Look for "Download Statement" or "e-Statement" options.',
-          metadata: { detectedFormat, textLength: pdfText.length }
+          error: 'Scanned PDF detected. Please use digital PDF from bank.',
+          suggestion: 'Download e-Statement instead of scanned copy.'
         }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    console.log(`[ai-request-start] Model: google/gemini-2.5-flash, Format: ${detectedFormat}`);
+    console.log(`[ai-request-start] Model: google/gemini-2.5-flash`);
     
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -277,48 +211,32 @@ Analyze the entire text carefully and extract every transaction with date, clean
           { role: 'user', content: userPrompt }
         ],
         tools,
-        tool_choice: { type: "function", function: { name: "extract_transactions" } },
-        temperature: 0.1
+        tool_choice: { type: "function", function: { name: "extract_transactions" } }
       })
     });
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
         return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: 'Rate limit exceeded. Please wait a moment and try again.',
-            retryAfter: 30 
-          }),
+          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please wait.' }),
           { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
       if (aiResponse.status === 402) {
         return new Response(
-          JSON.stringify({ 
-            success: false,
-            error: 'AI service payment required. Please contact support.' 
-          }),
+          JSON.stringify({ success: false, error: 'AI service payment required.' }),
           { status: 402, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
-      throw new Error(`AI API error: ${aiResponse.status} ${await aiResponse.text()}`);
+      throw new Error(`AI API error: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();
     const processingTime = Date.now() - startTime;
     
-    console.log(`[ai-response] Status: ${aiResponse.status}, Time: ${processingTime}ms`);
-
     if (!aiData.choices?.[0]?.message?.tool_calls?.[0]) {
-      console.error('[no-tool-call] AI response:', JSON.stringify(aiData).substring(0, 500));
       return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'AI could not extract structured data from this statement.',
-          suggestion: 'The statement format may not be recognized. Please ensure it\'s a valid bank or credit card statement.',
-          metadata: { detectedFormat, processingTimeMs: processingTime }
-        }),
+        JSON.stringify({ success: false, error: 'AI could not extract data' }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -326,7 +244,7 @@ Analyze the entire text carefully and extract every transaction with date, clean
     const toolCall = aiData.choices[0].message.tool_calls[0];
     const extracted = JSON.parse(toolCall.function.arguments);
 
-    // PHASE 4: Deduplicate transactions
+    // Phase 1 & 5: Deduplicate and add transaction IDs
     const uniqueTransactions = extracted.transactions.filter((t: any, idx: number, arr: any[]) => 
       arr.findIndex(x => 
         x.date === t.date && 
@@ -337,138 +255,99 @@ Analyze the entire text carefully and extract every transaction with date, clean
 
     if (uniqueTransactions.length === 0) {
       return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'No transactions found in the statement.',
-          suggestion: 'Please ensure the PDF contains transaction data and is not just a summary page.',
-          metadata: { 
-            detectedFormat, 
-            processingTimeMs: processingTime,
-            pagesAnalyzed: 1,
-            textLengthBytes: pdfText.length 
-          }
-        }),
+        JSON.stringify({ success: false, error: 'No transactions found' }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const duplicatesRemoved = extracted.transactions.length - uniqueTransactions.length;
-    if (duplicatesRemoved > 0) {
-      console.log(`[deduplication] Removed ${duplicatesRemoved} duplicate transactions`);
-    }
-
-    console.log(`[extraction-success] ${uniqueTransactions.length} unique transactions in ${processingTime}ms`);
-
-    // PHASE 4: Re-categorize each transaction using merchant intelligence with context
-    console.log('[categorization-start]', { totalTransactions: uniqueTransactions.length });
-    
-    // Build context: group by merchant to detect recurring patterns
-    const merchantFrequency = new Map<string, number>();
-    uniqueTransactions.forEach((t: any) => {
-      merchantFrequency.set(t.merchant, (merchantFrequency.get(t.merchant) || 0) + 1);
-    });
-    
+    // Phase 1: Generate transaction IDs and Phase 5: Check for duplicates
     const enhancedTransactions = await Promise.all(
       uniqueTransactions.map(async (txn: any, idx: number) => {
-        try {
-          // Provide context for better categorization
-          const recentTransactions = uniqueTransactions
-            .slice(Math.max(0, idx - 5), idx) // Last 5 transactions
-            .map((t: any) => ({ merchant: t.merchant, amount: t.amount, category: t.category }));
-          
-          const isRecurring = (merchantFrequency.get(txn.merchant) || 0) >= 2;
-          
-          const catResponse = await supabase.functions.invoke('categorize-merchant', {
-            body: { 
-              merchantName: txn.merchant,
-              amount: txn.amount,
-              transactionType: txn.transactionType,
-              date: txn.date,
-              recentTransactions
-            }
-          });
-
-          if (catResponse.data && !catResponse.error) {
-            return {
-              ...txn,
-              category: catResponse.data.category,
-              subcategory: catResponse.data.subcategory,
-              merchant_normalized: catResponse.data.merchant_normalized,
-              categoryConfidence: catResponse.data.confidence,
-              categorization_source: catResponse.data.source,
-              isRecurring
-            };
-          }
-        } catch (e) {
-          console.error('[categorization-failed]', { merchant: txn.merchant, error: e });
+        const amountMinor = Math.round(txn.amount * 100);
+        const normalizedMerchant = txn.merchant.toLowerCase().trim();
+        
+        // Generate IDs
+        const transactionId = await generateTransactionId({
+          userId: user.id,
+          batchId,
+          postedDate: txn.date,
+          amountMinor,
+          normalizedMerchant,
+          lineNumber: idx
+        });
+        
+        const transactionHash = await generateTransactionHash({
+          postedDate: txn.date,
+          amountMinor,
+          normalizedMerchant
+        });
+        
+        // Check if this transaction was already processed
+        const { data: existingTx } = await supabase
+          .from('processed_transactions')
+          .select('id, occurrence_count')
+          .eq('user_id', user.id)
+          .eq('transaction_hash', transactionHash)
+          .maybeSingle();
+        
+        let isDuplicate = false;
+        if (existingTx) {
+          isDuplicate = true;
+          // Update occurrence count
+          await supabase
+            .from('processed_transactions')
+            .update({ 
+              occurrence_count: existingTx.occurrence_count + 1,
+              last_seen_at: new Date().toISOString()
+            })
+            .eq('id', existingTx.id);
+        } else {
+          // Store new transaction
+          await supabase
+            .from('processed_transactions')
+            .insert({
+              user_id: user.id,
+              transaction_id: transactionId,
+              transaction_hash: transactionHash,
+              posted_date: txn.date,
+              amount_minor: amountMinor,
+              normalized_merchant: normalizedMerchant,
+              category: txn.category
+            });
         }
         
-        // Fallback to original categorization
-        return { ...txn, categoryConfidence: 0.5 };
+        return {
+          ...txn,
+          transaction_id: transactionId,
+          transaction_hash: transactionHash,
+          isDuplicate
+        };
       })
     );
-    console.log('[categorization-complete]', { 
-      enhanced: enhancedTransactions.length,
-      dbHits: enhancedTransactions.filter((t: any) => t.categorization_source?.includes('database')).length,
-      aiHits: enhancedTransactions.filter((t: any) => t.categorization_source === 'ai-powered').length
-    });
+
+    console.log(`[extraction-success] ${enhancedTransactions.length} transactions, ${enhancedTransactions.filter(t => t.isDuplicate).length} duplicates detected`);
 
     return new Response(
       JSON.stringify({ 
         success: true,
         transactions: enhancedTransactions,
+        batchId,
         metadata: {
           ...extracted.metadata,
           detectedFormat,
-          processingTimeMs: Date.now() - startTime,
+          processingTimeMs: processingTime,
           model: 'google/gemini-2.5-flash',
           extractedAt: new Date().toISOString(),
-          duplicatesRemoved,
-          totalPagesAnalyzed: 1,
-          textLengthBytes: pdfText.length,
-          categorizationStats: {
-            dbHits: enhancedTransactions.filter((t: any) => t.categorization_source?.includes('database')).length,
-            aiHits: enhancedTransactions.filter((t: any) => t.categorization_source === 'ai-powered').length
-          }
+          duplicatesFound: enhancedTransactions.filter(t => t.isDuplicate).length
         }
       }),
-      { 
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders } 
-      }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
 
   } catch (error: any) {
-    console.error('[extract-transactions] Error:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack?.substring(0, 500)
-    });
-    
-    if (error instanceof z.ZodError) {
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Invalid request data. Please check the file format.',
-          suggestion: 'Ensure you\'re uploading a valid PDF bank or credit card statement.',
-          details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`)
-        }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    // PHASE 2: Structured error responses
+    console.error('[extract-transactions] Error:', error);
     return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: 'Failed to extract transactions from the statement.',
-        suggestion: 'This could be due to: (1) Unsupported statement format, (2) Scanned/image-based PDF, (3) Corrupted file. Try downloading a fresh copy from your bank.',
-        details: error.message,
-        metadata: {
-          errorType: error.name,
-          timestamp: new Date().toISOString()
-        }
-      }),
+      JSON.stringify({ success: false, error: error.message || 'Extraction failed' }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

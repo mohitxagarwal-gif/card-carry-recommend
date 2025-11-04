@@ -7,8 +7,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Input validation schema
+// Phase 0: Standard categories
+const STANDARD_CATEGORIES = [
+  "Food & Dining",
+  "Shopping & E-commerce",
+  "Travel & Transport",
+  "Bills & Utilities",
+  "Entertainment & Subscriptions",
+  "Health & Wellness",
+  "Education",
+  "Investments & Savings",
+  "Other"
+];
+
+function normalizeCategory(category: string | null | undefined): string {
+  if (!category) return "Other";
+  
+  const lower = category.toLowerCase().trim();
+  const mappings: Record<string, string> = {
+    "food & dining": "Food & Dining",
+    "food and dining": "Food & Dining",
+    "shopping & e-commerce": "Shopping & E-commerce",
+    "shopping and e-commerce": "Shopping & E-commerce",
+    "travel & transport": "Travel & Transport",
+    "transportation": "Travel & Transport",
+    "bills & utilities": "Bills & Utilities",
+    "utilities & bills": "Bills & Utilities",
+    "entertainment & subscriptions": "Entertainment & Subscriptions",
+    "entertainment": "Entertainment & Subscriptions",
+    "health & wellness": "Health & Wellness",
+    "healthcare": "Health & Wellness",
+    "education": "Education",
+    "investments & savings": "Investments & Savings",
+    "other": "Other"
+  };
+  
+  return mappings[lower] || "Other";
+}
+
+// Input validation
 const TransactionSchema = z.object({
+  transaction_id: z.string().optional(),
   date: z.string().max(50),
   merchant: z.string().max(500),
   amount: z.number().positive(),
@@ -19,6 +58,7 @@ const TransactionSchema = z.object({
 const ExtractedDataSchema = z.object({
   extractedData: z.array(z.object({
     fileName: z.string().min(1).max(255),
+    batchId: z.string().optional(),
     transactions: z.array(TransactionSchema).min(1).max(5000),
     totalAmount: z.number().positive(),
     categoryTotals: z.record(z.string(), z.number())
@@ -48,43 +88,58 @@ serve(async (req) => {
 
     const body = await req.json();
     const { extractedData } = ExtractedDataSchema.parse(body);
-    console.log('Analyzing statements for user:', user.id, 'Statements:', extractedData.length);
+    
+    console.log('[analyze-statements] Starting analysis for user:', user.id, 'Files:', extractedData.length);
 
-    // Format the extracted transaction data for AI analysis
-    const formattedData = extractedData.map((ed: any) => {
-      return `
-File: ${ed.fileName}
-Period: ${ed.dateRange?.start || 'N/A'} to ${ed.dateRange?.end || 'N/A'}
-Total Amount: ₹${ed.totalAmount?.toLocaleString('en-IN') || '0'}
-Number of Transactions: ${ed.transactions.length}
-
-Category Breakdown:
-${Object.entries(ed.categoryTotals || {}).map(([cat, amt]: [string, any]) => `- ${cat}: ₹${amt.toLocaleString('en-IN')}`).join('\n')}
-
-Transactions:
-${ed.transactions.slice(0, 50).map((t: any) => `${t.date}: ${t.merchant} - ₹${t.amount.toLocaleString('en-IN')} (${t.category})`).join('\n')}
-${ed.transactions.length > 50 ? `... and ${ed.transactions.length - 50} more transactions` : ''}
-      `.trim();
-    }).join('\n\n---\n\n');
-
-    // Combine all transactions from all statements
-    // Validate and ensure all transactions have required fields
+    // Phase 0: Normalize categories and Phase 3: Process ALL transactions (no 50-limit)
     const allTransactions = extractedData.flatMap((ed: any) => 
       ed.transactions.map((t: any) => ({
         ...t,
-        category: t.category || "Other",
+        category: normalizeCategory(t.category),
         transactionType: t.transactionType || "debit"
       }))
     );
     
-    console.log('[analyze-statements] Received:', {
-      totalTransactions: allTransactions.length,
-      sampleTransaction: allTransactions[0],
-      categoriesPresent: allTransactions.every((t: any) => t.category),
-      typesPresent: allTransactions.every((t: any) => t.transactionType)
+    // Phase 4: Apply inclusion rules for aggregates
+    const debitTransactions = allTransactions.filter((t: any) => t.transactionType === 'debit');
+    const totalSpending = debitTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    
+    // Calculate category totals from debits only
+    const categoryTotals: Record<string, number> = {};
+    debitTransactions.forEach((t: any) => {
+      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
     });
     
-    // Analyze using Lovable AI
+    const categories = Object.entries(categoryTotals)
+      .map(([name, amount]) => ({
+        name,
+        amount,
+        percentage: ((amount as number) / totalSpending) * 100
+      }))
+      .sort((a, b) => b.amount - a.amount);
+    
+    const topCategories = categories.slice(0, 5);
+    
+    // Phase 3: Send aggregated summary to AI instead of raw transactions
+    const spendingSummary = `
+SPENDING OVERVIEW:
+Total Spending: ₹${totalSpending.toLocaleString('en-IN')}
+Transaction Count: ${debitTransactions.length}
+Average Transaction: ₹${(totalSpending / debitTransactions.length).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+
+TOP CATEGORIES:
+${topCategories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')} (${cat.percentage.toFixed(1)}%)`).join('\n')}
+
+ALL CATEGORIES:
+${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')}`).join('\n')}
+    `.trim();
+    
+    console.log('[analyze-statements] Transactions:', {
+      total: allTransactions.length,
+      debits: debitTransactions.length,
+      totalSpending
+    });
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
@@ -101,90 +156,76 @@ ${ed.transactions.length > 50 ? `... and ${ed.transactions.length - 50} more tra
         messages: [
           {
             role: 'system',
-            content: `You are a financial analyst specializing in transaction categorization for Indian users. Analyze transaction data and provide spending insights with accurate categorization.
+            content: `You are a financial analyst. Analyze spending patterns and provide insights.
 
-Return ONLY valid JSON with this EXACT structure (no markdown, no code blocks):
+Return ONLY valid JSON (no markdown):
 {
   "totalSpending": number,
-  "period": "string describing period",
-  "categories": [
-    { "name": "string", "amount": number, "percentage": number }
-  ],
-  "topCategories": [
-    { "name": "string", "amount": number, "percentage": number }
-  ],
-  "insights": ["insight 1 about spending patterns", "insight 2 about categories", "insight 3 about trends"],
-  "summary": "string with 2-3 sentence overview of spending patterns"
-}
-
-Focus on accurate categorization. Use these standard categories when possible:
-- Food & Dining
-- Shopping & E-commerce
-- Transportation
-- Utilities & Bills
-- Entertainment & Subscriptions
-- Healthcare
-- Education
-- Groceries
-- Financial Services
-- Travel
-- Other (only when transaction doesn't fit other categories)`
+  "period": "string",
+  "categories": [{ "name": "string", "amount": number, "percentage": number }],
+  "topCategories": [{ "name": "string", "amount": number, "percentage": number }],
+  "insights": ["insight1", "insight2", "insight3"],
+  "summary": "string"
+}`
           },
           {
             role: 'user',
-            content: `Analyze and categorize this transaction data:\n\n${formattedData}`
+            content: `Analyze this spending data:\n\n${spendingSummary}`
           }
         ]
       })
     });
 
     if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI Gateway error:', aiResponse.status, errorText);
-      
       if (aiResponse.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
       if (aiResponse.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
+          JSON.stringify({ error: 'Payment required. Please add credits.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
       throw new Error('AI analysis failed');
     }
 
     const aiData = await aiResponse.json();
     const analysisText = aiData.choices[0].message.content;
     
-    // Parse the JSON from the AI response
     let analysisData;
     try {
-      // Extract JSON from markdown code blocks if present
       const jsonMatch = analysisText.match(/```json\n([\s\S]*?)\n```/);
       const jsonStr = jsonMatch ? jsonMatch[1] : analysisText;
       analysisData = JSON.parse(jsonStr);
     } catch (e) {
-      console.error('Failed to parse AI response as JSON:', e);
-      // Fallback: use the raw text as summary
       analysisData = {
         summary: analysisText,
-        totalSpending: 0,
-        categories: [],
-        recommendedCards: []
+        totalSpending,
+        categories,
+        topCategories
       };
     }
 
-    // Store the analysis in the database with transactions
+    // Phase 2: Create analysis run snapshot first
+    const batchId = extractedData[0]?.batchId || `batch_${Date.now()}`;
+    const { data: analysisRun } = await supabaseClient.functions.invoke('create-analysis-run', {
+      body: {
+        batchId,
+        transactions: allTransactions,
+        periodStart: extractedData[0]?.transactions[0]?.date,
+        periodEnd: extractedData[0]?.transactions[extractedData[0].transactions.length - 1]?.date
+      }
+    });
+
+    // Store the analysis with reference to analysis run
     const { data: analysis, error: dbError } = await supabaseClient
       .from('spending_analyses')
       .insert({
         user_id: user.id,
+        analysis_run_id: analysisRun?.analysisRunId,
         statement_paths: extractedData.map((ed: any) => ed.fileName),
         analysis_data: {
           ...analysisData,
@@ -202,11 +243,11 @@ Focus on accurate categorization. Use these standard categories when possible:
       .single();
 
     if (dbError) {
-      console.error('Database error:', dbError);
+      console.error('[analyze-statements] DB error:', dbError);
       throw dbError;
     }
 
-    console.log('Analysis completed successfully for user:', user.id);
+    console.log('[analyze-statements] Success, analysis ID:', analysis.id);
 
     return new Response(
       JSON.stringify({ analysis }),
@@ -214,14 +255,9 @@ Focus on accurate categorization. Use these standard categories when possible:
     );
 
   } catch (error: any) {
-    const correlationId = crypto.randomUUID();
-    console.error(`[${correlationId}] Error in analyze-statements:`, error);
-    
-    // Return user-friendly error message (no correlation ID exposed)
+    console.error('[analyze-statements] Error:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Unable to analyze statements. Please try again.'
-      }),
+      JSON.stringify({ error: error.message || 'Analysis failed' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

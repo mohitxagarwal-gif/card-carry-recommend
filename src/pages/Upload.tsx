@@ -12,6 +12,7 @@ import { TransactionReview, ExtractedData } from "@/components/TransactionReview
 import { Progress } from "@/components/ui/progress";
 import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { checkPDFEncryption, decryptAndExtractPDF, analyzeTransactions } from "@/lib/pdfProcessor";
+import { normalizeCategory } from "@/lib/categories";
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
 interface FileWithStatus {
   file: File;
@@ -447,56 +448,79 @@ const Upload = () => {
       return;
     }
     
-    console.log('[Upload] Calling analyze-statements with edited data:', {
-      totalTransactions: editedData.reduce((sum, ed) => sum + ed.transactions.length, 0),
-      filesCount: editedData.length,
-      sampleTransaction: editedData[0]?.transactions[0]
+    // Phase 0: Normalize all categories before submission
+    const normalizedData = editedData.map(ed => ({
+      ...ed,
+      transactions: ed.transactions.map(t => ({
+        ...t,
+        category: normalizeCategory(t.category),
+        transactionType: t.transactionType || t.type || "debit"
+      }))
+    }));
+    
+    const totalTransactions = normalizedData.reduce((sum, ed) => sum + ed.transactions.length, 0);
+    
+    console.log('[Upload] Submitting for analysis:', {
+      totalTransactions,
+      filesCount: normalizedData.length,
+      sampleTransaction: normalizedData[0]?.transactions[0],
+      allCategoriesValid: normalizedData.every(ed => 
+        ed.transactions.every(t => t.category && t.transactionType)
+      )
     });
     
     setShowReview(false);
     setProcessing(true);
+    
     try {
-      // Call the analysis function with EDITED data (preserving user changes)
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('analyze-statements', {
+      // Phase 7: Log telemetry
+      const uncategorizedCount = normalizedData.reduce((sum, ed) => 
+        sum + ed.transactions.filter(t => t.category === 'Other').length, 0
+      );
+      
+      console.log('[Upload] Telemetry:', {
+        txTotal: totalTransactions,
+        txIncluded: normalizedData.reduce((sum, ed) => 
+          sum + ed.transactions.filter(t => t.transactionType === 'debit').length, 0
+        ),
+        uncategorizedCount,
+        overridesCount: 0 // User can override in TransactionReview
+      });
+      
+      // Call the analysis function with normalized data
+      const { data, error } = await supabase.functions.invoke('analyze-statements', {
         body: {
-          extractedData: editedData.map(ed => ({
+          extractedData: normalizedData.map(ed => ({
             fileName: ed.fileName,
-            transactions: ed.transactions.map(t => ({
-              date: t.date,
-              merchant: t.merchant,
-              amount: t.amount,
-              category: t.category || "Other",
-              transactionType: t.transactionType || t.type || "debit"
-            })),
+            transactions: ed.transactions,
             totalAmount: ed.totalAmount,
             dateRange: ed.dateRange,
             categoryTotals: ed.categoryTotals
           }))
         }
       });
+      
       if (error) {
-        console.error('Analysis error details:', error);
-        toast.error(`Failed to analyze statements: ${error.message || 'Unknown error'}`, {
-          description: "Please try again or contact support if the issue persists.",
+        console.error('[Upload] Analysis error:', error);
+        toast.error(`Failed to analyze: ${error.message || 'Unknown error'}`, {
+          description: "Please try again or contact support.",
           duration: 6000
         });
         setProcessing(false);
         return;
       }
+      
       if (!data?.analysis?.id) {
-        console.error('No analysis ID returned:', data);
+        console.error('[Upload] No analysis ID returned:', data);
         toast.error('Analysis completed but failed to save results');
         setProcessing(false);
         return;
       }
+      
+      console.log('[Upload] Analysis complete:', data.analysis.id);
       toast.success('Analysis complete!');
       navigate(`/results?analysisId=${data.analysis.id}`, {
-        state: {
-          analysisId: data.analysis.id
-        }
+        state: { analysisId: data.analysis.id }
       });
     } catch (error: any) {
       console.error('Unexpected error during analysis:', error);
