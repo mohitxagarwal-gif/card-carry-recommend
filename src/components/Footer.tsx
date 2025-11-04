@@ -40,20 +40,19 @@ const Footer = () => {
         <div className="mt-12 pt-8 border-t border-hairline space-y-4">
           <div className="max-w-4xl mx-auto space-y-3 text-xs text-subtle text-center">
             <p className="font-body">
-              <strong className="text-ink font-semibold">affiliate disclosure:</strong> some links on this site may be affiliate links. 
-              we may earn a commission when you apply through these links, at no additional cost to you. 
-              this helps us keep card & carry free and continuously improve our recommendations.
+              <strong className="text-ink font-semibold">affiliate disclosure:</strong> some links may be affiliate. 
+              if you apply through them, we may earn a commission—at no extra cost to you. 
+              this helps keep card & carry free.
             </p>
             <p className="font-body">
-              <strong className="text-ink font-semibold">educational purpose:</strong> all information provided is for educational purposes only. 
-              card & carry provides recommendations based on spending patterns, but we encourage you to verify all terms, 
-              conditions, fees, and eligibility criteria directly with card issuers before applying.
+              <strong className="text-ink font-semibold">education note:</strong> our picks are based on your inputs. 
+              always verify terms, fees, and eligibility with the issuer before applying.
             </p>
             <div className="flex items-center justify-center gap-2 pt-2">
               <div className="inline-flex items-center gap-2 glass-surface glass-highlight rounded-pill px-4 py-2 group cursor-pointer gloss-band">
                 <Lock className="h-4 w-4 text-primary" />
                 <p className="privacy-chip text-ink">
-                  privacy commitment: we never store account numbers or passwords
+                  we never store card numbers or passwords
                 </p>
               </div>
             </div>

@@ -67,7 +67,7 @@ const ExploreTeaserSection = () => {
               onClick={() => navigate("/auth")}
               className="text-primary hover:underline font-medium"
             >
-              start my match in under 2 minutes
+              start my match →
             </button>
           </p>
         </div>

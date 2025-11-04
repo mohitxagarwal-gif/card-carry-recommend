@@ -12,8 +12,8 @@ const HeroSection = () => {
   const { siteContent } = useSiteContent("hero");
 
   const content = (siteContent as SiteContent | null)?.content || {
-    headline: "hello perks. bye fees.",
-    subheadline: "no jargon. no spam. card & carry matches you to cards based on your spending and the benefits you actually use.",
+    headline: "find the credit card that fits your life.",
+    subheadline: "tell us how you spend. we match you to cards with fees that make sense and perks you'll actually use.",
     cta_text: "start my match",
     secondary_cta: "browse all cards",
     footer_text: "free • no impact on credit score • takes < 2 minutes"

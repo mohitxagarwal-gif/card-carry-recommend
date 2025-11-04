@@ -15,19 +15,19 @@ const HowItWorksSection = () => {
       {
         number: "01",
         title: "tell us about you",
-        description: "spend categories, travel, dining, online shopping — share your habits with us.",
+        description: "spend categories, travel, dining, online shopping—just the basics.",
         icon: "sparkles"
       },
       {
         number: "02",
         title: "we crunch the benefits",
-        description: "rewards, lounges, cashback, forex, co-brands — we find what fits your lifestyle.",
+        description: "rewards, lounges, cashback, forex, co-brands—what actually nets you value.",
         icon: "rewards"
       },
       {
         number: "03",
         title: "see your picks",
-        description: "fit score, fees, perks — compare & apply.",
+        description: "clear fit score, fees, and perks. compare side-by-side and apply.",
         icon: "cashback"
       }
     ],
