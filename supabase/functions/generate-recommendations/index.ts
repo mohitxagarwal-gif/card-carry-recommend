@@ -18,7 +18,18 @@ const TransactionSchema = z.object({
 
 const GenerateRecommendationsSchema = z.object({
   analysisId: z.string().uuid(),
-  transactions: z.array(TransactionSchema).min(1).max(5000)
+  transactions: z.array(TransactionSchema).min(1).max(5000),
+  profile: z.object({
+    age_range: z.string().optional(),
+    income_band_inr: z.string().optional(),
+    city: z.string().optional()
+  }).optional(),
+  preferences: z.object({
+    fee_sensitivity: z.string().optional(),
+    travel_frequency: z.string().optional(),
+    lounge_importance: z.string().optional(),
+    preference_type: z.string().optional()
+  }).optional()
 });
 
 serve(async (req) => {
@@ -43,8 +54,44 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { analysisId, transactions } = GenerateRecommendationsSchema.parse(body);
-    console.log('Generating recommendations for user:', user.id, 'Analysis:', analysisId);
+    const { analysisId, transactions, profile, preferences } = GenerateRecommendationsSchema.parse(body);
+    
+    console.log('[generate-recommendations] Received request:', {
+      userId: user.id,
+      analysisId,
+      transactionsCount: transactions.length,
+      hasProfile: !!profile,
+      hasPreferences: !!preferences
+    });
+    
+    // Fetch user profile if not provided
+    let userProfile = profile;
+    let userPreferences = preferences;
+    
+    if (!userProfile) {
+      const { data: fetchedProfile } = await supabaseClient
+        .from('profiles')
+        .select('age_range, income_band_inr, city')
+        .eq('id', user.id)
+        .single();
+      
+      userProfile = fetchedProfile || {};
+    }
+    
+    if (!userPreferences) {
+      const { data: fetchedPreferences } = await supabaseClient
+        .from('user_preferences')
+        .select('fee_sensitivity, travel_frequency, lounge_importance, preference_type')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      userPreferences = fetchedPreferences || {};
+    }
+    
+    console.log('[generate-recommendations] User context:', {
+      profile: userProfile,
+      preferences: userPreferences
+    });
 
     // Calculate spending summary from transactions (only debits = actual spending)
     const debitTransactions = transactions.filter((t: any) => t.transactionType !== 'credit');
@@ -126,7 +173,16 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         messages: [
           {
             role: 'system',
-            content: `You are a credit card recommendation expert for Indian users. Based on ACTUAL spending patterns (debits only, excluding refunds), recommend the most suitable Indian credit cards.
+            content: `You are a credit card recommendation expert for Indian users. Based on ACTUAL spending patterns (debits only, excluding refunds) AND user profile, recommend the most suitable Indian credit cards.
+
+USER PROFILE CONTEXT:
+- Age Range: ${userProfile?.age_range || 'Not specified'}
+- Income Band (INR/month): ${userProfile?.income_band_inr || 'Not specified'}
+- Location: ${userProfile?.city || 'Not specified'}
+- Fee Sensitivity: ${userPreferences?.fee_sensitivity || 'medium'}
+- Travel Frequency: ${userPreferences?.travel_frequency || 'moderate'}
+- Lounge Importance: ${userPreferences?.lounge_importance || 'moderate'}
+- Card Preference Type: ${userPreferences?.preference_type || 'balanced'}
 
 CRITICAL ANALYSIS RULES:
 - Only consider DEBIT transactions (actual spending) for recommendations
@@ -135,29 +191,39 @@ CRITICAL ANALYSIS RULES:
 - Calculate savings based on REAL category percentages, not generic estimates
 - Consider recurring expenses separately (subscriptions, bills, etc.)
 
+PROFILE-BASED RECOMMENDATION RULES:
+- Consider income level for card eligibility (premium cards need ₹1.5L+/month income)
+- If travel_frequency is 'frequent', prioritize travel/lounge/forex cards
+- If fee_sensitivity is 'high', prioritize zero-fee or fee-waiver cards (₹500-1500/year fees)
+- If lounge_importance is 'high', emphasize lounge access benefits
+- Consider location (metro vs tier-2) for lounge network availability
+- Age matters: some cards have minimum age 21, premium cards prefer 30+
+- Match card tier to income: entry-level (<₹50k/mo), mid-tier (₹50k-1.5L), premium (₹1.5L+)
+
 Return ONLY valid JSON with this EXACT structure (no markdown, no code blocks):
 {
   "recommendedCards": [
     {
       "name": "string (e.g., HDFC Swiggy Credit Card, AMEX Platinum Travel, ICICI Amazon Pay, Axis Magnus, SBI Cashback)",
       "issuer": "string (HDFC, ICICI, Axis, SBI, AMEX, etc.)",
-      "reason": "string explaining why this card perfectly matches their TOP spending categories and merchants",
-      "benefits": ["specific benefit tied to their spending", "benefit 2", "benefit 3"],
+      "reason": "string explaining why this card matches BOTH their spending pattern AND profile (income, age, travel needs)",
+      "benefits": ["specific benefit tied to their spending", "benefit tied to profile (e.g., lounge for frequent travelers)", "benefit 3"],
       "estimatedSavings": "string with CALCULATED savings (e.g., ₹15,000-20,000/year based on their ₹X spending on category Y)",
-      "matchScore": number 1-100 (how well this card matches their spending pattern)
+      "matchScore": number 1-100 (how well this card matches spending + profile),
+      "profileMatch": "string explaining how card fits their income/age/location/preferences"
     }
   ],
   "additionalInsights": [
     "insight about their spending pattern",
-    "specific optimization suggestion based on top merchants",
-    "potential savings opportunity"
+    "specific optimization suggestion based on profile + spending",
+    "potential savings opportunity considering their preferences"
   ]
 }
 
-Recommend 3-4 actual Indian credit cards. Prioritize cards that give maximum rewards on their TOP categories and merchants. For each card, show HOW you calculated estimated savings.
+Recommend 3-4 actual Indian credit cards that match BOTH spending patterns and user profile. Prioritize cards they qualify for based on income. For each card, show HOW you calculated estimated savings and WHY it matches their profile.
 
 Example calculation format:
-"HDFC Swiggy Card gives 10% cashback on Swiggy. You spend ₹12,400/month on Swiggy, so savings = ₹1,240/month = ₹14,880/year"`
+"HDFC Swiggy Card gives 10% cashback on Swiggy. You spend ₹12,400/month on Swiggy, so savings = ₹1,240/month = ₹14,880/year. Perfect for your income band (₹50k-1L/month) and fee-sensitivity preference."`
           },
           {
             role: 'user',

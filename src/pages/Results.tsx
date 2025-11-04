@@ -211,6 +211,28 @@ const Results = () => {
     setShowOtherWarning(false);
 
     try {
+      // Fetch user profile and preferences
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('age_range, income_band_inr, city')
+        .eq('id', user.id)
+        .single();
+
+      const { data: preferences } = await supabase
+        .from('user_preferences')
+        .select('fee_sensitivity, travel_frequency, lounge_importance, preference_type')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      console.log('[Results] Generating recommendations with profile:', {
+        hasProfile: !!profile,
+        hasPreferences: !!preferences,
+        transactionsCount: editedTransactions.length
+      });
+
       // Update the database with edited transactions
       const { error: updateError } = await supabase
         .from('spending_analyses')
@@ -224,11 +246,13 @@ const Results = () => {
 
       if (updateError) throw updateError;
 
-      // Call the new edge function to generate recommendations
+      // Call the new edge function with profile data
       const { data, error } = await supabase.functions.invoke('generate-recommendations', {
         body: {
           analysisId,
-          transactions: editedTransactions
+          transactions: editedTransactions,
+          profile: profile || {},
+          preferences: preferences || {}
         }
       });
 

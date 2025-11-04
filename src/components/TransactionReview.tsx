@@ -26,7 +26,7 @@ export interface ExtractedData {
 
 interface TransactionReviewProps {
   extractedData: ExtractedData[];
-  onSubmit: () => void;
+  onSubmit: (editedData: ExtractedData[]) => void;
   onCancel: () => void;
 }
 
@@ -38,7 +38,7 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
       transactions: data.transactions.map(t => ({
         ...t,
         category: t.category || "other",
-        type: (t.type || t.transactionType) as 'debit' | 'credit' | undefined
+        transactionType: (t.transactionType || t.type || "debit") as 'debit' | 'credit'
       }))
     }))
   );
@@ -279,7 +279,34 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
           Cancel & Start Over
         </Button>
         <Button
-          onClick={onSubmit}
+          onClick={() => {
+            // Validate all transactions have categories
+            const allHaveCategories = localData.every(ed => 
+              ed.transactions.every(t => t.category && t.category.length > 0)
+            );
+            
+            const allHaveTypes = localData.every(ed =>
+              ed.transactions.every(t => t.transactionType === 'debit' || t.transactionType === 'credit')
+            );
+            
+            console.log('[TransactionReview] Submitting edited data:', {
+              totalTransactions: localData.reduce((sum, ed) => sum + ed.transactions.length, 0),
+              filesCount: localData.length,
+              allHaveCategories,
+              allHaveTypes,
+              sampleTransaction: localData[0]?.transactions[0]
+            });
+            
+            if (!allHaveCategories) {
+              console.warn('[TransactionReview] Some transactions missing categories');
+            }
+            
+            if (!allHaveTypes) {
+              console.warn('[TransactionReview] Some transactions missing type');
+            }
+            
+            onSubmit(localData);
+          }}
           className="flex-1"
         >
           Submit for AI Analysis

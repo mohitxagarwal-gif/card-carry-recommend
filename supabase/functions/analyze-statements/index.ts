@@ -12,7 +12,8 @@ const TransactionSchema = z.object({
   date: z.string().max(50),
   merchant: z.string().max(500),
   amount: z.number().positive(),
-  category: z.string().max(100)
+  category: z.string().max(100),
+  transactionType: z.enum(['debit', 'credit']).optional()
 });
 
 const ExtractedDataSchema = z.object({
@@ -67,7 +68,21 @@ ${ed.transactions.length > 50 ? `... and ${ed.transactions.length - 50} more tra
     }).join('\n\n---\n\n');
 
     // Combine all transactions from all statements
-    const allTransactions = extractedData.flatMap((ed: any) => ed.transactions);
+    // Validate and ensure all transactions have required fields
+    const allTransactions = extractedData.flatMap((ed: any) => 
+      ed.transactions.map((t: any) => ({
+        ...t,
+        category: t.category || "Other",
+        transactionType: t.transactionType || "debit"
+      }))
+    );
+    
+    console.log('[analyze-statements] Received:', {
+      totalTransactions: allTransactions.length,
+      sampleTransaction: allTransactions[0],
+      categoriesPresent: allTransactions.every((t: any) => t.category),
+      typesPresent: allTransactions.every((t: any) => t.transactionType)
+    });
     
     // Analyze using Lovable AI
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');

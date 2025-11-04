@@ -440,24 +440,37 @@ const Upload = () => {
       });
     }
   };
-  const handleSubmitForAnalysis = async () => {
+  const handleSubmitForAnalysis = async (editedData: ExtractedData[]) => {
     if (!user) {
       toast.error('Please sign in first');
       navigate("/auth");
       return;
     }
+    
+    console.log('[Upload] Calling analyze-statements with edited data:', {
+      totalTransactions: editedData.reduce((sum, ed) => sum + ed.transactions.length, 0),
+      filesCount: editedData.length,
+      sampleTransaction: editedData[0]?.transactions[0]
+    });
+    
     setShowReview(false);
     setProcessing(true);
     try {
-      // Call the analysis function with extracted data
+      // Call the analysis function with EDITED data (preserving user changes)
       const {
         data,
         error
       } = await supabase.functions.invoke('analyze-statements', {
         body: {
-          extractedData: extractedData.map(ed => ({
+          extractedData: editedData.map(ed => ({
             fileName: ed.fileName,
-            transactions: ed.transactions,
+            transactions: ed.transactions.map(t => ({
+              date: t.date,
+              merchant: t.merchant,
+              amount: t.amount,
+              category: t.category || "Other",
+              transactionType: t.transactionType || t.type || "debit"
+            })),
             totalAmount: ed.totalAmount,
             dateRange: ed.dateRange,
             categoryTotals: ed.categoryTotals
