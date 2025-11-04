@@ -487,9 +487,31 @@ const Upload = () => {
         overridesCount: 0 // User can override in TransactionReview
       });
       
-      // Call the analysis function with normalized data
+      // Phase 2: Create analysis run snapshot first
+      const allTransactions = normalizedData.flatMap(ed => ed.transactions);
+      const batchId = `batch_${Date.now()}`;
+      
+      const { data: analysisRun, error: runError } = await supabase.functions.invoke('create-analysis-run', {
+        body: {
+          batchId,
+          transactions: allTransactions,
+          periodStart: normalizedData[0]?.dateRange?.start || normalizedData[0]?.transactions[0]?.date,
+          periodEnd: normalizedData[0]?.dateRange?.end || normalizedData[0]?.transactions[normalizedData[0].transactions.length - 1]?.date
+        }
+      });
+      
+      if (runError) {
+        console.error('[Upload] Failed to create analysis run:', runError);
+        toast.error('Failed to create analysis snapshot');
+        throw runError;
+      }
+      
+      console.log('[Upload] Analysis run created:', analysisRun?.analysisRunId);
+      
+      // Call the analysis function with normalized data and analysisRunId
       const { data, error } = await supabase.functions.invoke('analyze-statements', {
         body: {
+          analysisRunId: analysisRun?.analysisRunId,
           extractedData: normalizedData.map(ed => ({
             fileName: ed.fileName,
             transactions: ed.transactions,

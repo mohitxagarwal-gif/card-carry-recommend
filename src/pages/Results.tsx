@@ -129,6 +129,47 @@ const Results = () => {
         setAnalysis(analysisData);
         setEditedTransactions(analysisData.transactions || []);
         
+        // Phase 2: Verify transaction count matches analysis_run
+        if (data.analysis_run_id) {
+          const { data: runData } = await supabase
+            .from('analysis_runs')
+            .select('transaction_count, transaction_ids')
+            .eq('id', data.analysis_run_id)
+            .single();
+            
+          const actualCount = analysisData.transactions?.length || 0;
+          
+          console.log('[Results] Transaction count check:', {
+            analysisRunId: data.analysis_run_id,
+            expectedCount: runData?.transaction_count,
+            actualCount,
+            match: runData?.transaction_count === actualCount
+          });
+          
+          if (runData && runData.transaction_count !== actualCount) {
+            console.error('[Results] Transaction count mismatch!', {
+              expected: runData.transaction_count,
+              actual: actualCount,
+              difference: Math.abs(runData.transaction_count - actualCount)
+            });
+            toast.error(`Transaction count mismatch! Upload: ${runData.transaction_count}, Results: ${actualCount}`, {
+              description: 'Some transactions may have been lost. Please re-upload your statements.',
+              duration: 10000
+            });
+          }
+        } else {
+          console.warn('[Results] No analysis_run_id found for this analysis');
+        }
+        
+        // Phase 7: Telemetry logging
+        console.log('[Results] Loaded analysis:', {
+          analysisId: currentAnalysisId,
+          txTotal: analysisData.transactions?.length || 0,
+          txIncluded: analysisData.transactions?.filter(includeInSpending).length || 0,
+          categories: Object.keys(groupByCategory(analysisData.transactions || [])).length,
+          totalSpending: calculateTotalSpending(analysisData.transactions || [])
+        });
+        
         // Fetch user profile for income info
         const { data: profile } = await supabase
           .from('profiles')
@@ -161,12 +202,9 @@ const Results = () => {
     updated[index] = { ...updated[index], [field]: value };
     setEditedTransactions(updated);
     
-    // Recalculate totals and categories
-    const newTotal = updated.reduce((sum, t) => sum + t.amount, 0);
-    const categoryTotals: Record<string, number> = {};
-    updated.forEach(t => {
-      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
-    });
+    // Phase 4: Use shared inclusion rules for calculations
+    const newTotal = calculateTotalSpending(updated);
+    const categoryTotals = groupByCategory(updated);
     
     const categories = Object.entries(categoryTotals).map(([name, amount]) => ({
       name,

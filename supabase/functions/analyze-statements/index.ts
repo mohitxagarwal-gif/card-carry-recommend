@@ -87,7 +87,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { extractedData } = ExtractedDataSchema.parse(body);
+    const { extractedData, analysisRunId } = body;
+    ExtractedDataSchema.parse({ extractedData });
     
     console.log('[analyze-statements] Starting analysis for user:', user.id, 'Files:', extractedData.length);
 
@@ -209,23 +210,12 @@ Return ONLY valid JSON (no markdown):
       };
     }
 
-    // Phase 2: Create analysis run snapshot first
-    const batchId = extractedData[0]?.batchId || `batch_${Date.now()}`;
-    const { data: analysisRun } = await supabaseClient.functions.invoke('create-analysis-run', {
-      body: {
-        batchId,
-        transactions: allTransactions,
-        periodStart: extractedData[0]?.transactions[0]?.date,
-        periodEnd: extractedData[0]?.transactions[extractedData[0].transactions.length - 1]?.date
-      }
-    });
-
-    // Store the analysis with reference to analysis run
+    // Store the analysis with reference to analysis run (passed from Upload)
     const { data: analysis, error: dbError } = await supabaseClient
       .from('spending_analyses')
       .insert({
         user_id: user.id,
-        analysis_run_id: analysisRun?.analysisRunId,
+        analysis_run_id: analysisRunId,
         statement_paths: extractedData.map((ed: any) => ed.fileName),
         analysis_data: {
           ...analysisData,

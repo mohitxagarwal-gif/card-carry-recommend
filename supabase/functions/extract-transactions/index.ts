@@ -131,11 +131,11 @@ const handler = async (req: Request): Promise<Response> => {
     const detectedFormat = detectFormat(pdfText);
     console.log(`[format-detected] ${detectedFormat}`);
 
-    const systemPrompt = `You are an expert at extracting transaction data from Indian bank and credit card statements.
+const systemPrompt = `You are an expert at extracting transaction data from Indian bank and credit card statements.
 
 CRITICAL RULES:
 1. Extract ALL transactions from the entire document
-2. Dates: Convert to DD/MM/YYYY format
+2. Dates: Convert to YYYY-MM-DD ISO 8601 format (e.g., 2024-03-15)
 3. Transaction Type: DEBIT (money out) or CREDIT (money in)
 4. Merchants: Clean and normalize names (remove refs, IDs, cities)
 5. Amounts: Positive numbers in INR
@@ -158,7 +158,7 @@ Return JSON only. No markdown formatting.`;
               items: {
                 type: "object",
                 properties: {
-                  date: { type: "string", description: "DD/MM/YYYY format" },
+                  date: { type: "string", description: "YYYY-MM-DD ISO 8601 format" },
                   merchant: { type: "string", description: "Cleaned merchant name" },
                   amount: { type: "number", description: "Positive number in INR" },
                   transactionType: { type: "string", enum: ["debit", "credit"] },
