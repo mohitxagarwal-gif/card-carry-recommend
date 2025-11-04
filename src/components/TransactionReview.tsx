@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { useState } from "react";
 import { formatINR } from "@/lib/pdfProcessor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,8 @@ export interface Transaction {
   merchant: string;
   amount: number;
   category: string;
+  type?: 'debit' | 'credit';
+  transactionType?: 'debit' | 'credit';
 }
 
 export interface ExtractedData {
@@ -30,7 +32,16 @@ interface TransactionReviewProps {
 
 export function TransactionReview({ extractedData, onSubmit, onCancel }: TransactionReviewProps) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set([extractedData[0]?.fileName]));
-  const [localData, setLocalData] = useState(extractedData);
+  const [localData, setLocalData] = useState<ExtractedData[]>(
+    extractedData.map(data => ({
+      ...data,
+      transactions: data.transactions.map(t => ({
+        ...t,
+        category: t.category || "other",
+        type: (t.type || t.transactionType) as 'debit' | 'credit' | undefined
+      }))
+    }))
+  );
 
   const toggleFile = (fileName: string) => {
     const newExpanded = new Set(expandedFiles);
@@ -204,38 +215,51 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
                         <th className="text-left p-3 text-xs font-sans font-medium text-muted-foreground">Date</th>
                         <th className="text-left p-3 text-xs font-sans font-medium text-muted-foreground">Merchant</th>
                         <th className="text-left p-3 text-xs font-sans font-medium text-muted-foreground">Category</th>
+                        <th className="text-center p-3 text-xs font-sans font-medium text-muted-foreground">Type</th>
                         <th className="text-right p-3 text-xs font-sans font-medium text-muted-foreground">Amount</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.transactions.map((tx, txIndex) => (
-                        <tr key={txIndex} className="border-t border-border/50 hover:bg-secondary/20">
-                          <td className="p-3 text-xs font-sans text-foreground">{tx.date}</td>
-                          <td className="p-3 text-xs font-sans text-foreground">{tx.merchant}</td>
-                          <td className="p-3">
-                            <Select
-                              value={tx.category}
-                              onValueChange={(newCategory) => handleCategoryChange(fileIndex, txIndex, newCategory)}
-                            >
-                              <SelectTrigger className="h-6 text-xs border-0 bg-transparent focus:ring-0">
-                                <Badge className={`text-xs ${getCategoryColor(tx.category)}`}>
-                                  <SelectValue />
-                                </Badge>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableCategories.map(cat => (
-                                  <SelectItem key={cat} value={cat} className="text-xs">
-                                    {cat}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="p-3 text-xs font-sans text-foreground text-right font-medium">
-                            {formatINR(tx.amount)}
-                          </td>
-                        </tr>
-                      ))}
+                      {data.transactions.map((tx, txIndex) => {
+                        const txType = tx.type || tx.transactionType || 'debit';
+                        return (
+                          <tr key={txIndex} className="border-t border-border/50 hover:bg-secondary/20">
+                            <td className="p-3 text-xs font-sans text-foreground">{tx.date}</td>
+                            <td className="p-3 text-xs font-sans text-foreground">{tx.merchant}</td>
+                            <td className="p-3">
+                              <Select
+                                value={tx.category}
+                                onValueChange={(newCategory) => handleCategoryChange(fileIndex, txIndex, newCategory)}
+                              >
+                                <SelectTrigger className="h-6 text-xs border-0 bg-transparent focus:ring-0">
+                                  <Badge className={`text-xs ${getCategoryColor(tx.category)}`}>
+                                    <SelectValue />
+                                  </Badge>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableCategories.map(cat => (
+                                    <SelectItem key={cat} value={cat} className="text-xs">
+                                      {cat}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td className="p-3 text-center">
+                              {txType === 'credit' ? (
+                                <ArrowUpCircle className="h-4 w-4 text-green-500 inline-block" />
+                              ) : (
+                                <ArrowDownCircle className="h-4 w-4 text-orange-500 inline-block" />
+                              )}
+                            </td>
+                            <td className={`p-3 text-xs font-sans text-right font-medium ${
+                              txType === 'credit' ? 'text-green-600 dark:text-green-500' : 'text-foreground'
+                            }`}>
+                              {formatINR(tx.amount)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
+import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2, LayoutDashboard, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { toast } from "sonner";
 import { CardActionBar } from "@/components/CardActionBar";
 import { EligibilityIndicator } from "@/components/EligibilityIndicator";
@@ -617,60 +617,73 @@ const Results = () => {
                       <th className="text-left py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Date</th>
                       <th className="text-left py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Merchant</th>
                       <th className="text-left py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Category</th>
+                      <th className="text-center py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Type</th>
                       <th className="text-right py-3 px-4 font-sans text-sm font-medium text-muted-foreground">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {editedTransactions.map((transaction, index) => (
-                      <tr 
-                        key={index} 
-                        className={`border-b border-border/50 hover:bg-secondary/20 transition-colors ${
-                          transaction.category === "Other" ? 'bg-amber-50/50 dark:bg-amber-950/10' : ''
-                        }`}
-                      >
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            value={transaction.date}
-                            onChange={(e) => handleEditTransaction(index, 'date', e.target.value)}
-                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <input
-                            type="text"
-                            value={transaction.merchant}
-                            onChange={(e) => handleEditTransaction(index, 'merchant', e.target.value)}
-                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <Select
-                            value={transaction.category}
-                            onValueChange={(value) => handleEditTransaction(index, 'category', value)}
-                          >
-                            <SelectTrigger className="w-full h-9 font-sans text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CATEGORY_OPTIONS.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <input
-                            type="number"
-                            value={transaction.amount}
-                            onChange={(e) => handleEditTransaction(index, 'amount', parseFloat(e.target.value) || 0)}
-                            className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1 text-right"
-                          />
-                        </td>
-                      </tr>
-                    ))}
+                    {editedTransactions.map((transaction, index) => {
+                      const txType = transaction.transactionType || 'debit';
+                      return (
+                        <tr 
+                          key={index} 
+                          className={`border-b border-border/50 hover:bg-secondary/20 transition-colors ${
+                            transaction.category === "Other" ? 'bg-amber-50/50 dark:bg-amber-950/10' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4">
+                            <input
+                              type="text"
+                              value={transaction.date}
+                              onChange={(e) => handleEditTransaction(index, 'date', e.target.value)}
+                              className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <input
+                              type="text"
+                              value={transaction.merchant}
+                              onChange={(e) => handleEditTransaction(index, 'merchant', e.target.value)}
+                              className="w-full bg-transparent font-sans text-sm text-foreground border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <Select
+                              value={transaction.category}
+                              onValueChange={(value) => handleEditTransaction(index, 'category', value)}
+                            >
+                              <SelectTrigger className="w-full h-9 font-sans text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CATEGORY_OPTIONS.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {txType === 'credit' ? (
+                              <ArrowUpCircle className="h-5 w-5 text-green-500 inline-block" />
+                            ) : (
+                              <ArrowDownCircle className="h-5 w-5 text-orange-500 inline-block" />
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <input
+                              type="number"
+                              value={transaction.amount}
+                              onChange={(e) => handleEditTransaction(index, 'amount', parseFloat(e.target.value) || 0)}
+                              className={`w-full bg-transparent font-sans text-sm border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1 text-right ${
+                                txType === 'credit' ? 'text-green-600 dark:text-green-500' : 'text-foreground'
+                              }`}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
