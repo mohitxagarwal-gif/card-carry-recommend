@@ -26,6 +26,7 @@ import AdminCards from "./pages/AdminCards";
 import AdminCardForm from "./pages/AdminCardForm";
 import AdminBulkUpload from "./pages/AdminBulkUpload";
 import AdminContentList from "./pages/AdminContentList";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 
@@ -155,6 +156,11 @@ const AppContent = () => {
       <Route path="/admin/bulk-upload" element={
         <ProtectedRoute requireOnboarding={true}>
           <AdminBulkUpload />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/analytics" element={
+        <ProtectedRoute requireOnboarding={true}>
+          <AdminAnalytics />
         </ProtectedRoute>
       } />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
