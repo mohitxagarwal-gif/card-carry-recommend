@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { useShortlist } from "@/hooks/useShortlist";
 import { useApplications } from "@/hooks/useApplications";
 import { useUserCards } from "@/hooks/useUserCards";
-import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle } from "lucide-react";
+import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
@@ -16,10 +16,9 @@ import { RemindersModule } from "@/components/dashboard/RemindersModule";
 import { ContentFeedCarousel } from "@/components/dashboard/ContentFeedCarousel";
 import { RecommendedCardsModule } from "@/components/dashboard/RecommendedCardsModule";
 import { AddCardDialog } from "@/components/dashboard/AddCardDialog";
-import { CreditCard as CreditCardIcon, Plus } from "lucide-react";
+import { ShortlistCardsDisplay } from "@/components/dashboard/ShortlistCardsDisplay";
 import { generateNextSteps } from "@/lib/nextStepsGenerator";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -179,33 +178,22 @@ const Dashboard = () => {
             <RecommendedCardsModule />
 
             {/* Shortlist */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Heart className="w-5 h-5" />
-                  shortlist
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {shortlist.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    save cards you like from your recommendations
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-semibold">{shortlist.length}</p>
-                    <p className="text-sm text-muted-foreground">cards saved</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => navigate('/recs')}
-                    >
-                      view all
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {shortlist.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Heart className="w-5 h-5" />
+                    shortlist
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ShortlistCardsDisplay 
+                    shortlistIds={shortlist.map(s => s.card_id)} 
+                    navigate={navigate}
+                  />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Card Management Modules - Only show if user has cards */}
             {getActiveCards().length > 0 ? (

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { useCards } from "@/hooks/useCards";
+import { useApplications } from "@/hooks/useApplications";
 import { CardDetailsModal } from "@/components/CardDetailsModal";
 import { IssuerOutlinkModal } from "@/components/IssuerOutlinkModal";
-import { Sparkles, ExternalLink, Upload } from "lucide-react";
+import { Sparkles, ExternalLink, Upload, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { trackEvent } from "@/lib/analytics";
 import { CreditCard } from "@/hooks/useCards";
@@ -15,12 +16,13 @@ export const RecommendedCardsModule = () => {
   const navigate = useNavigate();
   const { latestSnapshot, isLoading: snapshotLoading } = useRecommendationSnapshot();
   const { data: cards = [] } = useCards();
+  const { getApplicationStatus } = useApplications();
   const [selectedCard, setSelectedCard] = useState<CreditCard | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [outlinkModalOpen, setOutlinkModalOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string>("");
 
-  const getCardById = (cardId: string) => cards.find(c => c.id === cardId);
+  const getCardById = (cardId: string) => cards.find(c => c.card_id === cardId);
 
   if (snapshotLoading) return null;
 
@@ -54,22 +56,27 @@ export const RecommendedCardsModule = () => {
     }
   };
 
-  const handleApplyClick = (e: React.MouseEvent, cardId: string) => {
+  const handleApplyClick = (e: React.MouseEvent, card: CreditCard) => {
     e.stopPropagation();
-    const card = getCardById(cardId);
     if (!card?.application_url) return;
 
     const hideModal = localStorage.getItem('hide_outlink_modal') === 'true';
     
     if (hideModal) {
       window.open(card.application_url, '_blank');
-      trackEvent("dash_rec_apply_direct", { cardId });
+      trackEvent("dash_rec_apply_direct", { cardId: card.card_id });
     } else {
       setSelectedCard(card);
       setPendingUrl(card.application_url);
       setOutlinkModalOpen(true);
-      trackEvent("dash_rec_apply_modal", { cardId });
+      trackEvent("dash_rec_apply_modal", { cardId: card.card_id });
     }
+  };
+
+  const handleTrackClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate('/applications');
+    trackEvent("dash_rec_track_app");
   };
 
   const handleOutlinkContinue = () => {
@@ -138,18 +145,40 @@ export const RecommendedCardsModule = () => {
                         </p>
                       )}
 
-                      {/* Apply Button */}
-                      {card.application_url && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full sm:w-auto"
-                          onClick={(e) => handleApplyClick(e, card.id)}
-                        >
-                          <ExternalLink className="w-3 h-3 mr-2" />
-                          apply now
-                        </Button>
-                      )}
+                      {/* Action Button */}
+                      {(() => {
+                        const appStatus = getApplicationStatus(card.card_id);
+                        
+                        if (appStatus === 'applied' || appStatus === 'approved' || appStatus === 'rejected') {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="w-full sm:w-auto"
+                              onClick={handleTrackClick}
+                            >
+                              <FileText className="w-3 h-3 mr-2" />
+                              track application
+                            </Button>
+                          );
+                        }
+                        
+                        if (card.application_url) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full sm:w-auto"
+                              onClick={(e) => handleApplyClick(e, card)}
+                            >
+                              <ExternalLink className="w-3 h-3 mr-2" />
+                              apply now
+                            </Button>
+                          );
+                        }
+                        
+                        return null;
+                      })()}
                     </div>
                   </div>
                 </div>
