@@ -149,6 +149,12 @@ const cardFormSchema = z.object({
     .max(500, "T&C URL must be less than 500 characters")
     .optional()
     .or(z.literal("")),
+  application_url: z.string()
+    .trim()
+    .url("Must be a valid URL")
+    .max(500, "Application URL must be less than 500 characters")
+    .optional()
+    .or(z.literal("")),
 });
 
 type CardFormData = z.infer<typeof cardFormSchema>;
@@ -183,6 +189,7 @@ const AdminCardForm = () => {
       eligibility: "",
       docs_required: "",
       tnc_url: "",
+      application_url: "",
     },
   });
 
@@ -260,6 +267,7 @@ const AdminCardForm = () => {
         eligibility: formData.eligibility?.trim() || null,
         docs_required: formData.docs_required?.trim() || null,
         tnc_url: formData.tnc_url?.trim() || null,
+        application_url: formData.application_url?.trim() || null,
       };
 
       if (id) {
@@ -568,6 +576,20 @@ const AdminCardForm = () => {
                       <FormLabel>Waiver Rule (optional)</FormLabel>
                       <FormControl>
                         <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="application_url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Application URL (optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="https://bank.com/apply/card-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
