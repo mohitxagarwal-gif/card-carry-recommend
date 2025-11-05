@@ -159,7 +159,10 @@ const Dashboard = () => {
                       variant="outline" 
                       size="sm" 
                       className="mt-4"
-                      onClick={() => navigate('/recs')}
+                      onClick={() => {
+                        navigate('/recs');
+                        trackEvent('dash_view_recs');
+                      }}
                     >
                       View Recommendations
                     </Button>

@@ -129,11 +129,8 @@ export const afterAuthRedirect = async (
   const isComplete = isOnboardingComplete(profile);
   console.log('[authUtils.ts:107] Onboarding complete:', isComplete);
   
-  const safe = sanitizeInternalPath(returnTo) || '/upload';
-  console.log('[authUtils.ts:110] Safe redirect path:', safe);
-  
   if (!isComplete) {
-    console.log('[authUtils.ts:113] Onboarding incomplete, redirecting to onboarding');
+    const safe = sanitizeInternalPath(returnTo) || '/dashboard';
     
     // Track missing fields for telemetry
     const missingFields: string[] = [];
@@ -148,17 +145,44 @@ export const afterAuthRedirect = async (
     
     console.log('[authUtils.ts:126] Navigating to /onboarding/basics');
     navigate(`/onboarding/basics?returnTo=${encodeURIComponent(safe)}`, { replace: true });
-  } else {
-    console.log('[authUtils.ts:129] Onboarding complete, redirecting to destination');
-    const reason = returnTo ? 'returnTo' : 'fallback';
-    console.log('[authUtils.ts:131] Redirect reason:', reason);
-    
-    trackAuthRedirectNext(safe, reason);
-    console.log('[authUtils.ts:134] Navigating to:', safe);
-    navigate(safe, { replace: true });
+    return;
   }
   
-  console.log('[authUtils.ts:138] afterAuthRedirect completed');
+  // Check for completed recommendations
+  const { data: snapshot } = await supabase
+    .from('recommendation_snapshots')
+    .select('id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  // Priority order:
+  // 1. If returnTo provided and safe → use it
+  // 2. If they have recommendations → dashboard
+  // 3. Else → upload
+  const safe = sanitizeInternalPath(returnTo);
+  
+  let destination: string;
+  let reason: string;
+  
+  if (safe) {
+    destination = safe;
+    reason = 'returnTo';
+  } else if (snapshot) {
+    destination = '/dashboard';
+    reason = 'has_recommendations';
+  } else {
+    destination = '/upload';
+    reason = 'fallback';
+  }
+  
+  console.log('[authUtils.ts:157] Redirect destination:', destination, 'reason:', reason);
+  
+  trackAuthRedirectNext(destination, reason as 'returnTo' | 'fallback' | 'has_recommendations');
+  navigate(destination, { replace: true });
+  
+  console.log('[authUtils.ts:162] afterAuthRedirect completed');
 };
 
 /**

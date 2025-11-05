@@ -6,7 +6,7 @@ export const trackAuthSuccess = (provider: 'google' | 'email') => {
 
 export const trackAuthRedirectNext = (
   path: string, 
-  reason: 'onboarding' | 'returnTo' | 'fallback'
+  reason: 'onboarding' | 'returnTo' | 'fallback' | 'has_recommendations'
 ) => {
   trackEvent('auth_redirect_next', { path, reason });
 };

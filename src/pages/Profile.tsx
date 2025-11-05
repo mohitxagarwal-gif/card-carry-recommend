@@ -9,7 +9,7 @@ import Header from "@/components/Header";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2 } from "lucide-react";
+import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 
 const Profile = () => {
@@ -300,6 +300,35 @@ const Profile = () => {
                   Delete Account
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Account
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={async () => {
+                  try {
+                    await supabase.auth.signOut();
+                    toast.success("Signed out successfully");
+                    trackEvent("auth_signout", { location: 'profile' });
+                    navigate('/auth');
+                  } catch (error) {
+                    toast.error("Failed to sign out");
+                  }
+                }}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
             </CardContent>
           </Card>
         </div>

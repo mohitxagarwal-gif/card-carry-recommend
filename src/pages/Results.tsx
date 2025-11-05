@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2, LayoutDashboard, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2, LayoutDashboard, ArrowUpCircle, ArrowDownCircle, Home } from "lucide-react";
 import { toast } from "sonner";
 import { CardActionBar } from "@/components/CardActionBar";
 import { EligibilityIndicator } from "@/components/EligibilityIndicator";
@@ -73,6 +73,8 @@ const Results = () => {
   const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
   const [showOtherWarning, setShowOtherWarning] = useState(false);
   const [userIncome, setUserIncome] = useState<string | undefined>(undefined);
+  const [hasExistingRecommendations, setHasExistingRecommendations] = useState(false);
+  const [activeView, setActiveView] = useState<'review' | 'recommendations'>('review');
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -128,6 +130,28 @@ const Results = () => {
         const analysisData = data.analysis_data as unknown as AnalysisData;
         setAnalysis(analysisData);
         setEditedTransactions(analysisData.transactions || []);
+        
+        // Check if recommendations already exist for this analysis
+        const { data: existingSnapshot } = await supabase
+          .from('recommendation_snapshots')
+          .select('id, recommended_cards')
+          .eq('analysis_id', currentAnalysisId)
+          .maybeSingle();
+        
+        if (existingSnapshot && existingSnapshot.recommended_cards) {
+          console.log('[Results] Found existing recommendations for analysis:', currentAnalysisId);
+          setHasExistingRecommendations(true);
+          setShowRecommendations(true);
+          setActiveView('recommendations');
+          
+          // Populate analysis with existing recommendations
+          if (analysisData.recommendedCards === undefined || analysisData.recommendedCards.length === 0) {
+            setAnalysis(prev => prev ? {
+              ...prev,
+              recommendedCards: existingSnapshot.recommended_cards as any
+            } : null);
+          }
+        }
         
         // Phase 2: Verify transaction count matches analysis_run
         if (data.analysis_run_id) {
@@ -370,8 +394,8 @@ const Results = () => {
                 onClick={() => navigate("/dashboard")}
                 className="border-foreground/20 hover:bg-foreground/5"
               >
-                <LayoutDashboard className="h-4 w-4 mr-2" />
-                dashboard
+                <Home className="h-4 w-4 mr-2" />
+                back to dashboard
               </Button>
               <Button
                 variant="outline"
@@ -388,43 +412,42 @@ const Results = () => {
       </header>
 
       <main className="container mx-auto px-6 lg:px-12 py-16">
-        <Button
-          variant="outline"
-          onClick={() => navigate("/upload")}
-          className="mb-8 border-foreground/20 hover:bg-foreground/5"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          upload new statements
-        </Button>
-
         <div className="max-w-5xl mx-auto space-y-8">
           {/* Progress Indicator */}
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-medium">
-                1
+          {!hasExistingRecommendations && (
+            <div className="flex items-center justify-center gap-4 mb-8">
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                  activeView === 'review' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                }`}>
+                  1
+                </div>
+                <span className={`text-sm font-sans ${
+                  activeView === 'review' ? 'text-foreground' : 'text-muted-foreground'
+                }`}>Review & Edit Transactions</span>
               </div>
-              <span className="text-sm font-sans text-foreground">Review & Edit Transactions</span>
-            </div>
-            <div className="w-12 h-px bg-border"></div>
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                showRecommendations ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-              }`}>
-                2
+              <div className="w-12 h-px bg-border"></div>
+              <div className="flex items-center gap-2">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                  activeView === 'recommendations' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                }`}>
+                  2
+                </div>
+                <span className={`text-sm font-sans ${
+                  activeView === 'recommendations' ? 'text-foreground' : 'text-muted-foreground'
+                }`}>Get Recommendations</span>
               </div>
-              <span className={`text-sm font-sans ${
-                showRecommendations ? 'text-foreground' : 'text-muted-foreground'
-              }`}>Get Recommendations</span>
             </div>
-          </div>
+          )}
 
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
-              your spending analysis
+              {hasExistingRecommendations ? 'your recommendations' : 'your spending analysis'}
             </h2>
             <p className="text-lg font-sans text-muted-foreground">
-              {showRecommendations 
+              {hasExistingRecommendations 
+                ? 'personalized credit card recommendations based on your spending'
+                : activeView === 'recommendations'
                 ? 'personalized credit card recommendations'
                 : 'review and correct categories for better recommendations'
               }
