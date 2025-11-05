@@ -22,7 +22,16 @@ export const RecommendedCardsModule = () => {
   const [outlinkModalOpen, setOutlinkModalOpen] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string>("");
 
-  const getCardById = (cardId: string) => cards.find(c => c.card_id === cardId);
+  // Match recommendation card by name (since recommended_cards stores full names, not card_ids)
+  const getCardByName = (cardName: string) => {
+    // Try exact match first
+    const exactMatch = cards.find(c => 
+      c.name.toLowerCase() === cardName.toLowerCase() ||
+      c.name.toLowerCase().includes(cardName.toLowerCase()) ||
+      cardName.toLowerCase().includes(c.name.toLowerCase())
+    );
+    return exactMatch;
+  };
 
   if (snapshotLoading) return null;
 
@@ -47,13 +56,10 @@ export const RecommendedCardsModule = () => {
   // Show top 2-3 recommended cards
   const topCards = latestSnapshot.recommended_cards.slice(0, 3);
 
-  const handleCardClick = (cardId: string) => {
-    const card = getCardById(cardId);
-    if (card) {
-      setSelectedCard(card);
-      setDetailsModalOpen(true);
-      trackEvent("dash_rec_card_click", { cardId });
-    }
+  const handleCardClick = (card: CreditCard) => {
+    setSelectedCard(card);
+    setDetailsModalOpen(true);
+    trackEvent("dash_rec_card_click", { cardId: card.card_id });
   };
 
   const handleApplyClick = (e: React.MouseEvent, card: CreditCard) => {
@@ -98,15 +104,23 @@ export const RecommendedCardsModule = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {topCards.map((recCard: any) => {
-              const card = getCardById(recCard.card_id);
-              if (!card) return null;
+            {topCards.map((recCard: any, index: number) => {
+              const card = getCardByName(recCard.name);
+              if (!card) {
+                console.warn('Card not found for recommendation:', recCard.name);
+                return null;
+              }
+
+              // Extract estimated savings from the recommendation
+              const estimatedSavings = recCard.estimatedSavings 
+                ? parseInt(recCard.estimatedSavings.match(/₹([\d,]+)/)?.[1]?.replace(/,/g, '') || '0')
+                : null;
 
               return (
                 <div
-                  key={card.id}
+                  key={`${card.id}-${index}`}
                   className="group cursor-pointer p-4 rounded-lg border border-hairline bg-card hover:bg-accent/50 transition-all"
-                  onClick={() => handleCardClick(card.id)}
+                  onClick={() => handleCardClick(card)}
                 >
                   <div className="flex items-start gap-4">
                     {/* Card Image */}
@@ -131,17 +145,17 @@ export const RecommendedCardsModule = () => {
                             {card.issuer}
                           </p>
                         </div>
-                        {recCard.estimated_savings && (
+                        {estimatedSavings && (
                           <Badge variant="secondary" className="flex-shrink-0">
-                            Save ₹{recCard.estimated_savings.toLocaleString()}
+                            Save ₹{estimatedSavings.toLocaleString()}/year
                           </Badge>
                         )}
                       </div>
 
-                      {/* Key Benefit */}
-                      {card.key_perks && card.key_perks[0] && (
-                        <p className="text-sm text-subtle line-clamp-1">
-                          {card.key_perks[0]}
+                      {/* Key Benefit - Show recommendation reason */}
+                      {recCard.reason && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {recCard.reason}
                         </p>
                       )}
 
