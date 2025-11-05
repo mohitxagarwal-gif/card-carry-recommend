@@ -79,8 +79,8 @@ export const RecommendedCardsModule = () => {
     }
   };
 
-  const handleTrackClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleTrackClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     navigate('/applications');
     trackEvent("dash_rec_track_app");
   };
@@ -222,6 +222,9 @@ export const RecommendedCardsModule = () => {
         card={selectedCard}
         open={detailsModalOpen}
         onOpenChange={setDetailsModalOpen}
+        applicationStatus={selectedCard ? getApplicationStatus(selectedCard.card_id) : null}
+        onApplyClick={(card) => handleApplyClick(new MouseEvent('click') as any, card)}
+        onTrackClick={handleTrackClick}
       />
 
       {selectedCard && (

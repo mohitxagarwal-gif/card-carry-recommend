@@ -5,18 +5,55 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { ExternalLinkIcon } from "lucide-react";
+import { ExternalLink, ExternalLinkIcon, FileText } from "lucide-react";
+import { CardApplication } from "@/types/dashboard";
 
 interface CardDetailsModalProps {
   card: CreditCard | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  applicationStatus?: CardApplication['status'] | null;
+  onApplyClick?: (card: CreditCard) => void;
+  onTrackClick?: () => void;
 }
 
-export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalProps) => {
+export const CardDetailsModal = ({ 
+  card, 
+  open, 
+  onOpenChange,
+  applicationStatus,
+  onApplyClick,
+  onTrackClick 
+}: CardDetailsModalProps) => {
   const navigate = useNavigate();
 
   if (!card) return null;
+
+  // Determine which button to show
+  const renderActionButton = () => {
+    // If already applied/approved/rejected → Track Application
+    if (applicationStatus === 'applied' || applicationStatus === 'approved' || applicationStatus === 'rejected') {
+      return (
+        <Button onClick={onTrackClick} className="font-sans">
+          <FileText className="w-4 h-4 mr-2" />
+          Track Application
+        </Button>
+      );
+    }
+    
+    // If has application URL → Apply Now
+    if (card.application_url && onApplyClick) {
+      return (
+        <Button onClick={() => onApplyClick(card)} className="font-sans">
+          <ExternalLink className="w-4 h-4 mr-2" />
+          Apply Now
+        </Button>
+      );
+    }
+    
+    // Fallback: No button if no handlers provided
+    return null;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -31,9 +68,7 @@ export const CardDetailsModal = ({ card, open, onOpenChange }: CardDetailsModalP
                 {card.issuer} • {card.network}
               </p>
             </div>
-            <Button onClick={() => navigate("/auth")} className="font-sans">
-              Get personalized picks
-            </Button>
+            {renderActionButton()}
           </div>
         </DialogHeader>
 
