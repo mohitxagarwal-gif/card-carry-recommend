@@ -159,40 +159,44 @@ export const RecommendedCardsModule = () => {
                         </p>
                       )}
 
-                      {/* Action Button */}
-                      {(() => {
-                        const appStatus = getApplicationStatus(card.card_id);
-                        
-                        if (appStatus === 'applied' || appStatus === 'approved' || appStatus === 'rejected') {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="w-full sm:w-auto"
-                              onClick={handleTrackClick}
-                            >
-                              <FileText className="w-3 h-3 mr-2" />
-                              track application
-                            </Button>
-                          );
-                        }
-                        
-                        if (card.application_url) {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full sm:w-auto"
-                              onClick={(e) => handleApplyClick(e, card)}
-                            >
-                              <ExternalLink className="w-3 h-3 mr-2" />
-                              apply now
-                            </Button>
-                          );
-                        }
-                        
-                        return null;
-                      })()}
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 mt-3">
+                        {(() => {
+                          const appStatus = getApplicationStatus(card.card_id);
+                          
+                          // If user has applied, show Track Application
+                          if (appStatus === 'applied' || appStatus === 'approved' || appStatus === 'rejected') {
+                            return (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="flex-1"
+                                onClick={handleTrackClick}
+                              >
+                                <FileText className="w-3 h-3 mr-2" />
+                                track application
+                              </Button>
+                            );
+                          }
+                          
+                          // Default: Show Apply Now
+                          if (card.application_url) {
+                            return (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="flex-1"
+                                onClick={(e) => handleApplyClick(e, card)}
+                              >
+                                <ExternalLink className="w-3 h-3 mr-2" />
+                                apply now
+                              </Button>
+                            );
+                          }
+                          
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>
