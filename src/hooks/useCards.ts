@@ -23,6 +23,7 @@ export interface CreditCard {
   eligibility?: string;
   docs_required?: string;
   tnc_url?: string;
+  application_url?: string;
   popular_score: number;
   is_active: boolean;
 }

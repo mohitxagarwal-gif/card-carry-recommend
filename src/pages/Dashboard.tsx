@@ -13,7 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
 import { FeeWaiverGoalsModule } from "@/components/dashboard/FeeWaiverGoalsModule";
 import { RemindersModule } from "@/components/dashboard/RemindersModule";
-import { ContentFeedModule } from "@/components/dashboard/ContentFeedModule";
+import { ContentFeedCarousel } from "@/components/dashboard/ContentFeedCarousel";
+import { RecommendedCardsModule } from "@/components/dashboard/RecommendedCardsModule";
+import { AddCardDialog } from "@/components/dashboard/AddCardDialog";
+import { CreditCard as CreditCardIcon, Plus } from "lucide-react";
 import { generateNextSteps } from "@/lib/nextStepsGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -23,8 +26,9 @@ const Dashboard = () => {
   const { latestSnapshot, isLoading: snapshotLoading } = useRecommendationSnapshot();
   const { shortlist, isLoading: shortlistLoading } = useShortlist();
   const { applications, isLoading: appsLoading } = useApplications();
-  const { userCards, isLoading: cardsLoading } = useUserCards();
+  const { userCards, isLoading: cardsLoading, getActiveCards } = useUserCards();
   const [incompleteAnalysis, setIncompleteAnalysis] = useState<any>(null);
+  const [addCardDialogOpen, setAddCardDialogOpen] = useState(false);
 
   useEffect(() => {
     trackEvent("dash_view");
@@ -171,79 +175,63 @@ const Dashboard = () => {
               </Card>
             )}
 
-            {/* Shortlist & Applications */}
-            <div className="grid sm:grid-cols-2 gap-6">
+            {/* Recommended Cards (replaces Applications) */}
+            <RecommendedCardsModule />
+
+            {/* Shortlist */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  shortlist
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {shortlist.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    save cards you like from your recommendations
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-2xl font-semibold">{shortlist.length}</p>
+                    <p className="text-sm text-muted-foreground">cards saved</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate('/recs')}
+                    >
+                      view all
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Card Management Modules - Only show if user has cards */}
+            {getActiveCards().length > 0 ? (
+              <>
+                <MyCardsModule />
+                <FeeWaiverGoalsModule />
+                <RemindersModule />
+              </>
+            ) : (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Heart className="w-5 h-5" />
-                    Shortlist
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {shortlist.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Save cards you like from your recommendations
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-2xl font-semibold">{shortlist.length}</p>
-                      <p className="text-sm text-muted-foreground">cards saved</p>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => navigate('/recs')}
-                      >
-                        View All
-                      </Button>
-                    </div>
-                  )}
+                <CardContent className="pt-6 text-center space-y-4">
+                  <CreditCardIcon className="w-12 h-12 mx-auto text-muted-foreground" />
+                  <h3 className="text-xl font-semibold">manage your cards</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    add your existing credit cards to track fee waivers, lounge access, and set reminders
+                  </p>
+                  <Button onClick={() => setAddCardDialogOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    add your first card
+                  </Button>
                 </CardContent>
               </Card>
+            )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    Applications
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {applications.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Track your card applications here
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Badge variant="outline">{applications.filter(a => a.status === 'considering').length} considering</Badge>
-                        <Badge variant="outline">{applications.filter(a => a.status === 'applied').length} applied</Badge>
-                        <Badge variant="outline">{applications.filter(a => a.status === 'approved').length} approved</Badge>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => navigate('/apps')}
-                      >
-                        Manage
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* My Cards */}
-            <MyCardsModule />
-
-            {/* Fee Waiver Goals */}
-            <FeeWaiverGoalsModule />
-
-            {/* Reminders */}
-            <RemindersModule />
-
-            {/* Content Feed */}
-            <ContentFeedModule />
+            {/* Content Feed Carousel */}
+            <ContentFeedCarousel />
 
             {/* Data Freshness */}
             {latestSnapshot && (
@@ -270,6 +258,9 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+
+      {/* Add Card Dialog */}
+      <AddCardDialog open={addCardDialogOpen} onOpenChange={setAddCardDialogOpen} />
     </div>
   );
 };
