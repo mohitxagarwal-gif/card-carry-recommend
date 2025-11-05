@@ -191,6 +191,7 @@ export type Database = {
       credit_cards: {
         Row: {
           annual_fee: number
+          application_url: string | null
           card_id: string
           category_badges: string[]
           created_at: string | null
@@ -218,6 +219,7 @@ export type Database = {
         }
         Insert: {
           annual_fee: number
+          application_url?: string | null
           card_id: string
           category_badges: string[]
           created_at?: string | null
@@ -245,6 +247,7 @@ export type Database = {
         }
         Update: {
           annual_fee?: number
+          application_url?: string | null
           card_id?: string
           category_badges?: string[]
           created_at?: string | null
