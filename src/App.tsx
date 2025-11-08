@@ -15,6 +15,10 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OnboardingBasics from "./pages/OnboardingBasics";
 import OnboardingFirstCard from "./pages/OnboardingFirstCard";
+import OnboardingSetup from "./pages/OnboardingSetup";
+import OnboardingSpending from "./pages/OnboardingSpending";
+import OnboardingTravel from "./pages/OnboardingTravel";
+import OnboardingRecap from "./pages/OnboardingRecap";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
 import Dashboard from "./pages/Dashboard";
@@ -95,6 +99,26 @@ const AppContent = () => {
       <Route path="/onboarding/first-card" element={
         <ProtectedRoute requireOnboarding={false}>
           <OnboardingFirstCard />
+        </ProtectedRoute>
+      } />
+      <Route path="/onboarding/setup" element={
+        <ProtectedRoute requireOnboarding={false}>
+          <OnboardingSetup />
+        </ProtectedRoute>
+      } />
+      <Route path="/onboarding/spending" element={
+        <ProtectedRoute requireOnboarding={false}>
+          <OnboardingSpending />
+        </ProtectedRoute>
+      } />
+      <Route path="/onboarding/travel" element={
+        <ProtectedRoute requireOnboarding={false}>
+          <OnboardingTravel />
+        </ProtectedRoute>
+      } />
+      <Route path="/onboarding/recap" element={
+        <ProtectedRoute requireOnboarding={false}>
+          <OnboardingRecap />
         </ProtectedRoute>
       } />
       <Route path="/cards" element={<CardsPage />} />

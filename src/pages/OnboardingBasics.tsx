@@ -179,16 +179,25 @@ export default function OnboardingBasics() {
       trackEvent("onboarding_basics_submit_success");
       toast.success("Saved. Tailoring picks for you...");
       
-      // Save the intended destination for after first-card decision
+      // Save basics data to localStorage for later use
+      localStorage.setItem("onboarding_basics", JSON.stringify({
+        age_range: formData.age_range,
+        income_band_inr: formData.income_band_inr,
+        city: formData.city,
+        phone_e164: formData.phone_e164,
+        marketing_consent: formData.marketing_consent,
+      }));
+      
+      // Save the intended destination for after onboarding completion
       const returnTo = getReturnToFromQuery();
       const safe = sanitizeInternalPath(returnTo) || '/upload';
       
       if (userId) {
-        localStorage.setItem(`post_first_card_destination_${userId}`, safe);
+        localStorage.setItem(`post_onboarding_destination_${userId}`, safe);
       }
       
-      // Always route to first-card screen next
-      navigate('/onboarding/first-card', { replace: true });
+      // Route to enhanced onboarding flow
+      navigate('/onboarding/setup', { replace: true });
     } catch (error: any) {
       toast.error(error.message);
     } finally {
