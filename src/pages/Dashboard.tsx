@@ -7,7 +7,8 @@ import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { useShortlist } from "@/hooks/useShortlist";
 import { useApplications } from "@/hooks/useApplications";
 import { useUserCards } from "@/hooks/useUserCards";
-import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus } from "lucide-react";
+import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
+import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus, RefreshCw } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
@@ -19,15 +20,18 @@ import { AddCardDialog } from "@/components/dashboard/AddCardDialog";
 import { ShortlistCardsDisplay } from "@/components/dashboard/ShortlistCardsDisplay";
 import { generateNextSteps } from "@/lib/nextStepsGenerator";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { latestSnapshot, isLoading: snapshotLoading } = useRecommendationSnapshot();
+  const { latestSnapshot, isLoading: snapshotLoading, createSnapshot } = useRecommendationSnapshot();
   const { shortlist, isLoading: shortlistLoading } = useShortlist();
   const { applications, isLoading: appsLoading } = useApplications();
   const { userCards, isLoading: cardsLoading, getActiveCards } = useUserCards();
+  const deriveFeatures = useDeriveFeatures();
   const [incompleteAnalysis, setIncompleteAnalysis] = useState<any>(null);
   const [addCardDialogOpen, setAddCardDialogOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     trackEvent("dash_view");
@@ -54,6 +58,64 @@ const Dashboard = () => {
     
     checkIncompleteAnalysis();
   }, [latestSnapshot]);
+
+  const handleRefreshRecommendations = async () => {
+    setRefreshing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Please sign in to refresh recommendations");
+        return;
+      }
+
+      // Get latest analysis
+      const { data: latestAnalysis } = await supabase
+        .from('spending_analyses')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!latestAnalysis) {
+        toast.error("No analysis found. Please upload statements first.");
+        return;
+      }
+
+      // Step 1: Derive features
+      await deriveFeatures.mutateAsync({
+        userId: user.id,
+        analysisId: latestAnalysis.id,
+      });
+
+      // Step 2: Generate new recommendations
+      const { data: recData, error: recError } = await supabase.functions.invoke("generate-recommendations", {
+        body: { analysisId: latestAnalysis.id },
+      });
+
+      if (recError) throw recError;
+
+      // Step 3: Create new snapshot
+      if (recData?.recommendations) {
+        createSnapshot({
+          analysisId: latestAnalysis.id,
+          savingsMin: recData.savingsMin || 0,
+          savingsMax: recData.savingsMax || 0,
+          confidence: recData.confidence || 'medium',
+          recommendedCards: recData.recommendations,
+        });
+      }
+
+      toast.success("Recommendations refreshed successfully!");
+      trackEvent("recommendations_refresh", { source: "dashboard" });
+      window.location.reload(); // Reload to show updated data
+    } catch (error: any) {
+      console.error("Refresh error:", error);
+      toast.error("Failed to refresh recommendations");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   if (snapshotLoading || shortlistLoading || appsLoading || cardsLoading) {
     return (
@@ -139,10 +201,21 @@ const Dashboard = () => {
             {latestSnapshot && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    estimated annual savings
-                  </CardTitle>
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      estimated annual savings
+                    </CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshRecommendations}
+                      disabled={refreshing}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                      {refreshing ? 'Refreshing...' : 'Refresh'}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">

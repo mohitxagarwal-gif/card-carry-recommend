@@ -5,21 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import Header from "@/components/Header";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut } from "lucide-react";
+import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, TrendingUp } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { preferences, isLoading, updatePreferences } = useUserPreferences();
   const [profile, setProfile] = useState<any>(null);
+  const [userFeatures, setUserFeatures] = useState<any>(null);
 
   useEffect(() => {
     trackEvent("profile_view");
     loadProfile();
+    loadUserFeatures();
   }, []);
 
   const loadProfile = async () => {
@@ -31,6 +35,18 @@ const Profile = () => {
         .eq("id", user.id)
         .single();
       setProfile(data);
+    }
+  };
+
+  const loadUserFeatures = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from("user_features")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      setUserFeatures(data);
     }
   };
 
@@ -85,6 +101,81 @@ const Profile = () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Derived Features */}
+          {userFeatures && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Your Spending Profile
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Data Source</Label>
+                  <Badge variant={userFeatures.data_source === 'statement' ? 'default' : 'secondary'}>
+                    {userFeatures.data_source === 'statement' ? 'Bank Statements' : 'Self-Reported'}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label>Confidence Level</Label>
+                  <div className="flex items-center gap-2">
+                    <Progress value={(userFeatures.feature_confidence || 0) * 100} className="w-24 h-2" />
+                    <span className="text-sm font-semibold">
+                      {Math.round((userFeatures.feature_confidence || 0) * 100)}%
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Monthly Spending</Label>
+                  <p className="text-2xl font-bold mt-1">
+                    ₹{userFeatures.monthly_spend_estimate?.toLocaleString('en-IN')}
+                  </p>
+                </div>
+
+                {userFeatures.spend_split_json && (
+                  <div className="space-y-2">
+                    <Label>Top Categories</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(userFeatures.spend_split_json)
+                        .sort(([, a], [, b]) => (b as number) - (a as number))
+                        .slice(0, 5)
+                        .map(([cat, val]) => (
+                          <Badge key={cat} variant="outline">
+                            {cat}: {(val as number).toFixed(0)}%
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Pay-in-Full Score</Label>
+                    <p className="text-lg font-semibold">{((userFeatures.pif_score || 0) * 100).toFixed(0)}%</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Max Fee Tolerance</Label>
+                    <p className="text-lg font-semibold">
+                      ₹{userFeatures.fee_tolerance_numeric?.toLocaleString('en-IN') || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/upload')}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Update with New Statements
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Preferences */}
           <Card>

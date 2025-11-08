@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, CheckCircle2, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
 
 const OnboardingRecap = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [data, setData] = useState<any>({});
+  const deriveFeatures = useDeriveFeatures();
 
   useEffect(() => {
     const basics = JSON.parse(localStorage.getItem("onboarding_basics") || "{}");
@@ -104,31 +106,14 @@ const OnboardingRecap = () => {
         if (affinitiesError) throw affinitiesError;
       }
 
-      // Create/update user_features
-      const confidence = calculateConfidence();
-      const { error: featuresError } = await supabase
-        .from("user_features")
-        .upsert({
-          user_id: user.id,
-          monthly_spend_estimate: data.spending?.monthlySpend || 0,
-          spend_split_json: data.spending?.spendSplit || {},
-          online_share: (data.spending?.spendSplit?.online || 0) / 100,
-          dining_share: (data.spending?.spendSplit?.dining || 0) / 100,
-          groceries_share: (data.spending?.spendSplit?.groceries || 0) / 100,
-          travel_share: (data.spending?.spendSplit?.travel || 0) / 100,
-          cabs_fuel_share: (data.spending?.spendSplit?.fuel || 0) / 100,
-          bills_utilities_share: (data.spending?.spendSplit?.bills || 0) / 100,
-          entertainment_share: (data.spending?.spendSplit?.entertainment || 0) / 100,
-          forex_share: (data.spending?.spendSplit?.forex || 0) / 100,
-          pif_score: data.basics?.payInFullHabit === "always" ? 1.0 : 0.8,
-          fee_tolerance_numeric: data.setup?.feeTolerance === "zero" ? 0 : 
-                                  data.setup?.feeTolerance === "<=1k" ? 1000 :
-                                  data.setup?.feeTolerance === "<=5k" ? 5000 : 999999,
-          data_source: "self_report",
-          feature_confidence: confidence,
-        });
-
-      if (featuresError) throw featuresError;
+      // Call derive-user-features edge function to calculate features
+      await deriveFeatures.mutateAsync({
+        userId: user.id,
+        spendData: {
+          monthlySpend: data.spending?.monthlySpend || 0,
+          spendSplit: data.spending?.spendSplit || {},
+        },
+      });
 
       // Clear localStorage
       localStorage.removeItem("onboarding_basics");

@@ -77,6 +77,7 @@ const Results = () => {
   const [userIncome, setUserIncome] = useState<string | undefined>(undefined);
   const [hasExistingRecommendations, setHasExistingRecommendations] = useState(false);
   const [activeView, setActiveView] = useState<'review' | 'recommendations'>('review');
+  const [matchScoreModal, setMatchScoreModal] = useState<{ isOpen: boolean; card: any } | null>(null);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -300,6 +301,23 @@ const Results = () => {
 
       if (updateError) throw updateError;
 
+      // Step 1: Derive features from the analysis
+      console.log("[Results] Deriving features for analysis:", analysisId);
+      
+      const { error: deriveError } = await supabase.functions.invoke('derive-user-features', {
+        body: {
+          userId: user.id,
+          analysisId: analysisId,
+        },
+      });
+
+      if (deriveError) {
+        console.error("[Results] Feature derivation failed:", deriveError);
+        toast.error("Failed to calculate user features");
+        return;
+      }
+
+      // Step 2: Generate recommendations with fresh features
       // Call the new edge function with profile data
       const { data, error } = await supabase.functions.invoke('generate-recommendations', {
         body: {

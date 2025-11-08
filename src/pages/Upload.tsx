@@ -540,6 +540,21 @@ const Upload = () => {
       }
       
       console.log('[Upload] Analysis complete:', data.analysis.id);
+      
+      // Call derive-user-features to calculate features from the analysis
+      try {
+        await supabase.functions.invoke('derive-user-features', {
+          body: {
+            userId: user.id,
+            analysisId: data.analysis.id,
+          },
+        });
+        console.log('[Upload] Features derived successfully');
+      } catch (featureError) {
+        console.error('[Upload] Feature derivation failed (non-critical):', featureError);
+        // Don't block navigation if feature derivation fails
+      }
+      
       toast.success('Analysis complete!');
       navigate(`/results?analysisId=${data.analysis.id}`, {
         state: { analysisId: data.analysis.id }
