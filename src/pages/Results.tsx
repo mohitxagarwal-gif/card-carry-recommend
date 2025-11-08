@@ -475,22 +475,6 @@ const Results = () => {
             </div>
           )}
 
-          {/* Incomplete Profile Alert */}
-          {showRecommendations && (!userProfile?.city || !userPreferences?.fee_sensitivity) && (
-            <Alert className="border-amber-200 bg-amber-50">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-900">
-                These recommendations are based on limited profile data. 
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto ml-1 text-amber-700 underline"
-                  onClick={() => navigate('/profile')}
-                >
-                  Complete your profile
-                </Button> for more accurate matches.
-              </AlertDescription>
-            </Alert>
-          )}
 
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-heading font-bold text-foreground mb-4">
@@ -582,43 +566,6 @@ const Results = () => {
             <>
               <div id="recommendations-section"></div>
               
-              {/* Incomplete Profile Alert */}
-              {(!userProfile?.city || !userPreferences?.fee_sensitivity) && (
-                <Card className="mb-6 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                          Improve Your Recommendations
-                        </h3>
-                        <p className="text-sm text-blue-800 dark:text-blue-200 mb-4">
-                          Your recommendations are based on spending patterns only. Complete your profile for more personalized matches based on your preferences and location.
-                        </p>
-                        <div className="flex gap-3">
-                          <Button 
-                            size="sm"
-                            onClick={() => navigate('/profile')}
-                            className="bg-blue-600 hover:bg-blue-700"
-                          >
-                            Complete Profile
-                          </Button>
-                          <Button 
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              const element = document.getElementById('recommendations-list');
-                              element?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                          >
-                            See Recommendations
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
               
               {/* Low Confidence Warning */}
               {(editedTransactions.length < 20 || otherCount > editedTransactions.length * 0.3) && (
@@ -628,6 +575,43 @@ const Results = () => {
                     These recommendations are based on limited data. Upload more statements or recategorize "Other" transactions for better accuracy.
                   </AlertDescription>
                 </Alert>
+              )}
+              
+              {/* Personalization Opportunity */}
+              {(!userProfile?.city || !userPreferences?.fee_sensitivity) && (
+                <Card className="mb-6 border-primary/20 bg-primary/5">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-foreground mb-2">
+                          ✨ Get Even Better Matches
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Great start! We've analyzed your spending patterns. Add a few preferences to unlock hyper-personalized card matches tailored to your lifestyle.
+                        </p>
+                        <div className="flex gap-3">
+                          <Button 
+                            size="sm"
+                            onClick={() => navigate('/profile')}
+                          >
+                            Personalize My Matches
+                          </Button>
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const element = document.getElementById('recommendations-list');
+                              element?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                          >
+                            See Current Recommendations
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
               
               {/* Summary Panel */}
@@ -760,16 +744,20 @@ const Results = () => {
                       </p>
                       <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
                         <Button 
+                          type="button"
                           size="lg"
                           onClick={() => {
+                            console.log('[Results] Navigating to dashboard');
                             trackEvent('results_to_dashboard');
                             navigate('/dashboard');
                           }}
                           className="text-lg px-8"
                         >
+                          <LayoutDashboard className="mr-2 h-5 w-5" />
                           Go to Dashboard
                         </Button>
                         <Button 
+                          type="button"
                           size="lg"
                           variant="outline"
                           onClick={() => navigate('/cards')}
