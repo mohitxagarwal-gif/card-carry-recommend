@@ -63,6 +63,43 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
     return "";
   };
 
+  // Normalize preference values from legacy format to current format
+  const normalizePreferenceValues = (prefs: any) => {
+    const normalized = { ...prefs };
+    
+    // Fee sensitivity: moderate → medium
+    if (normalized.fee_sensitivity === 'moderate') {
+      console.log('[PreferencesModal] Converting fee_sensitivity: moderate → medium');
+      normalized.fee_sensitivity = 'medium';
+    }
+    
+    // Travel frequency: rare/none → never
+    if (normalized.travel_frequency === 'rare' || normalized.travel_frequency === 'none') {
+      console.log(`[PreferencesModal] Converting travel_frequency: ${normalized.travel_frequency} → never`);
+      normalized.travel_frequency = 'never';
+    }
+    
+    // Lounge importance: map old values to high/medium/low
+    const loungeMap: Record<string, string> = {
+      'essential': 'high',
+      'important': 'medium',
+      'nice_to_have': 'medium',
+      'not_important': 'low'
+    };
+    if (normalized.lounge_importance && loungeMap[normalized.lounge_importance]) {
+      console.log(`[PreferencesModal] Converting lounge_importance: ${normalized.lounge_importance} → ${loungeMap[normalized.lounge_importance]}`);
+      normalized.lounge_importance = loungeMap[normalized.lounge_importance];
+    }
+    
+    // Reward preference: travel/mixed → either
+    if (normalized.reward_preference === 'travel' || normalized.reward_preference === 'mixed') {
+      console.log(`[PreferencesModal] Converting reward_preference: ${normalized.reward_preference} → either`);
+      normalized.reward_preference = 'either';
+    }
+    
+    return normalized;
+  };
+
   useEffect(() => {
     if (open) {
       console.log('[PreferencesModal] Modal opened, initialTab:', initialTab);
@@ -102,10 +139,12 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
       }
 
       if (preferences) {
-        setFeeSensitivity(preferences.fee_sensitivity || "");
-        setTravelFrequency(preferences.travel_frequency || "");
-        setLoungeImportance(preferences.lounge_importance || "");
-        setRewardPreference(preferences.reward_preference || "");
+        const normalized = normalizePreferenceValues(preferences);
+        console.log('[PreferencesModal] Normalized preferences:', normalized);
+        setFeeSensitivity(normalized.fee_sensitivity || "");
+        setTravelFrequency(normalized.travel_frequency || "");
+        setLoungeImportance(normalized.lounge_importance || "");
+        setRewardPreference(normalized.reward_preference || "");
       }
     } catch (error) {
       console.error("[PreferencesModal] Error loading data:", error);
@@ -131,6 +170,47 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
       }
 
       console.log('[PreferencesModal] Saving profile with age_range:', ageRangeToSave);
+
+      // Validate all preference values before saving
+      const validFeeSensitivity = ['low', 'medium', 'high'];
+      const validTravelFrequency = ['never', 'occasional', 'frequent'];
+      const validLoungeImportance = ['low', 'medium', 'high'];
+      const validRewardPreference = ['cashback', 'points', 'either'];
+
+      if (feeSensitivity && !validFeeSensitivity.includes(feeSensitivity)) {
+        console.error('[PreferencesModal] Invalid fee sensitivity:', feeSensitivity);
+        toast.error('Please select a valid fee sensitivity option');
+        setLoading(false);
+        return;
+      }
+
+      if (travelFrequency && !validTravelFrequency.includes(travelFrequency)) {
+        console.error('[PreferencesModal] Invalid travel frequency:', travelFrequency);
+        toast.error('Please select a valid travel frequency option');
+        setLoading(false);
+        return;
+      }
+
+      if (loungeImportance && !validLoungeImportance.includes(loungeImportance)) {
+        console.error('[PreferencesModal] Invalid lounge importance:', loungeImportance);
+        toast.error('Please select a valid lounge importance option');
+        setLoading(false);
+        return;
+      }
+
+      if (rewardPreference && !validRewardPreference.includes(rewardPreference)) {
+        console.error('[PreferencesModal] Invalid reward preference:', rewardPreference);
+        toast.error('Please select a valid reward preference option');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[PreferencesModal] Saving preferences:', {
+        feeSensitivity,
+        travelFrequency,
+        loungeImportance,
+        rewardPreference
+      });
 
       // Update profile
       const { error: profileError } = await supabase
@@ -265,7 +345,7 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="high">Avoid fees - prefer lifetime free cards</SelectItem>
-                  <SelectItem value="moderate">Okay with fees if value is clear</SelectItem>
+                  <SelectItem value="medium">Okay with fees if value is clear</SelectItem>
                   <SelectItem value="low">Premium cards worth the investment</SelectItem>
                 </SelectContent>
               </Select>
@@ -280,8 +360,7 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
                 <SelectContent>
                   <SelectItem value="cashback">Cashback - direct savings</SelectItem>
                   <SelectItem value="points">Reward Points - flexibility</SelectItem>
-                  <SelectItem value="travel">Travel Miles - for flights</SelectItem>
-                  <SelectItem value="mixed">Mixed - depends on the deal</SelectItem>
+                  <SelectItem value="either">Flexible - open to any rewards</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -297,8 +376,7 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
                 <SelectContent>
                   <SelectItem value="frequent">Frequent - 6+ times/year</SelectItem>
                   <SelectItem value="occasional">Occasional - 2-5 times/year</SelectItem>
-                  <SelectItem value="rare">Rare - once a year or less</SelectItem>
-                  <SelectItem value="none">Never</SelectItem>
+                  <SelectItem value="never">Rarely or never</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -310,10 +388,9 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
                   <SelectValue placeholder="How important is lounge access?" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="essential">Essential - I use it every trip</SelectItem>
-                  <SelectItem value="important">Important - nice to have</SelectItem>
-                  <SelectItem value="nice_to_have">Nice to have</SelectItem>
-                  <SelectItem value="not_important">Not important</SelectItem>
+                  <SelectItem value="high">Essential - very important to me</SelectItem>
+                  <SelectItem value="medium">Nice to have</SelectItem>
+                  <SelectItem value="low">Not important</SelectItem>
                 </SelectContent>
               </Select>
             </div>
