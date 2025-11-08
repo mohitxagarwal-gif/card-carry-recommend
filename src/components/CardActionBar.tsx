@@ -3,6 +3,7 @@ import { ExternalLink, Heart, CheckCircle } from "lucide-react";
 import { useShortlist } from "@/hooks/useShortlist";
 import { trackEvent } from "@/lib/analytics";
 import { IssuerOutlinkModal } from "./IssuerOutlinkModal";
+import { EligibilityDetailsModal } from "./EligibilityDetailsModal";
 import { useState } from "react";
 
 interface CardActionBarProps {
@@ -15,21 +16,13 @@ export const CardActionBar = ({ cardId, issuer, name }: CardActionBarProps) => {
   const { isInShortlist, addToShortlist, removeFromShortlist } = useShortlist();
   const inShortlist = isInShortlist(cardId);
   const [showOutlinkModal, setShowOutlinkModal] = useState(false);
+  const [showEligibilityModal, setShowEligibilityModal] = useState(false);
   const [pendingUrl, setPendingUrl] = useState("");
   const [pendingAction, setPendingAction] = useState<"eligibility" | "apply" | null>(null);
 
   const handleEligibilityCheck = () => {
-    const hideModal = localStorage.getItem('hide_outlink_modal') === 'true';
-    const url = `https://${issuer.toLowerCase().replace(/\s/g, '')}.com/check-eligibility`;
-    
-    if (hideModal) {
-      trackEvent("recs_eligibility_click", { cardId, issuer });
-      window.open(url, '_blank');
-    } else {
-      setPendingUrl(url);
-      setPendingAction("eligibility");
-      setShowOutlinkModal(true);
-    }
+    trackEvent("recs_eligibility_click", { cardId, issuer });
+    setShowEligibilityModal(true);
   };
 
   const handleApply = () => {
@@ -94,6 +87,13 @@ export const CardActionBar = ({ cardId, issuer, name }: CardActionBarProps) => {
       >
         <Heart className={`w-4 h-4 ${inShortlist ? 'fill-current' : ''}`} />
       </Button>
+
+      <EligibilityDetailsModal
+        isOpen={showEligibilityModal}
+        onClose={() => setShowEligibilityModal(false)}
+        cardId={cardId}
+        cardName={name}
+      />
 
       <IssuerOutlinkModal
         isOpen={showOutlinkModal}
