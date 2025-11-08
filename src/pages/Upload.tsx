@@ -213,6 +213,11 @@ const Upload = () => {
       // Check for structured error response from edge function
       if (extractData?.error) return extractData.error;
       
+      // Check for Zod validation errors (from edge function)
+      if (error.message?.includes('too_small') || error.message?.includes('character(s)')) {
+        return 'PDF text extraction failed - insufficient content';
+      }
+      
       // Check for HTTP status codes
       if (error.status === 401) return 'Authentication failed. Please log in again.';
       if (error.status === 402) return 'AI service credits exhausted. Please contact support.';
@@ -225,6 +230,12 @@ const Upload = () => {
 
     const getErrorSuggestion = (error: any, extractData?: any): string => {
       if (extractData?.suggestion) return extractData.suggestion;
+      
+      // Add suggestion for text extraction issues
+      if (error.message?.includes('too_small') || error.message?.includes('character(s)') || 
+          error.message?.includes('text extraction') || error.message?.includes('insufficient content')) {
+        return 'The PDF may be scanned or image-based. Please upload a digital statement with selectable text.';
+      }
       
       if (error.status === 401) return 'Please refresh the page and log in again.';
       if (error.status === 402) return 'Top up your account or contact support@example.com';
@@ -279,6 +290,43 @@ const Upload = () => {
         continue;
       }
 
+      // Step 1.5: Validate extracted text length
+      const extractedText = result.text.trim();
+
+      if (extractedText.length < 10) {
+        const errorMessage = 'Unable to extract text from PDF';
+        const suggestion = 'This PDF appears to be scanned or image-based. Please upload a digital statement with selectable text, or contact your bank for a text-based version.';
+        
+        console.warn('[text-extraction-insufficient]', { 
+          fileName: file.name, 
+          textLength: extractedText.length,
+          preview: extractedText.substring(0, 50)
+        });
+        
+        setFilesWithStatus(prev => prev.map(f => 
+          f.file.name === file.name ? {
+            ...f,
+            status: 'error' as FileStatus,
+            error: errorMessage
+          } : f
+        ));
+        
+        toast.error(`${file.name}: ${errorMessage}`, {
+          description: suggestion,
+          duration: 8000
+        });
+        
+        completed++;
+        setOverallProgress((completed / total) * 100);
+        continue;
+      }
+
+      console.log('[text-extraction-success]', {
+        fileName: file.name,
+        textLength: extractedText.length,
+        preview: extractedText.substring(0, 100) + '...'
+      });
+
       // Step 2: AI-powered extraction (40% → 100% progress)
       setFilesWithStatus(prev => prev.map(f => 
         f.file.name === file.name ? {
@@ -294,7 +342,7 @@ const Upload = () => {
           'extract-transactions',
           {
             body: {
-              pdfText: result.text,
+              pdfText: extractedText,
               fileName: file.name,
               statementType: mode === 'bank' ? 'bank' : mode === 'credit' ? 'credit_card' : 'unknown'
             }
