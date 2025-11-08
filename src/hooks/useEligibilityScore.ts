@@ -17,9 +17,10 @@ interface EligibilityScore {
 export const useEligibilityScore = (cardId?: string) => {
   return useQuery({
     queryKey: ["eligibility-score", cardId],
+    enabled: !!cardId,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) return null;
 
       // Fetch profile and preferences
       const { data: profile } = await supabase
@@ -52,7 +53,7 @@ export const useEligibilityScore = (cardId?: string) => {
           .from("credit_cards")
           .select("*")
           .eq("card_id", cardId)
-          .single();
+          .maybeSingle();
         card = cardData;
       }
 

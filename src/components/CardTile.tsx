@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { getIssuerBrand, getHeroFeature, getFeeStyle } from "@/lib/issuerBranding";
 import { useEligibilityScore } from "@/hooks/useEligibilityScore";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 interface CardTileProps {
   card: CreditCard;
@@ -27,9 +27,12 @@ export const CardTile = ({ card }: CardTileProps) => {
   const heroFeature = getHeroFeature(card);
   const feeStyle = getFeeStyle(card.annual_fee);
   const { data: eligibility } = useEligibilityScore(card.card_id);
+  const viewTracked = useRef(false);
 
-  // Track card view
+  // Track card view once per mount
   useEffect(() => {
+    if (viewTracked.current) return;
+    
     const trackView = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -38,6 +41,7 @@ export const CardTile = ({ card }: CardTileProps) => {
           card_id: card.card_id,
           source: window.location.pathname.includes('recs') ? 'recommendations' : 'explore',
         });
+        viewTracked.current = true;
       }
     };
     trackView();
