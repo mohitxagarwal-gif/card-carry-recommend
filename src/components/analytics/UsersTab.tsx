@@ -26,7 +26,7 @@ export const UsersTab = () => {
           <CardHeader>
             <CardTitle className="text-lg">Age Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             <ChartContainer
               config={{
                 value: {
@@ -34,7 +34,7 @@ export const UsersTab = () => {
                   color: "hsl(var(--primary))",
                 },
               }}
-              className="h-64"
+              className="h-64 w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -44,7 +44,7 @@ export const UsersTab = () => {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                    outerRadius={80}
+                    outerRadius="60%"
                     fill="#8884d8"
                     dataKey="value"
                   >
@@ -64,7 +64,7 @@ export const UsersTab = () => {
           <CardHeader>
             <CardTitle className="text-lg">Income Distribution</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-hidden">
             <ChartContainer
               config={{
                 value: {
@@ -72,10 +72,10 @@ export const UsersTab = () => {
                   color: "hsl(var(--primary))",
                 },
               }}
-              className="h-64"
+              className="h-64 w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={demographics?.incomeDistribution} layout="vertical">
+                <BarChart data={demographics?.incomeDistribution} layout="vertical" margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={100} />
