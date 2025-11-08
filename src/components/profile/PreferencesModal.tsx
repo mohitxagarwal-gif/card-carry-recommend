@@ -33,14 +33,46 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
   const [loungeImportance, setLoungeImportance] = useState<string>("");
   const [rewardPreference, setRewardPreference] = useState<string>("");
 
+  // Normalize age range values from legacy format to current format
+  const normalizeAgeRange = (value: string | null): string => {
+    if (!value) return "";
+    
+    // Map old values to new values
+    const ageRangeMap: Record<string, string> = {
+      '18-25': '18-24',
+      '26-35': '25-34', 
+      '36-45': '35-44',
+      '46-60': '45-54',
+      '60+': '55+'
+    };
+    
+    // If it's an old value, convert it
+    if (ageRangeMap[value]) {
+      console.log(`[PreferencesModal] Converting legacy age range: ${value} -> ${ageRangeMap[value]}`);
+      return ageRangeMap[value];
+    }
+    
+    // If it's already a valid new value, keep it
+    const validRanges = ['18-24', '25-34', '35-44', '45-54', '55+'];
+    if (validRanges.includes(value)) {
+      return value;
+    }
+    
+    // If it's invalid, clear it
+    console.warn(`[PreferencesModal] Invalid age range detected: ${value}, clearing`);
+    return "";
+  };
+
   useEffect(() => {
     if (open) {
+      console.log('[PreferencesModal] Modal opened, initialTab:', initialTab);
       setActiveTab(initialTab);
       loadData();
     }
   }, [open, initialTab]);
 
   const loadData = async () => {
+    console.log('[PreferencesModal] Loading profile data...');
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -51,14 +83,20 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
         .eq("id", user.id)
         .single();
 
+      console.log('[PreferencesModal] Loaded profile:', profile);
+
       const { data: preferences } = await supabase
         .from("user_preferences")
         .select("fee_sensitivity, travel_frequency, lounge_importance, reward_preference")
         .eq("user_id", user.id)
         .maybeSingle();
 
+      console.log('[PreferencesModal] Loaded preferences:', preferences);
+
       if (profile) {
-        setAgeRange(profile.age_range || "");
+        const normalizedAgeRange = normalizeAgeRange(profile.age_range);
+        console.log('[PreferencesModal] Setting age range:', normalizedAgeRange);
+        setAgeRange(normalizedAgeRange);
         setIncomeBand(profile.income_band_inr || "");
         setCity(profile.city || "");
       }
@@ -70,27 +108,42 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
         setRewardPreference(preferences.reward_preference || "");
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("[PreferencesModal] Error loading data:", error);
     }
   };
 
   const handleSave = async () => {
+    console.log('[PreferencesModal] Saving profile and preferences...');
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Validate age range before saving
+      const validRanges = ['18-24', '25-34', '35-44', '45-54', '55+'];
+      const ageRangeToSave = ageRange && validRanges.includes(ageRange) ? ageRange : null;
+      
+      if (ageRange && !ageRangeToSave) {
+        console.error('[PreferencesModal] Invalid age range, not saving:', ageRange);
+        toast.error('Please select a valid age range');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[PreferencesModal] Saving profile with age_range:', ageRangeToSave);
+
       // Update profile
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
-          age_range: ageRange || null,
+          age_range: ageRangeToSave,
           income_band_inr: incomeBand || null,
           city: city || null,
         })
         .eq("id", user.id);
 
       if (profileError) throw profileError;
+      console.log('[PreferencesModal] Profile updated successfully');
 
       // Check if preferences exist
       const { data: existingPrefs } = await supabase
@@ -127,15 +180,17 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
       }
 
       // Derive features to update recommendations
+      console.log('[PreferencesModal] Deriving features...');
       await deriveFeatures.mutateAsync({
         userId: user.id,
       });
 
+      console.log('[PreferencesModal] All updates successful!');
       toast.success("Profile updated successfully! Your recommendations may improve.");
       onOpenChange(false);
       if (onSaveComplete) onSaveComplete();
     } catch (error: any) {
-      console.error("Error saving:", error);
+      console.error("[PreferencesModal] Error saving:", error);
       toast.error("Failed to update profile");
     } finally {
       setLoading(false);
@@ -163,7 +218,7 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
             <div className="space-y-2">
               <Label>Age Range</Label>
               <Select value={ageRange} onValueChange={setAgeRange}>
-                <SelectTrigger>
+                <SelectTrigger className={!ageRange ? "text-muted-foreground" : ""}>
                   <SelectValue placeholder="Select your age range" />
                 </SelectTrigger>
                 <SelectContent>
