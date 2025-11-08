@@ -25,6 +25,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminCards from "./pages/AdminCards";
 import AdminCardForm from "./pages/AdminCardForm";
 import AdminBulkUpload from "./pages/AdminBulkUpload";
+import CardDetailsManager from "./components/admin/CardDetailsManager";
 import AdminContentList from "./pages/AdminContentList";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminCardBenefits from "./pages/AdminCardBenefits";
@@ -152,6 +153,11 @@ const AppContent = () => {
       <Route path="/admin/cards/:id" element={
         <ProtectedRoute requireOnboarding={true}>
           <AdminCardForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/cards/:id/details" element={
+        <ProtectedRoute requireOnboarding={true}>
+          <CardDetailsManager />
         </ProtectedRoute>
       } />
       <Route path="/admin/content" element={

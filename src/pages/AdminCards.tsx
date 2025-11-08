@@ -98,6 +98,13 @@ const AdminCards = () => {
                       Edit
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/admin/cards/${card.id}/details`)}
+                    >
+                      Manage Details
+                    </Button>
+                    <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => handleDelete(card.id)}

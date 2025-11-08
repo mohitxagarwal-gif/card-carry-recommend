@@ -596,6 +596,22 @@ const AdminCardForm = () => {
                   )}
                 />
 
+                {id && (
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-semibold mb-2">Detailed Information</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Add complex reward structures, examples, and deep-dive content for the "Nerd Out" feature
+                    </p>
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => navigate(`/admin/cards/${id}/details`)}
+                    >
+                      Manage Detailed Information →
+                    </Button>
+                  </div>
+                )}
+
                 <div className="flex gap-4">
                   <Button type="submit" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

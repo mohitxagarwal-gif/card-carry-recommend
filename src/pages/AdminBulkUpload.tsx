@@ -35,6 +35,15 @@ interface CardData {
   docs_required?: string;
   tnc_url?: string;
   image_url?: string;
+  reward_caps_details?: string;
+  detailed_reward_breakdown?: object;
+  detailed_benefits?: object;
+  earning_examples?: object;
+  fine_print?: string;
+  insider_tips?: string;
+  best_use_cases?: string;
+  hidden_fees?: string;
+  comparison_notes?: string;
 }
 
 interface UploadResult {
@@ -66,6 +75,36 @@ const CardSchema = z.object({
   docs_required: z.string().max(500).optional(),
   tnc_url: z.string().url().max(500).optional().or(z.literal('')),
   image_url: z.string().url().max(500).optional().or(z.literal('')),
+  reward_caps_details: z.string().max(2000).optional(),
+  detailed_reward_breakdown: z.string().optional().transform((val) => {
+    if (!val) return null;
+    try {
+      return JSON.parse(val);
+    } catch {
+      throw new Error("Invalid JSON for detailed_reward_breakdown");
+    }
+  }),
+  detailed_benefits: z.string().optional().transform((val) => {
+    if (!val) return null;
+    try {
+      return JSON.parse(val);
+    } catch {
+      throw new Error("Invalid JSON for detailed_benefits");
+    }
+  }),
+  earning_examples: z.string().optional().transform((val) => {
+    if (!val) return null;
+    try {
+      return JSON.parse(val);
+    } catch {
+      throw new Error("Invalid JSON for earning_examples");
+    }
+  }),
+  fine_print: z.string().max(5000).optional(),
+  insider_tips: z.string().max(2000).optional(),
+  best_use_cases: z.string().max(2000).optional(),
+  hidden_fees: z.string().max(2000).optional(),
+  comparison_notes: z.string().max(2000).optional(),
 });
 
 // Sanitize CSV cells to prevent formula injection
@@ -169,6 +208,15 @@ const AdminBulkUpload = () => {
                 docs_required: row.docs_required ? sanitizeCell(row.docs_required) : undefined,
                 tnc_url: row.tnc_url || undefined,
                 image_url: row.image_url || undefined,
+                reward_caps_details: row.reward_caps_details ? sanitizeCell(row.reward_caps_details) : undefined,
+                detailed_reward_breakdown: row.detailed_reward_breakdown || undefined,
+                detailed_benefits: row.detailed_benefits || undefined,
+                earning_examples: row.earning_examples || undefined,
+                fine_print: row.fine_print ? sanitizeCell(row.fine_print) : undefined,
+                insider_tips: row.insider_tips ? sanitizeCell(row.insider_tips) : undefined,
+                best_use_cases: row.best_use_cases ? sanitizeCell(row.best_use_cases) : undefined,
+                hidden_fees: row.hidden_fees ? sanitizeCell(row.hidden_fees) : undefined,
+                comparison_notes: row.comparison_notes ? sanitizeCell(row.comparison_notes) : undefined,
               };
 
               // Validate with zod schema
@@ -243,8 +291,8 @@ const AdminBulkUpload = () => {
   });
 
   const downloadTemplate = () => {
-    const template = `card_id,name,issuer,network,annual_fee,welcome_bonus,reward_type,reward_structure,key_perks,lounge_access,forex_markup,forex_markup_pct,ideal_for,downsides,category_badges,popular_score,waiver_rule,eligibility,docs_required,tnc_url
-example-card-1,Example Card,Example Bank,Visa,2500,10000 reward points,"Cashback,Rewards",2x on dining and travel,"Lounge access,Travel insurance",Domestic & international,3.5%,3.5,"Travelers,Reward seekers",High fees,"Premium,Travel",8,Waived on 5L spend,Min income 6L/yr,Income proof,https://example.com/tnc`;
+    const template = `card_id,name,issuer,network,annual_fee,welcome_bonus,reward_type,reward_structure,key_perks,lounge_access,forex_markup,forex_markup_pct,ideal_for,downsides,category_badges,popular_score,waiver_rule,eligibility,docs_required,tnc_url,reward_caps_details,detailed_reward_breakdown,detailed_benefits,earning_examples,fine_print,insider_tips,best_use_cases,hidden_fees,comparison_notes
+example-card-1,Example Card,Example Bank,Visa,2500,10000 reward points,"Cashback,Rewards",2x on dining and travel,"Lounge access,Travel insurance",Domestic & international,3.5%,3.5,"Travelers,Reward seekers",High fees,"Premium,Travel",8,Waived on 5L spend,Min income 6L/yr,Income proof,https://example.com/tnc,₹5000 per month cap,"{""base_rate"":""1%"",""accelerated"":[{""category"":""Dining"",""rate"":""5%""}]}","{""insurance"":""Travel insurance up to ₹5L""}","{""scenario_1"":{""title"":""Monthly spend"",""earnings"":""2850""}}",Terms apply,Use for international travel,Best for frequent travelers,Late payment fees,Compare with other cards`;
     
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -303,10 +351,38 @@ example-card-1,Example Card,Example Bank,Visa,2500,10000 reward points,"Cashback
         
         const { error: insertError } = await supabase
           .from('credit_cards')
-          .insert({
-            ...card,
+          .insert([{
+            card_id: card.card_id,
+            name: card.name,
+            issuer: card.issuer,
+            network: card.network,
+            annual_fee: card.annual_fee,
+            welcome_bonus: card.welcome_bonus,
+            reward_type: card.reward_type,
+            reward_structure: card.reward_structure,
+            key_perks: card.key_perks,
+            lounge_access: card.lounge_access,
+            forex_markup: card.forex_markup,
+            forex_markup_pct: card.forex_markup_pct,
+            ideal_for: card.ideal_for,
+            downsides: card.downsides,
+            category_badges: card.category_badges,
+            popular_score: card.popular_score,
+            waiver_rule: card.waiver_rule,
+            eligibility: card.eligibility,
+            docs_required: card.docs_required,
+            tnc_url: card.tnc_url,
             image_url: imageUrl,
-          });
+            reward_caps_details: card.reward_caps_details || null,
+            detailed_reward_breakdown: (card.detailed_reward_breakdown as any) || null,
+            detailed_benefits: (card.detailed_benefits as any) || null,
+            earning_examples: (card.earning_examples as any) || null,
+            fine_print: card.fine_print || null,
+            insider_tips: card.insider_tips || null,
+            best_use_cases: card.best_use_cases || null,
+            hidden_fees: card.hidden_fees || null,
+            comparison_notes: card.comparison_notes || null,
+          }]);
 
         if (insertError) {
           errors.push(`Card ${card.card_id}: ${insertError.message}`);
