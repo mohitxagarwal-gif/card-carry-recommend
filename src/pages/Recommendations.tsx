@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Home, LogOut, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
+import Header from "@/components/Header";
 import { RecommendationsHero } from "@/components/recommendations/RecommendationsHero";
 import { SpendingInsightsPanel } from "@/components/recommendations/SpendingInsightsPanel";
 import { RecommendationsGrid } from "@/components/recommendations/RecommendationsGrid";
@@ -93,10 +94,6 @@ const Recommendations = () => {
     }
   }, [navigate, latestSnapshot, snapshotLoading]);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
 
   const handleRefresh = () => {
     trackEvent("recommendations_refresh_click");
@@ -135,35 +132,7 @@ const Recommendations = () => {
   if (!latestSnapshot) {
     return (
       <div className="min-h-screen bg-background">
-        <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
-          <div className="container mx-auto px-6 lg:px-12 py-6">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-heading font-bold text-foreground">
-                card & carry.
-              </h1>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/dashboard")}
-                  className="border-foreground/20 hover:bg-foreground/5"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  dashboard
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="border-foreground/20 hover:bg-foreground/5"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  sign out
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
+        <Header />
 
         <main className="container mx-auto px-6 lg:px-12 py-16">
           <div className="max-w-3xl mx-auto text-center space-y-6">
@@ -198,35 +167,7 @@ const Recommendations = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/30 bg-background/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="container mx-auto px-6 lg:px-12 py-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-heading font-bold text-foreground">
-              card & carry.
-            </h1>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/dashboard")}
-                className="border-foreground/20 hover:bg-foreground/5"
-              >
-                <Home className="h-4 w-4 mr-2" />
-                dashboard
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSignOut}
-                className="border-foreground/20 hover:bg-foreground/5"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                sign out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       <main className="container mx-auto px-6 lg:px-12 py-12">
         <div className="max-w-7xl mx-auto space-y-8">
