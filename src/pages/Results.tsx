@@ -653,37 +653,40 @@ const Results = () => {
                   {analysis.recommendedCards.map((card, index) => (
                     <Card key={index} className="p-8 border-border hover:border-primary/50 transition-colors">
                       <div className="space-y-4">
-                         <div className="flex items-start justify-between gap-3">
-                           <div className="flex items-start gap-3">
-                             <div className="bg-primary/10 p-2 rounded-lg">
-                               <CreditCardIcon className="h-5 w-5 text-primary" />
-                             </div>
-                             <div className="flex-1">
-                               <div className="flex items-center gap-2 mb-1">
-                                 <h4 className="text-lg font-heading font-bold text-foreground">
-                                   {card.name}
-                                 </h4>
-                                 {card.matchScore && card.matchScore >= 70 && (
-                                   <Badge 
-                                     variant="secondary" 
-                                     className={
-                                       card.matchScore >= 85 
-                                         ? 'bg-green-500/10 text-green-700 border-green-500/20 text-xs'
-                                         : card.matchScore >= 75
-                                         ? 'bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs'
-                                         : 'bg-amber-500/10 text-amber-700 border-amber-500/20 text-xs'
-                                     }
-                                   >
-                                     {card.matchScore}% match
-                                   </Badge>
-                                 )}
-                               </div>
-                               <p className="text-sm font-sans text-muted-foreground">
-                                 {card.issuer}
-                               </p>
-                             </div>
+                         {/* Badge Row */}
+                         <div className="flex items-start justify-between gap-2 min-h-[1.5rem]">
+                           {card.matchScore && card.matchScore >= 70 && (
+                             <Badge 
+                               variant="secondary" 
+                               className={
+                                 card.matchScore >= 85 
+                                   ? 'bg-green-500/10 text-green-700 border-green-500/20 text-xs'
+                                   : card.matchScore >= 75
+                                   ? 'bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs'
+                                   : 'bg-amber-500/10 text-amber-700 border-amber-500/20 text-xs'
+                               }
+                             >
+                               {card.matchScore}% match
+                             </Badge>
+                           )}
+                           <div className="ml-auto">
+                             <EligibilityIndicator userIncome={userIncome} />
                            </div>
-                           <EligibilityIndicator userIncome={userIncome} />
+                         </div>
+                         
+                         {/* Card Info */}
+                         <div className="flex items-start gap-3">
+                           <div className="bg-primary/10 p-2 rounded-lg">
+                             <CreditCardIcon className="h-5 w-5 text-primary" />
+                           </div>
+                           <div className="flex-1">
+                             <h4 className="text-lg font-heading font-bold text-foreground mb-1">
+                               {card.name}
+                             </h4>
+                             <p className="text-sm font-sans text-muted-foreground">
+                               {card.issuer}
+                             </p>
+                           </div>
                          </div>
                         
                         <p className="text-sm font-sans text-foreground/80 leading-relaxed">
