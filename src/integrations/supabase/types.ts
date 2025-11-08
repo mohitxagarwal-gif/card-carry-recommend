@@ -77,6 +77,47 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_affinities: {
+        Row: {
+          affinity_score: number | null
+          brand: string
+          category: string | null
+          created_at: string | null
+          id: string
+          source: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          affinity_score?: number | null
+          brand: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          source?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          affinity_score?: number | null
+          brand?: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          source?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_affinities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       card_applications: {
         Row: {
           applied_date: string | null
@@ -116,6 +157,93 @@ export type Database = {
           status_updated_at?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      card_benefits: {
+        Row: {
+          annual_cap_inr: number | null
+          benefit_name: string | null
+          bonus_multiplier: number | null
+          card_id: string
+          category: string
+          created_at: string | null
+          earn_rate: number
+          earn_rate_description: string | null
+          earn_type: string
+          excluded_merchants: string[] | null
+          id: string
+          last_verified: string | null
+          merchant_codes: string[] | null
+          min_transaction_inr: number | null
+          monthly_cap_inr: number | null
+          partner_brands: string[] | null
+          subcategory: string | null
+          terms_url: string | null
+          updated_at: string | null
+          valid_days: string[] | null
+          valid_from: string | null
+          valid_hours_end: string | null
+          valid_hours_start: string | null
+          valid_merchants: string[] | null
+          valid_until: string | null
+          verification_notes: string | null
+        }
+        Insert: {
+          annual_cap_inr?: number | null
+          benefit_name?: string | null
+          bonus_multiplier?: number | null
+          card_id: string
+          category: string
+          created_at?: string | null
+          earn_rate: number
+          earn_rate_description?: string | null
+          earn_type: string
+          excluded_merchants?: string[] | null
+          id?: string
+          last_verified?: string | null
+          merchant_codes?: string[] | null
+          min_transaction_inr?: number | null
+          monthly_cap_inr?: number | null
+          partner_brands?: string[] | null
+          subcategory?: string | null
+          terms_url?: string | null
+          updated_at?: string | null
+          valid_days?: string[] | null
+          valid_from?: string | null
+          valid_hours_end?: string | null
+          valid_hours_start?: string | null
+          valid_merchants?: string[] | null
+          valid_until?: string | null
+          verification_notes?: string | null
+        }
+        Update: {
+          annual_cap_inr?: number | null
+          benefit_name?: string | null
+          bonus_multiplier?: number | null
+          card_id?: string
+          category?: string
+          created_at?: string | null
+          earn_rate?: number
+          earn_rate_description?: string | null
+          earn_type?: string
+          excluded_merchants?: string[] | null
+          id?: string
+          last_verified?: string | null
+          merchant_codes?: string[] | null
+          min_transaction_inr?: number | null
+          monthly_cap_inr?: number | null
+          partner_brands?: string[] | null
+          subcategory?: string | null
+          terms_url?: string | null
+          updated_at?: string | null
+          valid_days?: string[] | null
+          valid_from?: string | null
+          valid_hours_end?: string | null
+          valid_hours_start?: string | null
+          valid_merchants?: string[] | null
+          valid_until?: string | null
+          verification_notes?: string | null
         }
         Relationships: []
       }
@@ -198,15 +326,22 @@ export type Database = {
           docs_required: string | null
           downsides: string[]
           eligibility: string | null
+          employment_requirements: string[] | null
           forex_markup: string
           forex_markup_pct: number
+          geo_availability: Json | null
           id: string
           ideal_for: string[]
           image_url: string | null
           is_active: boolean | null
           issuer: string
           key_perks: string[]
+          last_verified: string | null
           lounge_access: string
+          lounge_policy: Json | null
+          max_age: number | null
+          min_age: number | null
+          min_income_band: string | null
           name: string
           network: string
           popular_score: number
@@ -226,15 +361,22 @@ export type Database = {
           docs_required?: string | null
           downsides: string[]
           eligibility?: string | null
+          employment_requirements?: string[] | null
           forex_markup: string
           forex_markup_pct: number
+          geo_availability?: Json | null
           id?: string
           ideal_for: string[]
           image_url?: string | null
           is_active?: boolean | null
           issuer: string
           key_perks: string[]
+          last_verified?: string | null
           lounge_access: string
+          lounge_policy?: Json | null
+          max_age?: number | null
+          min_age?: number | null
+          min_income_band?: string | null
           name: string
           network: string
           popular_score: number
@@ -254,15 +396,22 @@ export type Database = {
           docs_required?: string | null
           downsides?: string[]
           eligibility?: string | null
+          employment_requirements?: string[] | null
           forex_markup?: string
           forex_markup_pct?: number
+          geo_availability?: Json | null
           id?: string
           ideal_for?: string[]
           image_url?: string | null
           is_active?: boolean | null
           issuer?: string
           key_perks?: string[]
+          last_verified?: string | null
           lounge_access?: string
+          lounge_policy?: Json | null
+          max_age?: number | null
+          min_age?: number | null
+          min_income_band?: string | null
           name?: string
           network?: string
           popular_score?: number
@@ -453,13 +602,16 @@ export type Database = {
           city: string | null
           created_at: string
           email: string
+          employment_type: string | null
           full_name: string | null
           id: string
           income_band_inr: string | null
           marketing_consent: boolean | null
           onboarding_completed: boolean | null
           onboarding_completed_at: string | null
+          pay_in_full_habit: string | null
           phone_e164: string | null
+          pincode: string | null
           timezone: string | null
           updated_at: string
         }
@@ -469,13 +621,16 @@ export type Database = {
           city?: string | null
           created_at?: string
           email: string
+          employment_type?: string | null
           full_name?: string | null
           id: string
           income_band_inr?: string | null
           marketing_consent?: boolean | null
           onboarding_completed?: boolean | null
           onboarding_completed_at?: string | null
+          pay_in_full_habit?: string | null
           phone_e164?: string | null
+          pincode?: string | null
           timezone?: string | null
           updated_at?: string
         }
@@ -485,13 +640,16 @@ export type Database = {
           city?: string | null
           created_at?: string
           email?: string
+          employment_type?: string | null
           full_name?: string | null
           id?: string
           income_band_inr?: string | null
           marketing_consent?: boolean | null
           onboarding_completed?: boolean | null
           onboarding_completed_at?: string | null
+          pay_in_full_habit?: string | null
           phone_e164?: string | null
+          pincode?: string | null
           timezone?: string | null
           updated_at?: string
         }
@@ -661,39 +819,202 @@ export type Database = {
         }
         Relationships: []
       }
+      user_features: {
+        Row: {
+          acceptance_risk_amex: number | null
+          bills_utilities_share: number | null
+          cabs_fuel_share: number | null
+          created_at: string | null
+          data_source: string | null
+          dining_share: number | null
+          entertainment_share: number | null
+          feature_confidence: number | null
+          fee_tolerance_numeric: number | null
+          forex_share: number | null
+          groceries_share: number | null
+          last_statement_date: string | null
+          monthly_spend_estimate: number | null
+          months_coverage: number | null
+          online_share: number | null
+          pif_score: number | null
+          rent_share: number | null
+          spend_split_json: Json | null
+          transaction_count: number | null
+          travel_share: number | null
+          updated_at: string | null
+          upi_cc_share: number | null
+          user_id: string
+        }
+        Insert: {
+          acceptance_risk_amex?: number | null
+          bills_utilities_share?: number | null
+          cabs_fuel_share?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          dining_share?: number | null
+          entertainment_share?: number | null
+          feature_confidence?: number | null
+          fee_tolerance_numeric?: number | null
+          forex_share?: number | null
+          groceries_share?: number | null
+          last_statement_date?: string | null
+          monthly_spend_estimate?: number | null
+          months_coverage?: number | null
+          online_share?: number | null
+          pif_score?: number | null
+          rent_share?: number | null
+          spend_split_json?: Json | null
+          transaction_count?: number | null
+          travel_share?: number | null
+          updated_at?: string | null
+          upi_cc_share?: number | null
+          user_id: string
+        }
+        Update: {
+          acceptance_risk_amex?: number | null
+          bills_utilities_share?: number | null
+          cabs_fuel_share?: number | null
+          created_at?: string | null
+          data_source?: string | null
+          dining_share?: number | null
+          entertainment_share?: number | null
+          feature_confidence?: number | null
+          fee_tolerance_numeric?: number | null
+          forex_share?: number | null
+          groceries_share?: number | null
+          last_statement_date?: string | null
+          monthly_spend_estimate?: number | null
+          months_coverage?: number | null
+          online_share?: number | null
+          pif_score?: number | null
+          rent_share?: number | null
+          spend_split_json?: Json | null
+          transaction_count?: number | null
+          travel_share?: number | null
+          updated_at?: string | null
+          upi_cc_share?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_features_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_owned_cards: {
+        Row: {
+          card_id: string
+          created_at: string | null
+          credit_limit_estimate: number | null
+          fee_renewal_month: number | null
+          id: string
+          is_primary: boolean | null
+          issuer: string
+          network: string | null
+          opened_month: number | null
+          product: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string | null
+          credit_limit_estimate?: number | null
+          fee_renewal_month?: number | null
+          id?: string
+          is_primary?: boolean | null
+          issuer: string
+          network?: string | null
+          opened_month?: number | null
+          product: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string | null
+          credit_limit_estimate?: number | null
+          fee_renewal_month?: number | null
+          id?: string
+          is_primary?: boolean | null
+          issuer?: string
+          network?: string | null
+          opened_month?: number | null
+          product?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_owned_cards_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string
+          domestic_trips_per_year: number | null
           email_marketing: boolean | null
           email_reminders: boolean | null
+          excluded_issuers: string[] | null
           fee_sensitivity: string | null
+          fee_tolerance_band: string | null
+          forex_spend_band: string | null
+          home_airports: string[] | null
           id: string
+          international_trips_per_year: number | null
           lounge_importance: string | null
+          lounge_need: string | null
           preference_type: string | null
+          reward_preference: string | null
           travel_frequency: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          domestic_trips_per_year?: number | null
           email_marketing?: boolean | null
           email_reminders?: boolean | null
+          excluded_issuers?: string[] | null
           fee_sensitivity?: string | null
+          fee_tolerance_band?: string | null
+          forex_spend_band?: string | null
+          home_airports?: string[] | null
           id?: string
+          international_trips_per_year?: number | null
           lounge_importance?: string | null
+          lounge_need?: string | null
           preference_type?: string | null
+          reward_preference?: string | null
           travel_frequency?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          domestic_trips_per_year?: number | null
           email_marketing?: boolean | null
           email_reminders?: boolean | null
+          excluded_issuers?: string[] | null
           fee_sensitivity?: string | null
+          fee_tolerance_band?: string | null
+          forex_spend_band?: string | null
+          home_airports?: string[] | null
           id?: string
+          international_trips_per_year?: number | null
           lounge_importance?: string | null
+          lounge_need?: string | null
           preference_type?: string | null
+          reward_preference?: string | null
           travel_frequency?: string | null
           updated_at?: string
           user_id?: string
