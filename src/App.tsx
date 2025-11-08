@@ -28,6 +28,7 @@ import AdminBulkUpload from "./pages/AdminBulkUpload";
 import CardDetailsManager from "./components/admin/CardDetailsManager";
 import AdminContentList from "./pages/AdminContentList";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminSiteContent from "./pages/AdminSiteContent";
 import AdminCardBenefits from "./pages/AdminCardBenefits";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
@@ -173,6 +174,11 @@ const AppContent = () => {
       <Route path="/admin/analytics" element={
         <ProtectedRoute requireOnboarding={true}>
           <AdminAnalytics />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/site-content" element={
+        <ProtectedRoute requireOnboarding={true}>
+          <AdminSiteContent />
         </ProtectedRoute>
       } />
       <Route path="/admin/card-benefits" element={

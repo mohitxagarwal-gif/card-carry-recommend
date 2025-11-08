@@ -9,6 +9,9 @@ import { CardDetailsModal } from "./CardDetailsModal";
 import { CardNerdOutModal } from "./CardNerdOutModal";
 import { toast } from "sonner";
 import { getIssuerBrand, getHeroFeature, getFeeStyle } from "@/lib/issuerBranding";
+import { useEligibilityScore } from "@/hooks/useEligibilityScore";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
 
 interface CardTileProps {
   card: CreditCard;
@@ -23,6 +26,32 @@ export const CardTile = ({ card }: CardTileProps) => {
   const issuerBrand = getIssuerBrand(card.issuer);
   const heroFeature = getHeroFeature(card);
   const feeStyle = getFeeStyle(card.annual_fee);
+  const { data: eligibility } = useEligibilityScore(card.card_id);
+
+  // Track card view
+  useEffect(() => {
+    const trackView = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("card_views").insert({
+          user_id: user.id,
+          card_id: card.card_id,
+          source: window.location.pathname.includes('recs') ? 'recommendations' : 'explore',
+        });
+      }
+    };
+    trackView();
+  }, [card.card_id]);
+
+  const getEligibilityBadge = () => {
+    if (!eligibility) return null;
+    if (eligibility.overall >= 80) return { label: "Excellent Match", color: "bg-green-500/10 text-green-700 border-green-500/20" };
+    if (eligibility.overall >= 60) return { label: "Good Match", color: "bg-blue-500/10 text-blue-700 border-blue-500/20" };
+    if (eligibility.overall >= 40) return { label: "Fair Match", color: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20" };
+    return { label: "Check Eligibility", color: "bg-gray-500/10 text-gray-700 border-gray-500/20" };
+  };
+
+  const eligibilityBadge = getEligibilityBadge();
 
   const handleCompareToggle = (checked: boolean) => {
     if (checked) {
@@ -62,6 +91,15 @@ export const CardTile = ({ card }: CardTileProps) => {
           background: `linear-gradient(135deg, hsl(${issuerBrand.lightBg} / 0.3) 0%, transparent 50%)`
         }}
       >
+        {/* Eligibility Badge - Top Left */}
+        {eligibilityBadge && (
+          <div 
+            className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${eligibilityBadge.color} border`}
+          >
+            {eligibilityBadge.label}
+          </div>
+        )}
+
         {/* Hero Feature Badge */}
         {heroFeature && (
           <div 

@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DashboardTourModal } from "@/components/dashboard/DashboardTourModal";
 import { Progress } from "@/components/ui/progress";
+import { EligibilityCenter } from "@/components/dashboard/EligibilityCenter";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -275,41 +276,8 @@ const Dashboard = () => {
           </Card>
         ) : (
           <div className="grid gap-6">
-            {/* Profile Strength Widget */}
-            {showProfileStrength && (
-              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-background dark:from-blue-950/20 dark:to-background dark:border-blue-800" data-tour-id="profile-strength">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Sparkles className="w-5 h-5 text-blue-600" />
-                    Profile Strength: {profileStrength}%
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Progress value={profileStrength} className="h-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Complete your profile to get better recommendations and personalized insights
-                  </p>
-                  {getMissingProfileFields().length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Missing information:</p>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        {getMissingProfileFields().map(field => (
-                          <li key={field} className="flex items-center gap-2">
-                            <span className="text-blue-600">•</span> {field}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <Button 
-                    onClick={() => navigate('/profile')}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Complete Profile
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            {/* Eligibility Center */}
+            <EligibilityCenter />
 
             {/* Incomplete Analysis Alert */}
             {incompleteAnalysis && (

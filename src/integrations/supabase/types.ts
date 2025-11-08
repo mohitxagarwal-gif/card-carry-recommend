@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_clicks: {
+        Row: {
+          card_id: string
+          clicked_at: string
+          id: string
+          user_id: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          card_id: string
+          clicked_at?: string
+          id?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          card_id?: string
+          clicked_at?: string
+          id?: string
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: []
+      }
       analysis_runs: {
         Row: {
           batch_id: string
@@ -253,6 +283,30 @@ export type Database = {
         }
         Relationships: []
       }
+      card_views: {
+        Row: {
+          card_id: string
+          id: string
+          source: string | null
+          user_id: string | null
+          viewed_at: string
+        }
+        Insert: {
+          card_id: string
+          id?: string
+          source?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          card_id?: string
+          id?: string
+          source?: string | null
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -324,6 +378,8 @@ export type Database = {
       }
       credit_cards: {
         Row: {
+          affiliate_commission_rate: number | null
+          affiliate_partner: string | null
           annual_fee: number
           application_url: string | null
           best_use_cases: string | null
@@ -368,6 +424,8 @@ export type Database = {
           welcome_bonus: string
         }
         Insert: {
+          affiliate_commission_rate?: number | null
+          affiliate_partner?: string | null
           annual_fee: number
           application_url?: string | null
           best_use_cases?: string | null
@@ -412,6 +470,8 @@ export type Database = {
           welcome_bonus: string
         }
         Update: {
+          affiliate_commission_rate?: number | null
+          affiliate_partner?: string | null
           annual_fee?: number
           application_url?: string | null
           best_use_cases?: string | null
@@ -645,6 +705,7 @@ export type Database = {
           pay_in_full_habit: string | null
           phone_e164: string | null
           pincode: string | null
+          profile_completion_percentage: number | null
           timezone: string | null
           updated_at: string
         }
@@ -664,6 +725,7 @@ export type Database = {
           pay_in_full_habit?: string | null
           phone_e164?: string | null
           pincode?: string | null
+          profile_completion_percentage?: number | null
           timezone?: string | null
           updated_at?: string
         }
@@ -683,6 +745,7 @@ export type Database = {
           pay_in_full_habit?: string | null
           phone_e164?: string | null
           pincode?: string | null
+          profile_completion_percentage?: number | null
           timezone?: string | null
           updated_at?: string
         }

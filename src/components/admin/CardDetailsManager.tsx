@@ -4,12 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, ArrowLeft, Save, Copy } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ImageUploadField } from "./ImageUploadField";
 
 // Template data structures
 const REWARD_BREAKDOWN_TEMPLATE = {
@@ -60,6 +62,9 @@ interface DetailedCardData {
   best_use_cases?: string;
   hidden_fees?: string;
   comparison_notes?: string;
+  image_url?: string;
+  affiliate_partner?: string;
+  affiliate_commission_rate?: number;
 }
 
 const CardDetailsManager = () => {
@@ -79,6 +84,9 @@ const CardDetailsManager = () => {
     best_use_cases: "",
     hidden_fees: "",
     comparison_notes: "",
+    image_url: "",
+    affiliate_partner: "",
+    affiliate_commission_rate: undefined,
   });
   const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
 
@@ -129,6 +137,9 @@ const CardDetailsManager = () => {
         best_use_cases: data.best_use_cases || "",
         hidden_fees: data.hidden_fees || "",
         comparison_notes: data.comparison_notes || "",
+        image_url: data.image_url || "",
+        affiliate_partner: data.affiliate_partner || "",
+        affiliate_commission_rate: data.affiliate_commission_rate || undefined,
       });
     }
     setLoading(false);
@@ -195,6 +206,9 @@ const CardDetailsManager = () => {
           best_use_cases: formData.best_use_cases || null,
           hidden_fees: formData.hidden_fees || null,
           comparison_notes: formData.comparison_notes || null,
+          image_url: formData.image_url || null,
+          affiliate_partner: formData.affiliate_partner || null,
+          affiliate_commission_rate: formData.affiliate_commission_rate || null,
         })
         .eq("id", id);
 
@@ -237,12 +251,13 @@ const CardDetailsManager = () => {
         </Alert>
 
         <Tabs defaultValue="rewards" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="rewards">Rewards</TabsTrigger>
             <TabsTrigger value="examples">Examples</TabsTrigger>
             <TabsTrigger value="benefits">Benefits</TabsTrigger>
             <TabsTrigger value="costs">Costs</TabsTrigger>
             <TabsTrigger value="tips">Tips</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
           </TabsList>
 
           <TabsContent value="rewards" className="space-y-4">
@@ -467,6 +482,42 @@ const CardDetailsManager = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, comparison_notes: e.target.value }))}
                     rows={4}
                     placeholder="e.g., Better lounge access than competitor X, but lower cashback..."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="media" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Images & Affiliate Links</CardTitle>
+                <CardDescription>Upload card images and manage affiliate tracking</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <ImageUploadField
+                  currentUrl={formData.image_url}
+                  onUrlChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                  cardId={id || ""}
+                />
+                <div>
+                  <Label htmlFor="affiliate_partner">Affiliate Partner</Label>
+                  <Input
+                    id="affiliate_partner"
+                    value={formData.affiliate_partner}
+                    onChange={(e) => setFormData(prev => ({ ...prev, affiliate_partner: e.target.value }))}
+                    placeholder="e.g., ClearTax, Paisabazaar"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="commission_rate">Commission Rate (%)</Label>
+                  <Input
+                    id="commission_rate"
+                    type="number"
+                    step="0.01"
+                    value={formData.affiliate_commission_rate || ""}
+                    onChange={(e) => setFormData(prev => ({ ...prev, affiliate_commission_rate: parseFloat(e.target.value) || undefined }))}
+                    placeholder="e.g., 2.5"
                   />
                 </div>
               </CardContent>

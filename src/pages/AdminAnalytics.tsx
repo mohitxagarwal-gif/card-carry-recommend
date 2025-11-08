@@ -9,6 +9,7 @@ import { CardsApplicationsTab } from "@/components/analytics/CardsApplicationsTa
 import { SpendingAnalysisTab } from "@/components/analytics/SpendingAnalysisTab";
 import { ContentEngagementTab } from "@/components/analytics/ContentEngagementTab";
 import { SystemActivityTab } from "@/components/analytics/SystemActivityTab";
+import { CardPerformanceTab } from "@/components/analytics/CardPerformanceTab";
 
 const AdminAnalytics = () => {
   const { data: role, isLoading } = useUserRole();
@@ -48,7 +49,7 @@ const AdminAnalytics = () => {
         </TabsContent>
 
         <TabsContent value="cards" className="space-y-6">
-          <CardsApplicationsTab />
+          <CardPerformanceTab />
         </TabsContent>
 
         <TabsContent value="spending" className="space-y-6">

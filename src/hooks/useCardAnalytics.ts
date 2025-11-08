@@ -14,15 +14,20 @@ export const useCardPerformance = () => {
 
       const cardPerformance = await Promise.all(
         cards.map(async (card) => {
-          const [shortlist, applications, userCards] = await Promise.all([
+          const [shortlist, applications, userCards, views, clicks] = await Promise.all([
             supabase.from("user_shortlist").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
             supabase.from("card_applications").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
             supabase.from("user_cards").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
+            supabase.from("card_views").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
+            supabase.from("affiliate_clicks").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
           ]);
 
           const shortlistCount = shortlist.count || 0;
           const applicationCount = applications.count || 0;
-          const conversionRate = shortlistCount > 0 ? (applicationCount / shortlistCount) * 100 : 0;
+          const viewCount = views.count || 0;
+          const clickCount = clicks.count || 0;
+          const conversionRate = viewCount > 0 ? (applicationCount / viewCount) * 100 : 0;
+          const clickThroughRate = viewCount > 0 ? (clickCount / viewCount) * 100 : 0;
 
           return {
             cardId: card.card_id,
@@ -30,15 +35,18 @@ export const useCardPerformance = () => {
             issuer: card.issuer,
             categories: card.category_badges,
             annualFee: card.annual_fee,
+            viewCount,
+            clickCount,
             shortlistCount,
             applicationCount,
             ownedCount: userCards.count || 0,
-            conversionRate,
+            conversionRate: Math.round(conversionRate * 10) / 10,
+            clickThroughRate: Math.round(clickThroughRate * 10) / 10,
           };
         })
       );
 
-      return cardPerformance.sort((a, b) => b.shortlistCount - a.shortlistCount);
+      return cardPerformance.sort((a, b) => b.viewCount - a.viewCount);
     },
     staleTime: 2 * 60 * 1000,
   });
@@ -55,20 +63,22 @@ export const useCategoryPerformance = () => {
 
       if (error) throw error;
 
-      const categoryMap = new Map<string, { shortlists: number; applications: number }>();
+      const categoryMap = new Map<string, { shortlists: number; applications: number; views: number }>();
 
       await Promise.all(
         cards.map(async (card) => {
-          const [shortlist, applications] = await Promise.all([
+          const [shortlist, applications, views] = await Promise.all([
             supabase.from("user_shortlist").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
             supabase.from("card_applications").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
+            supabase.from("card_views").select("id", { count: "exact", head: true }).eq("card_id", card.card_id),
           ]);
 
           card.category_badges.forEach(category => {
-            const current = categoryMap.get(category) || { shortlists: 0, applications: 0 };
+            const current = categoryMap.get(category) || { shortlists: 0, applications: 0, views: 0 };
             categoryMap.set(category, {
               shortlists: current.shortlists + (shortlist.count || 0),
               applications: current.applications + (applications.count || 0),
+              views: current.views + (views.count || 0),
             });
           });
         })
@@ -78,6 +88,8 @@ export const useCategoryPerformance = () => {
         category,
         shortlists: data.shortlists,
         applications: data.applications,
+        views: data.views,
+        conversionRate: data.views > 0 ? Math.round((data.applications / data.views) * 1000) / 10 : 0,
       }));
     },
     staleTime: 2 * 60 * 1000,
