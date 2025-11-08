@@ -167,11 +167,11 @@ export const PreferencesModal = ({ open, onOpenChange, initialTab = "basics", on
                   <SelectValue placeholder="Select your age range" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="18-25">18-25</SelectItem>
-                  <SelectItem value="26-35">26-35</SelectItem>
-                  <SelectItem value="36-45">36-45</SelectItem>
-                  <SelectItem value="46-60">46-60</SelectItem>
-                  <SelectItem value="60+">60+</SelectItem>
+                  <SelectItem value="18-24">18-24</SelectItem>
+                  <SelectItem value="25-34">25-34</SelectItem>
+                  <SelectItem value="35-44">35-44</SelectItem>
+                  <SelectItem value="45-54">45-54</SelectItem>
+                  <SelectItem value="55+">55+</SelectItem>
                 </SelectContent>
               </Select>
             </div>
