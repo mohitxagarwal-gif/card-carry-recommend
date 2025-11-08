@@ -41,17 +41,16 @@ export const isOnboardingComplete = (profile: Profile | null): boolean => {
     return false;
   }
   
+  // Only require age and income for streamlined onboarding (removed phone requirement)
   const hasAge = !!profile.age_range;
   const hasIncome = !!profile.income_band_inr;
-  const hasPhone = !!profile.phone_e164;
   
   console.log('[authUtils.ts:49] Onboarding field check:', {
     age_range: hasAge,
-    income_band_inr: hasIncome,
-    phone_e164: hasPhone
+    income_band_inr: hasIncome
   });
   
-  const isComplete = !!(hasAge && hasIncome && hasPhone);
+  const isComplete = !!(hasAge && hasIncome);
   console.log('[authUtils.ts:56] Result:', isComplete);
   
   return isComplete;
@@ -136,15 +135,14 @@ export const afterAuthRedirect = async (
     const missingFields: string[] = [];
     if (!profile.age_range) missingFields.push('age_range');
     if (!profile.income_band_inr) missingFields.push('income_band_inr');
-    if (!profile.phone_e164) missingFields.push('phone_e164');
     
     console.log('[authUtils.ts:121] Missing fields:', missingFields);
     
     trackOnboardingGateTriggered(missingFields);
-    trackAuthRedirectNext(`/onboarding/basics?returnTo=${encodeURIComponent(safe)}`, 'onboarding');
+    trackAuthRedirectNext(`/onboarding/profile?returnTo=${encodeURIComponent(safe)}`, 'onboarding');
     
-    console.log('[authUtils.ts:126] Navigating to /onboarding/basics');
-    navigate(`/onboarding/basics?returnTo=${encodeURIComponent(safe)}`, { replace: true });
+    console.log('[authUtils.ts:126] Navigating to /onboarding/profile');
+    navigate(`/onboarding/profile?returnTo=${encodeURIComponent(safe)}`, { replace: true });
     return;
   }
   

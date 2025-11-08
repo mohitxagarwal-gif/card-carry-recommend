@@ -111,6 +111,35 @@ serve(async (req) => {
       console.log(`[derive-user-features] Using self-reported data: ${monthlySpendEstimate}/mo`);
     }
 
+    // Apply smart defaults if no data available at all
+    if (featureSource === 'self_report' && !spendData) {
+      console.log(`[derive-user-features] No spending data, using smart defaults based on income`);
+      
+      // Estimate monthly spend based on income band
+      const incomeDefaults: Record<string, number> = {
+        '0-25000': 8000,
+        '25000-50000': 15000,
+        '50000-100000': 30000,
+        '100000-200000': 60000,
+        '200000+': 100000,
+      };
+      monthlySpendEstimate = incomeDefaults[profile.income_band_inr] || 30000;
+      
+      // Default category distribution for Indian consumers
+      spendSplit = {
+        'online': 0.25,
+        'dining': 0.15,
+        'groceries': 0.20,
+        'bills': 0.15,
+        'fuel': 0.10,
+        'entertainment': 0.10,
+        'travel': 0.05,
+      };
+      
+      featureConfidence = 0.35; // Low confidence for defaults
+      console.log(`[derive-user-features] Applied defaults: ${monthlySpendEstimate}/mo, confidence: ${featureConfidence}`);
+    }
+
     // 3. Calculate derived features
     const pifScore = calculatePIFScore(profile.pay_in_full_habit);
     const feeToleranceMax = calculateFeeToleranceMax(prefs?.fee_tolerance_band);

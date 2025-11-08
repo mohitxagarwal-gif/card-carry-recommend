@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useEffect } from "react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
@@ -13,12 +13,7 @@ import { trackEvent } from "@/lib/analytics";
 import { cleanupStaleAnalyses } from "@/lib/sessionManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import OnboardingBasics from "./pages/OnboardingBasics";
-import OnboardingFirstCard from "./pages/OnboardingFirstCard";
-import OnboardingSetup from "./pages/OnboardingSetup";
-import OnboardingSpending from "./pages/OnboardingSpending";
-import OnboardingTravel from "./pages/OnboardingTravel";
-import OnboardingRecap from "./pages/OnboardingRecap";
+import OnboardingQuickProfile from "./pages/OnboardingQuickProfile";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
 import Dashboard from "./pages/Dashboard";
@@ -92,36 +87,20 @@ const AppContent = () => {
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/auth" element={<Auth />} />
-      <Route path="/onboarding/basics" element={
+      {/* Streamlined onboarding - single quick profile step */}
+      <Route path="/onboarding/profile" element={
         <ProtectedRoute requireOnboarding={false}>
-          <OnboardingBasics />
+          <OnboardingQuickProfile />
         </ProtectedRoute>
       } />
-      <Route path="/onboarding/first-card" element={
-        <ProtectedRoute requireOnboarding={false}>
-          <OnboardingFirstCard />
-        </ProtectedRoute>
-      } />
-      <Route path="/onboarding/setup" element={
-        <ProtectedRoute requireOnboarding={false}>
-          <OnboardingSetup />
-        </ProtectedRoute>
-      } />
-      <Route path="/onboarding/spending" element={
-        <ProtectedRoute requireOnboarding={false}>
-          <OnboardingSpending />
-        </ProtectedRoute>
-      } />
-      <Route path="/onboarding/travel" element={
-        <ProtectedRoute requireOnboarding={false}>
-          <OnboardingTravel />
-        </ProtectedRoute>
-      } />
-      <Route path="/onboarding/recap" element={
-        <ProtectedRoute requireOnboarding={false}>
-          <OnboardingRecap />
-        </ProtectedRoute>
-      } />
+      
+      {/* Legacy redirects for old onboarding paths */}
+      <Route path="/onboarding/basics" element={<Navigate to="/onboarding/profile" replace />} />
+      <Route path="/onboarding/first-card" element={<Navigate to="/onboarding/profile" replace />} />
+      <Route path="/onboarding/setup" element={<Navigate to="/onboarding/profile" replace />} />
+      <Route path="/onboarding/spending" element={<Navigate to="/onboarding/profile" replace />} />
+      <Route path="/onboarding/travel" element={<Navigate to="/onboarding/profile" replace />} />
+      <Route path="/onboarding/recap" element={<Navigate to="/onboarding/profile" replace />} />
       <Route path="/cards" element={<CardsPage />} />
       <Route path="/dashboard" element={
         <ProtectedRoute requireOnboarding={true}>
