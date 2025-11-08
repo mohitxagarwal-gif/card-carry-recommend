@@ -95,31 +95,34 @@ export const CardTile = ({ card }: CardTileProps) => {
           background: `linear-gradient(135deg, hsl(${issuerBrand.lightBg} / 0.3) 0%, transparent 50%)`
         }}
       >
-        {/* Eligibility Badge - Top Left */}
-        {eligibilityBadge && (
-          <div 
-            className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${eligibilityBadge.color} border`}
-          >
-            {eligibilityBadge.label}
-          </div>
-        )}
+        {/* Dedicated Badge Row */}
+        <div className="flex items-start justify-between mb-4 min-h-[2rem] gap-2">
+          {/* Left: Eligibility Badge */}
+          {eligibilityBadge && (
+            <div 
+              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${eligibilityBadge.color} border`}
+            >
+              {eligibilityBadge.label}
+            </div>
+          )}
 
-        {/* Hero Feature Badge */}
-        {heroFeature && (
-          <div 
-            className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
-            style={{ 
-              backgroundColor: `hsl(${issuerBrand.color} / 0.1)`,
-              color: `hsl(${issuerBrand.color})`,
-              border: `1px solid hsl(${issuerBrand.color} / 0.2)`
-            }}
-          >
-            {heroFeature.icon} {heroFeature.label}
-          </div>
-        )}
+          {/* Right: Hero Feature Badge */}
+          {heroFeature && (
+            <div 
+              className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ml-auto"
+              style={{ 
+                backgroundColor: `hsl(${issuerBrand.color} / 0.1)`,
+                color: `hsl(${issuerBrand.color})`,
+                border: `1px solid hsl(${issuerBrand.color} / 0.2)`
+              }}
+            >
+              {heroFeature.icon} {heroFeature.label}
+            </div>
+          )}
+        </div>
 
         <div className="mb-4">
-          <h3 className="text-xl font-heading font-bold text-ink mb-1 card-emboss-title pr-24">
+          <h3 className="text-xl font-heading font-bold text-ink mb-1 card-emboss-title">
             {card.name}
           </h3>
           <div className="flex items-center gap-2 mt-2">
