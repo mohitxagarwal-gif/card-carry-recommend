@@ -49,7 +49,6 @@ export const ProtectedRoute = ({
             const missingFields: string[] = [];
             if (!profile.age_range) missingFields.push('age_range');
             if (!profile.income_band_inr) missingFields.push('income_band_inr');
-            if (!profile.phone_e164) missingFields.push('phone_e164');
             
             trackOnboardingGateTriggered(missingFields);
             

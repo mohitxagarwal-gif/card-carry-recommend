@@ -746,10 +746,31 @@ const Results = () => {
                         <Button 
                           type="button"
                           size="lg"
-                          onClick={() => {
-                            console.log('[Results] Navigating to dashboard');
+                          onClick={async () => {
+                            console.log('[Results] === DASHBOARD BUTTON CLICKED ===');
+                            console.log('[Results] Current location:', window.location.pathname);
+                            
+                            // Check user profile state
+                            const { data: { user } } = await supabase.auth.getUser();
+                            console.log('[Results] User ID:', user?.id);
+                            
+                            if (user) {
+                              const { data: profile } = await supabase
+                                .from('profiles')
+                                .select('age_range, income_band_inr, phone_e164, onboarding_completed')
+                                .eq('id', user.id)
+                                .single();
+                              
+                              console.log('[Results] Profile state:', profile);
+                            }
+                            
+                            console.log('[Results] Calling trackEvent...');
                             trackEvent('results_to_dashboard');
+                            
+                            console.log('[Results] Calling navigate("/dashboard")...');
                             navigate('/dashboard');
+                            
+                            console.log('[Results] Navigate called, waiting for route change...');
                           }}
                           className="text-lg px-8"
                         >
