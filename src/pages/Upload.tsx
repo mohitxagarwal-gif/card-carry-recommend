@@ -12,6 +12,7 @@ import { TransactionReview, ExtractedData } from "@/components/TransactionReview
 import { Progress } from "@/components/ui/progress";
 import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { checkPDFEncryption, decryptAndExtractPDF, analyzeTransactions } from "@/lib/pdfProcessor";
+import { AnalysisLoadingScreen } from "@/components/AnalysisLoadingScreen";
 import { normalizeCategory } from "@/lib/categories";
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
 interface FileWithStatus {
@@ -34,6 +35,9 @@ const Upload = () => {
   const [mode, setMode] = useState<'bank' | 'credit' | 'mixed' | null>(null);
   const [hasRecentAnalysis, setHasRecentAnalysis] = useState(false);
   const [recentAnalysisId, setRecentAnalysisId] = useState<string | null>(null);
+  const [analysisStep, setAnalysisStep] = useState<number>(0);
+  const [analysisProgress, setAnalysisProgress] = useState<number>(0);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   useEffect(() => {
     const initUser = async () => {
       const {
@@ -519,6 +523,9 @@ const Upload = () => {
     
     setShowReview(false);
     setProcessing(true);
+    setIsAnalyzing(true);
+    setAnalysisStep(1);
+    setAnalysisProgress(0);
     
     try {
       // Phase 7: Log telemetry
@@ -536,6 +543,9 @@ const Upload = () => {
       });
       
       // Phase 2: Create analysis run snapshot first
+      setAnalysisProgress(10);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       const allTransactions = normalizedData.flatMap(ed => ed.transactions);
       const batchId = `batch_${Date.now()}`;
       
@@ -554,9 +564,15 @@ const Upload = () => {
         throw runError;
       }
       
+      setAnalysisProgress(25);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       console.log('[Upload] Analysis run created:', analysisRun?.analysisRunId);
       
       // Call the analysis function with normalized data and analysisRunId
+      setAnalysisStep(2);
+      setAnalysisProgress(30);
+      await new Promise(resolve => setTimeout(resolve, 200));
       const { data, error } = await supabase.functions.invoke('analyze-statements', {
         body: {
           analysisRunId: analysisRun?.analysisRunId,
@@ -577,6 +593,9 @@ const Upload = () => {
           duration: 6000
         });
         setProcessing(false);
+        setIsAnalyzing(false);
+        setAnalysisStep(0);
+        setAnalysisProgress(0);
         return;
       }
       
@@ -584,12 +603,21 @@ const Upload = () => {
         console.error('[Upload] No analysis ID returned:', data);
         toast.error('Analysis completed but failed to save results');
         setProcessing(false);
+        setIsAnalyzing(false);
+        setAnalysisStep(0);
+        setAnalysisProgress(0);
         return;
       }
+      
+      setAnalysisProgress(60);
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       console.log('[Upload] Analysis complete:', data.analysis.id);
       
       // Call derive-user-features to calculate features from the analysis
+      setAnalysisStep(3);
+      setAnalysisProgress(65);
+      await new Promise(resolve => setTimeout(resolve, 200));
       try {
         await supabase.functions.invoke('derive-user-features', {
           body: {
@@ -603,6 +631,17 @@ const Upload = () => {
         // Don't block navigation if feature derivation fails
       }
       
+      setAnalysisProgress(85);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Generate recommendations
+      setAnalysisStep(4);
+      setAnalysisProgress(90);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      setAnalysisProgress(100);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       toast.success('Analysis complete!');
       navigate(`/results?analysisId=${data.analysis.id}`, {
         state: { analysisId: data.analysis.id }
@@ -614,6 +653,9 @@ const Upload = () => {
         duration: 6000
       });
       setProcessing(false);
+      setIsAnalyzing(false);
+      setAnalysisStep(0);
+      setAnalysisProgress(0);
     }
   };
   const getStatusIcon = (status: FileStatus) => {
@@ -659,6 +701,19 @@ const Upload = () => {
     await supabase.auth.signOut();
     navigate("/");
   };
+  
+  // If analyzing, show loading screen
+  if (isAnalyzing) {
+    const totalTransactions = extractedData.reduce((sum, d) => sum + d.transactions.length, 0);
+    return (
+      <AnalysisLoadingScreen
+        currentStep={analysisStep}
+        progress={analysisProgress}
+        totalTransactions={totalTransactions}
+      />
+    );
+  }
+  
   if (showReview) {
     return <div className="min-h-screen bg-background">
         <header className="border-b border-border/30 bg-background/80 backdrop-blur-md">
