@@ -170,6 +170,7 @@ export type Database = {
           created_at: string | null
           earn_rate: number
           earn_rate_description: string | null
+          earn_rate_unit: string | null
           earn_type: string
           excluded_merchants: string[] | null
           id: string
@@ -177,6 +178,7 @@ export type Database = {
           merchant_codes: string[] | null
           min_transaction_inr: number | null
           monthly_cap_inr: number | null
+          notes: string | null
           partner_brands: string[] | null
           subcategory: string | null
           terms_url: string | null
@@ -198,6 +200,7 @@ export type Database = {
           created_at?: string | null
           earn_rate: number
           earn_rate_description?: string | null
+          earn_rate_unit?: string | null
           earn_type: string
           excluded_merchants?: string[] | null
           id?: string
@@ -205,6 +208,7 @@ export type Database = {
           merchant_codes?: string[] | null
           min_transaction_inr?: number | null
           monthly_cap_inr?: number | null
+          notes?: string | null
           partner_brands?: string[] | null
           subcategory?: string | null
           terms_url?: string | null
@@ -226,6 +230,7 @@ export type Database = {
           created_at?: string | null
           earn_rate?: number
           earn_rate_description?: string | null
+          earn_rate_unit?: string | null
           earn_type?: string
           excluded_merchants?: string[] | null
           id?: string
@@ -233,6 +238,7 @@ export type Database = {
           merchant_codes?: string[] | null
           min_transaction_inr?: number | null
           monthly_cap_inr?: number | null
+          notes?: string | null
           partner_brands?: string[] | null
           subcategory?: string | null
           terms_url?: string | null
@@ -909,13 +915,16 @@ export type Database = {
         Row: {
           card_id: string
           created_at: string | null
+          credit_limit_est: number | null
           credit_limit_estimate: number | null
           fee_renewal_month: number | null
           id: string
+          is_active: boolean | null
           is_primary: boolean | null
           issuer: string
           network: string | null
           opened_month: number | null
+          opened_year: number | null
           product: string
           updated_at: string | null
           user_id: string
@@ -923,13 +932,16 @@ export type Database = {
         Insert: {
           card_id: string
           created_at?: string | null
+          credit_limit_est?: number | null
           credit_limit_estimate?: number | null
           fee_renewal_month?: number | null
           id?: string
+          is_active?: boolean | null
           is_primary?: boolean | null
           issuer: string
           network?: string | null
           opened_month?: number | null
+          opened_year?: number | null
           product: string
           updated_at?: string | null
           user_id: string
@@ -937,13 +949,16 @@ export type Database = {
         Update: {
           card_id?: string
           created_at?: string | null
+          credit_limit_est?: number | null
           credit_limit_estimate?: number | null
           fee_renewal_month?: number | null
           id?: string
+          is_active?: boolean | null
           is_primary?: boolean | null
           issuer?: string
           network?: string | null
           opened_month?: number | null
+          opened_year?: number | null
           product?: string
           updated_at?: string | null
           user_id?: string
@@ -1104,6 +1119,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      age_range_midpoint: { Args: { range: string }; Returns: number }
       cleanup_expired_phone_verifications: { Args: never; Returns: number }
       has_role: {
         Args: {
@@ -1112,6 +1128,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      income_band_score: { Args: { band: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "user"
