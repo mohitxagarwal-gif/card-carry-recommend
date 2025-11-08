@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import OnboardingQuickProfile from "./pages/OnboardingQuickProfile";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
+import Recommendations from "./pages/Recommendations";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Applications from "./pages/Applications";
@@ -129,9 +130,10 @@ const AppContent = () => {
       } />
       <Route path="/recs" element={
         <ProtectedRoute requireOnboarding={true}>
-          <Results />
+          <Recommendations />
         </ProtectedRoute>
       } />
+      <Route path="/recommendations" element={<Navigate to="/recs" replace />} />
       <Route path="/admin" element={
         <ProtectedRoute requireOnboarding={true}>
           <AdminDashboard />
