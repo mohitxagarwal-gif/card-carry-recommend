@@ -37,19 +37,52 @@ const Dashboard = () => {
   const [showTour, setShowTour] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [preferences, setPreferences] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    trackEvent("dash_view");
+    console.log('[Dashboard] Component mounted');
+    console.log('[Dashboard] Loading states:', {
+      snapshotLoading,
+      shortlistLoading,
+      appsLoading,
+      cardsLoading
+    });
     
-    // Check if tour should be shown
-    const tourCompleted = localStorage.getItem("dashboard_tour_completed");
-    if (!tourCompleted && hasData) {
-      setShowTour(true);
-    }
-
-    // Load profile data for profile strength widget
+    trackEvent("dash_view");
     loadProfileData();
   }, []);
+
+  // Check tour after all data loads
+  useEffect(() => {
+    if (!snapshotLoading && !shortlistLoading && !appsLoading && !cardsLoading) {
+      console.log('[Dashboard] All data loaded');
+      console.log('[Dashboard] Data:', {
+        hasSnapshot: !!latestSnapshot,
+        shortlistCount: shortlist.length,
+        appsCount: applications.length,
+        cardsCount: userCards.length
+      });
+
+      const hasData = latestSnapshot || shortlist.length > 0 || applications.length > 0;
+      const tourCompleted = localStorage.getItem("dashboard_tour_completed");
+      
+      if (!tourCompleted && latestSnapshot && hasData) {
+        console.log('[Dashboard] Showing tour - first visit with recommendations');
+        setShowTour(true);
+      }
+    }
+  }, [snapshotLoading, shortlistLoading, appsLoading, cardsLoading, latestSnapshot, shortlist, applications]);
+
+  // Error timeout
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (snapshotLoading || shortlistLoading || appsLoading || cardsLoading) {
+        setError('Dashboard is taking longer than expected to load. Please refresh the page.');
+      }
+    }, 10000);
+    
+    return () => clearTimeout(timeout);
+  }, [snapshotLoading, shortlistLoading, appsLoading, cardsLoading]);
 
   const loadProfileData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -151,12 +184,34 @@ const Dashboard = () => {
     }
   };
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <AlertCircle className="w-12 h-12 text-destructive" />
+          <p className="text-foreground font-semibold">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Refresh Page
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (snapshotLoading || shortlistLoading || appsLoading || cardsLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+          <p className="text-sm text-muted-foreground">
+            {snapshotLoading && 'Fetching recommendations... '}
+            {shortlistLoading && 'Loading shortlist... '}
+            {appsLoading && 'Loading applications... '}
+            {cardsLoading && 'Loading cards... '}
+          </p>
         </div>
       </div>
     );

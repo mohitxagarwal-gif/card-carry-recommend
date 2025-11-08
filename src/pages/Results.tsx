@@ -82,6 +82,7 @@ const Results = () => {
   const [matchScoreModal, setMatchScoreModal] = useState<{ isOpen: boolean; card: any } | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [userPreferences, setUserPreferences] = useState<any>(null);
+  const [isDashboardNavigating, setIsDashboardNavigating] = useState(false);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -746,11 +747,12 @@ const Results = () => {
                         <Button 
                           type="button"
                           size="lg"
+                          disabled={isDashboardNavigating}
                           onClick={async () => {
-                            console.log('[Results] === DASHBOARD BUTTON CLICKED ===');
+                            setIsDashboardNavigating(true);
+                            console.log('[Results] === DASHBOARD NAVIGATION START ===');
                             console.log('[Results] Current location:', window.location.pathname);
                             
-                            // Check user profile state
                             const { data: { user } } = await supabase.auth.getUser();
                             console.log('[Results] User ID:', user?.id);
                             
@@ -762,6 +764,7 @@ const Results = () => {
                                 .single();
                               
                               console.log('[Results] Profile state:', profile);
+                              console.log('[Results] Onboarding complete?', profile?.age_range && profile?.income_band_inr);
                             }
                             
                             console.log('[Results] Calling trackEvent...');
@@ -770,12 +773,27 @@ const Results = () => {
                             console.log('[Results] Calling navigate("/dashboard")...');
                             navigate('/dashboard');
                             
-                            console.log('[Results] Navigate called, waiting for route change...');
+                            // Fallback: force navigation if React Router fails
+                            setTimeout(() => {
+                              if (window.location.pathname !== '/dashboard') {
+                                console.warn('[Results] React Router navigation failed, forcing with window.location');
+                                window.location.href = '/dashboard';
+                              }
+                            }, 2000);
                           }}
                           className="text-lg px-8"
                         >
-                          <LayoutDashboard className="mr-2 h-5 w-5" />
-                          Go to Dashboard
+                          {isDashboardNavigating ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Loading Dashboard...
+                            </>
+                          ) : (
+                            <>
+                              <LayoutDashboard className="mr-2 h-5 w-5" />
+                              Go to Dashboard
+                            </>
+                          )}
                         </Button>
                         <Button 
                           type="button"
