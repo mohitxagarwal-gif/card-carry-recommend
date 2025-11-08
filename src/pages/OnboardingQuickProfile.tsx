@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { TrustBadge } from "@/components/onboarding/TrustBadge";
 import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { RadioGrid } from "@/components/onboarding/RadioGrid";
+import { CityCombobox } from "@/components/onboarding/CityCombobox";
 import { QuickSpendingHints } from "@/components/onboarding/QuickSpendingHints";
 import { trackEvent } from "@/lib/analytics";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
@@ -39,6 +40,7 @@ export default function OnboardingQuickProfile() {
   const [ageRange, setAgeRange] = useState("");
   const [incomeBand, setIncomeBand] = useState("");
   const [isFirstCard, setIsFirstCard] = useState<boolean | null>(null);
+  const [city, setCity] = useState<string>("");
   
   // Optional spending hints
   const [monthlySpend, setMonthlySpend] = useState(50000);
@@ -92,6 +94,7 @@ export default function OnboardingQuickProfile() {
         .update({
           age_range: ageRange,
           income_band_inr: incomeBand,
+          city: city || null,
           onboarding_completed: true,
           onboarding_completed_at: new Date().toISOString(),
         })
@@ -230,6 +233,15 @@ export default function OnboardingQuickProfile() {
                     No - I have credit card statements
                   </Button>
                 </div>
+              </div>
+
+              {/* City Selection (Optional) */}
+              <div className="space-y-2">
+                <Label>City (Optional)</Label>
+                <CityCombobox value={city} onChange={setCity} />
+                <p className="text-xs text-muted-foreground">
+                  Helps us find location-specific offers and acceptance
+                </p>
               </div>
 
               {/* Optional Spending Hints */}

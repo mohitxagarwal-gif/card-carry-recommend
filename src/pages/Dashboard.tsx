@@ -8,7 +8,7 @@ import { useShortlist } from "@/hooks/useShortlist";
 import { useApplications } from "@/hooks/useApplications";
 import { useUserCards } from "@/hooks/useUserCards";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
-import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus, RefreshCw } from "lucide-react";
+import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
@@ -21,6 +21,8 @@ import { ShortlistCardsDisplay } from "@/components/dashboard/ShortlistCardsDisp
 import { generateNextSteps } from "@/lib/nextStepsGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DashboardTourModal } from "@/components/dashboard/DashboardTourModal";
+import { Progress } from "@/components/ui/progress";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -32,10 +34,42 @@ const Dashboard = () => {
   const [incompleteAnalysis, setIncompleteAnalysis] = useState<any>(null);
   const [addCardDialogOpen, setAddCardDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [preferences, setPreferences] = useState<any>(null);
 
   useEffect(() => {
     trackEvent("dash_view");
+    
+    // Check if tour should be shown
+    const tourCompleted = localStorage.getItem("dashboard_tour_completed");
+    if (!tourCompleted && hasData) {
+      setShowTour(true);
+    }
+
+    // Load profile data for profile strength widget
+    loadProfileData();
   }, []);
+
+  const loadProfileData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    const { data: prefsData } = await supabase
+      .from("user_preferences")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    setProfile(profileData);
+    setPreferences(prefsData);
+  };
 
   useEffect(() => {
     const checkIncompleteAnalysis = async () => {
@@ -130,6 +164,38 @@ const Dashboard = () => {
 
   const hasData = latestSnapshot || shortlist.length > 0 || applications.length > 0;
 
+  // Calculate profile completeness
+  const calculateProfileStrength = () => {
+    let score = 0;
+    const fields = [
+      profile?.age_range,
+      profile?.income_band_inr,
+      profile?.city,
+      preferences?.fee_sensitivity,
+      preferences?.travel_frequency,
+      preferences?.lounge_importance,
+      preferences?.reward_preference,
+    ];
+    
+    fields.forEach(field => {
+      if (field) score += 100 / fields.length;
+    });
+    
+    return Math.round(score);
+  };
+
+  const profileStrength = profile ? calculateProfileStrength() : 0;
+  const showProfileStrength = profileStrength < 80;
+
+  const getMissingProfileFields = () => {
+    const missing = [];
+    if (!profile?.city) missing.push("City");
+    if (!preferences?.fee_sensitivity) missing.push("Fee Preference");
+    if (!preferences?.travel_frequency) missing.push("Travel Habits");
+    if (!preferences?.lounge_importance) missing.push("Lounge Importance");
+    return missing;
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -154,6 +220,42 @@ const Dashboard = () => {
           </Card>
         ) : (
           <div className="grid gap-6">
+            {/* Profile Strength Widget */}
+            {showProfileStrength && (
+              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-background dark:from-blue-950/20 dark:to-background dark:border-blue-800" data-tour-id="profile-strength">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Sparkles className="w-5 h-5 text-blue-600" />
+                    Profile Strength: {profileStrength}%
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Progress value={profileStrength} className="h-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Complete your profile to get better recommendations and personalized insights
+                  </p>
+                  {getMissingProfileFields().length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Missing information:</p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {getMissingProfileFields().map(field => (
+                          <li key={field} className="flex items-center gap-2">
+                            <span className="text-blue-600">•</span> {field}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <Button 
+                    onClick={() => navigate('/profile')}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Complete Profile
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Incomplete Analysis Alert */}
             {incompleteAnalysis && (
               <Card className="border-amber-500/50 bg-amber-500/5">
@@ -178,7 +280,7 @@ const Dashboard = () => {
             )}
 
             {/* Next Steps */}
-            <Card>
+            <Card data-tour-id="next-steps-module">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
@@ -199,7 +301,7 @@ const Dashboard = () => {
 
             {/* Savings Summary */}
             {latestSnapshot && (
-              <Card>
+              <Card data-tour-id="recommendations-module">
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center gap-2">
@@ -252,7 +354,7 @@ const Dashboard = () => {
 
             {/* Shortlist */}
             {shortlist.length > 0 && (
-              <Card>
+              <Card data-tour-id="shortlist-module">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Heart className="w-5 h-5" />
@@ -270,11 +372,11 @@ const Dashboard = () => {
 
             {/* Card Management Modules - Only show if user has cards */}
             {getActiveCards().length > 0 ? (
-              <>
+              <div data-tour-id="my-cards-module">
                 <MyCardsModule />
                 <FeeWaiverGoalsModule />
                 <RemindersModule />
-              </>
+              </div>
             ) : (
               <Card>
                 <CardContent className="pt-6 text-center space-y-4">
@@ -322,6 +424,9 @@ const Dashboard = () => {
 
       {/* Add Card Dialog */}
       <AddCardDialog open={addCardDialogOpen} onOpenChange={setAddCardDialogOpen} />
+      
+      {/* Dashboard Tour */}
+      <DashboardTourModal open={showTour} onOpenChange={setShowTour} />
     </div>
   );
 };

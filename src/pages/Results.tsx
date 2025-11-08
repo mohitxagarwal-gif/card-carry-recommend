@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, TrendingUp, CreditCard as CreditCardIcon, Sparkles, LogOut, AlertCircle, Loader2, LayoutDashboard, ArrowUpCircle, ArrowDownCircle, Home } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
 import { includeInSpending, calculateTotalSpending, groupByCategory } from "@/lib/transactionRules";
+import { trackEvent } from "@/lib/analytics";
 import {
   Select,
   SelectContent,
@@ -580,6 +582,44 @@ const Results = () => {
             <>
               <div id="recommendations-section"></div>
               
+              {/* Incomplete Profile Alert */}
+              {(!userProfile?.city || !userPreferences?.fee_sensitivity) && (
+                <Card className="mb-6 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                          Improve Your Recommendations
+                        </h3>
+                        <p className="text-sm text-blue-800 dark:text-blue-200 mb-4">
+                          Your recommendations are based on spending patterns only. Complete your profile for more personalized matches based on your preferences and location.
+                        </p>
+                        <div className="flex gap-3">
+                          <Button 
+                            size="sm"
+                            onClick={() => navigate('/profile')}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            Complete Profile
+                          </Button>
+                          <Button 
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const element = document.getElementById('recommendations-list');
+                              element?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                          >
+                            See Recommendations
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
               {/* Low Confidence Warning */}
               {(editedTransactions.length < 20 || otherCount > editedTransactions.length * 0.3) && (
                 <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
@@ -624,7 +664,7 @@ const Results = () => {
                 <h3 className="text-2xl font-heading font-bold text-foreground">
                   recommended credit cards
                 </h3>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div id="recommendations-list" className="grid md:grid-cols-2 gap-6">
                   {analysis.recommendedCards.map((card, index) => (
                     <Card key={index} className="p-8 border-border hover:border-primary/50 transition-colors">
                       <div className="space-y-4">
@@ -704,6 +744,42 @@ const Results = () => {
                     </Card>
                   ))}
                 </div>
+
+                {/* Go to Dashboard CTA */}
+                <Card className="mt-12 bg-gradient-to-br from-primary/5 via-background to-primary/10 border-primary/20">
+                  <CardContent className="pt-12 pb-12 text-center">
+                    <div className="max-w-2xl mx-auto space-y-6">
+                      <div className="inline-flex p-4 bg-primary/10 rounded-full mb-2">
+                        <TrendingUp className="w-8 h-8 text-primary" />
+                      </div>
+                      <h2 className="text-3xl font-heading font-bold text-foreground">
+                        Ready to Track Your Progress?
+                      </h2>
+                      <p className="text-lg text-muted-foreground">
+                        Visit your dashboard to manage cards, set fee waiver goals, track lounge access, and get personalized content recommendations.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+                        <Button 
+                          size="lg"
+                          onClick={() => {
+                            trackEvent('results_to_dashboard');
+                            navigate('/dashboard');
+                          }}
+                          className="text-lg px-8"
+                        >
+                          Go to Dashboard
+                        </Button>
+                        <Button 
+                          size="lg"
+                          variant="outline"
+                          onClick={() => navigate('/cards')}
+                        >
+                          Explore All Cards
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </>
           )}

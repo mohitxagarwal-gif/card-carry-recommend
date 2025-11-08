@@ -14,12 +14,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, TrendingUp, AlertCircle } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
+import { PreferencesModal } from "@/components/profile/PreferencesModal";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { preferences, isLoading, updatePreferences } = useUserPreferences();
   const [profile, setProfile] = useState<any>(null);
   const [userFeatures, setUserFeatures] = useState<any>(null);
+  const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
 
   useEffect(() => {
     trackEvent("profile_view");
@@ -97,7 +99,7 @@ const Profile = () => {
                 <Label>City</Label>
                 <p className="text-sm text-muted-foreground mt-1">{profile.city || 'Not set'}</p>
               </div>
-              <Button variant="outline" onClick={() => navigate('/onboarding/profile')}>
+              <Button variant="outline" onClick={() => setPreferencesModalOpen(true)}>
                 Edit Basics
               </Button>
             </CardContent>
@@ -133,7 +135,7 @@ const Profile = () => {
                   <Button 
                     variant="default"
                     className="w-full"
-                    onClick={() => navigate('/onboarding/profile')}
+                    onClick={() => setPreferencesModalOpen(true)}
                   >
                     Complete Profile
                   </Button>
@@ -462,10 +464,19 @@ const Profile = () => {
               </Button>
             </CardContent>
           </Card>
-        </div>
-      </main>
-    </div>
-  );
-};
+          </div>
+        </main>
+
+        <PreferencesModal 
+          open={preferencesModalOpen}
+          onOpenChange={setPreferencesModalOpen}
+          onSaveComplete={() => {
+            loadProfile();
+            loadUserFeatures();
+          }}
+        />
+      </div>
+    );
+  };
 
 export default Profile;
