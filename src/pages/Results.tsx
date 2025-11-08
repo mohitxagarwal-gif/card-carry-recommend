@@ -52,6 +52,7 @@ interface AnalysisData {
     reason: string;
     benefits: string[];
     estimatedSavings: string;
+    matchScore?: number;
   }>;
   insights?: string[];
   summary?: string;

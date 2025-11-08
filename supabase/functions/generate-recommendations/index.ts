@@ -156,11 +156,116 @@ ALL CATEGORIES BREAKDOWN:
 ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')}`).join('\n')}
     `.trim();
 
-    // Generate recommendations using Lovable AI
+    // Phase 5: Fetch user features and use EAV scoring
+    console.log('[generate-recommendations] Fetching user features and card benefits...');
+    
+    const { data: userFeaturesData } = await supabaseClient
+      .from('user_features')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    // If no derived features exist, generate them first
+    if (!userFeaturesData) {
+      console.log('[generate-recommendations] No user features found, deriving...');
+      const { error: deriveError } = await supabaseClient.functions.invoke('derive-user-features', {
+        body: { userId: user.id }
+      });
+      
+      if (deriveError) {
+        console.error('[generate-recommendations] Failed to derive features:', deriveError);
+      } else {
+        // Refetch after derivation
+        const { data: newFeatures } = await supabaseClient
+          .from('user_features')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (newFeatures) {
+          console.log('[generate-recommendations] Features derived successfully');
+        }
+      }
+    }
+    
+    // Fetch all active cards with their benefits
+    const { data: allCards, error: cardsError } = await supabaseClient
+      .from('credit_cards')
+      .select(`
+        id,
+        card_id,
+        name,
+        issuer,
+        network,
+        annual_fee,
+        waiver_rule,
+        forex_markup_pct,
+        reward_type,
+        category_badges,
+        key_perks,
+        reward_structure
+      `)
+      .eq('is_active', true);
+    
+    if (cardsError) throw cardsError;
+    
+    // Fetch benefits for scoring
+    const { data: allBenefits } = await supabaseClient
+      .from('card_benefits')
+      .select('*');
+    
+    console.log('[generate-recommendations] Found', allCards?.length || 0, 'active cards');
+    
+    // Use EAV scoring if features are available
+    let scoredCards: any[] = [];
+    
+    if (userFeaturesData && allCards) {
+      const { calculateMatchScore } = await import('./scorer.ts');
+      
+      const userFeatures = {
+        pif_score: userFeaturesData.pif_score || 50,
+        fee_tolerance_numeric: userFeaturesData.fee_tolerance_numeric || 1500,
+        travel_numeric: userFeaturesData.travel_numeric || 5,
+        lounge_numeric: userFeaturesData.lounge_numeric || 5,
+        forex_spend_pct: userFeaturesData.forex_spend_pct || 0,
+        acceptance_risk_amex: userFeaturesData.acceptance_risk_amex || 60,
+        total_monthly_spend: userFeaturesData.total_monthly_spend || totalSpending / 3,
+        category_spend: categoryTotals
+      };
+      
+      // Score each card
+      scoredCards = allCards.map(card => {
+        const cardBenefits = (allBenefits || []).filter(b => 
+          !b.applies_to_card_ids || b.applies_to_card_ids.includes(card.card_id)
+        );
+        
+        const { score, explanation } = calculateMatchScore(userFeatures, {
+          ...card,
+          benefits: cardBenefits
+        });
+        
+        return {
+          ...card,
+          matchScore: score,
+          matchExplanation: explanation
+        };
+      }).sort((a, b) => b.matchScore - a.matchScore);
+      
+      console.log('[generate-recommendations] Top 3 scored cards:', 
+        scoredCards.slice(0, 3).map(c => ({ name: c.name, score: c.matchScore }))
+      );
+    }
+    
+    // Generate recommendations using Lovable AI with scored cards
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
+
+    const topScoredCards = scoredCards.slice(0, 8);
+    const cardContext = topScoredCards.map(c => 
+      `${c.name} (${c.issuer}) - Match Score: ${c.matchScore}/100, Fee: ₹${c.annual_fee}, ${c.matchExplanation?.join(', ') || ''}`
+    ).join('\n');
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -173,57 +278,47 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         messages: [
           {
             role: 'system',
-            content: `You are a credit card recommendation expert for Indian users. Based on ACTUAL spending patterns (debits only, excluding refunds) AND user profile, recommend the most suitable Indian credit cards.
+            content: `You are a credit card recommendation expert for Indian users. Our AI scoring engine has already ranked cards by fit score. Focus on the TOP-SCORING cards below.
 
-USER PROFILE CONTEXT:
-- Age Range: ${userProfile?.age_range || 'Not specified'}
-- Income Band (INR/month): ${userProfile?.income_band_inr || 'Not specified'}
+USER PROFILE:
+- Age: ${userProfile?.age_range || 'Not specified'}
+- Income: ${userProfile?.income_band_inr || 'Not specified'}/month
 - Location: ${userProfile?.city || 'Not specified'}
 - Fee Sensitivity: ${userPreferences?.fee_sensitivity || 'medium'}
 - Travel Frequency: ${userPreferences?.travel_frequency || 'moderate'}
-- Lounge Importance: ${userPreferences?.lounge_importance || 'moderate'}
-- Card Preference Type: ${userPreferences?.preference_type || 'balanced'}
 
-CRITICAL ANALYSIS RULES:
-- Only consider DEBIT transactions (actual spending) for recommendations
-- Exclude CREDIT transactions (refunds, cashback, salary) from spending calculations
-- Focus recommendations on the TOP MERCHANTS where they spend the most
-- Calculate savings based on REAL category percentages, not generic estimates
-- Consider recurring expenses separately (subscriptions, bills, etc.)
+TOP-RANKED CARDS (by AI match score):
+${cardContext}
 
-PROFILE-BASED RECOMMENDATION RULES:
-- Consider income level for card eligibility (premium cards need ₹1.5L+/month income)
-- If travel_frequency is 'frequent', prioritize travel/lounge/forex cards
-- If fee_sensitivity is 'high', prioritize zero-fee or fee-waiver cards (₹500-1500/year fees)
-- If lounge_importance is 'high', emphasize lounge access benefits
-- Consider location (metro vs tier-2) for lounge network availability
-- Age matters: some cards have minimum age 21, premium cards prefer 30+
-- Match card tier to income: entry-level (<₹50k/mo), mid-tier (₹50k-1.5L), premium (₹1.5L+)
+CRITICAL RULES:
+- ONLY recommend cards from the above list
+- Prioritize cards with higher match scores (75+ are excellent fits)
+- Use ACTUAL spending data to calculate savings
+- Focus on the top 3-4 cards with best scores
+- Consider fee vs benefits tradeoff for each income band
+- For travel frequency 'frequent', emphasize lounge/forex benefits
+- For fee_sensitivity 'high', prioritize cards with scores 75+ AND fees under ₹1500
 
-Return ONLY valid JSON with this EXACT structure (no markdown, no code blocks):
+Return ONLY valid JSON with this EXACT structure (no markdown):
 {
   "recommendedCards": [
     {
-      "name": "string (e.g., HDFC Swiggy Credit Card, AMEX Platinum Travel, ICICI Amazon Pay, Axis Magnus, SBI Cashback)",
-      "issuer": "string (HDFC, ICICI, Axis, SBI, AMEX, etc.)",
-      "reason": "string explaining why this card matches BOTH their spending pattern AND profile (income, age, travel needs)",
-      "benefits": ["specific benefit tied to their spending", "benefit tied to profile (e.g., lounge for frequent travelers)", "benefit 3"],
-      "estimatedSavings": "string with CALCULATED savings (e.g., ₹15,000-20,000/year based on their ₹X spending on category Y)",
-      "matchScore": number 1-100 (how well this card matches spending + profile),
-      "profileMatch": "string explaining how card fits their income/age/location/preferences"
+      "name": "exact card name from list above",
+      "issuer": "issuer name",
+      "reason": "why this high-scoring card matches their spending + profile",
+      "benefits": ["benefit 1", "benefit 2", "benefit 3"],
+      "estimatedSavings": "₹X-Y/year based on their actual ₹Z spending on category",
+      "matchScore": number from the list above
     }
   ],
   "additionalInsights": [
-    "insight about their spending pattern",
-    "specific optimization suggestion based on profile + spending",
-    "potential savings opportunity considering their preferences"
+    "insight about spending pattern",
+    "optimization suggestion",
+    "potential savings opportunity"
   ]
 }
 
-Recommend 3-4 actual Indian credit cards that match BOTH spending patterns and user profile. Prioritize cards they qualify for based on income. For each card, show HOW you calculated estimated savings and WHY it matches their profile.
-
-Example calculation format:
-"HDFC Swiggy Card gives 10% cashback on Swiggy. You spend ₹12,400/month on Swiggy, so savings = ₹1,240/month = ₹14,880/year. Perfect for your income band (₹50k-1L/month) and fee-sensitivity preference."`
+Recommend 3-4 cards with highest scores. Show CALCULATED savings and explain WHY the match score is high.`
           },
           {
             role: 'user',
