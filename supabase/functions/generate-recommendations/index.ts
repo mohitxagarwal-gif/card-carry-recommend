@@ -156,8 +156,8 @@ ALL CATEGORIES BREAKDOWN:
 ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')}`).join('\n')}
     `.trim();
 
-    // Phase 5: Fetch user features and use EAV scoring
-    console.log('[generate-recommendations] Fetching user features and card benefits...');
+    // Phase 5: Fetch user features and use scoring
+    console.log('[generate-recommendations] Fetching user features and card earn rates...');
     
     const { data: userFeaturesData } = await supabaseClient
       .from('user_features')
@@ -165,30 +165,15 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
       .eq('user_id', user.id)
       .maybeSingle();
     
-    // If no derived features exist, generate them first
-    if (!userFeaturesData) {
-      console.log('[generate-recommendations] No user features found, deriving...');
-      const { error: deriveError } = await supabaseClient.functions.invoke('derive-user-features', {
+    // If no features, try to derive them
+    if (!userFeaturesData && transactions.length > 0) {
+      console.log('[generate-recommendations] Deriving features from transactions...');
+      await supabaseClient.functions.invoke('derive-user-features', {
         body: { userId: user.id }
       });
-      
-      if (deriveError) {
-        console.error('[generate-recommendations] Failed to derive features:', deriveError);
-      } else {
-        // Refetch after derivation
-        const { data: newFeatures } = await supabaseClient
-          .from('user_features')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (newFeatures) {
-          console.log('[generate-recommendations] Features derived successfully');
-        }
-      }
     }
     
-    // Fetch all active cards with their benefits
+    // Fetch all active cards with their earn rates
     const { data: allCards, error: cardsError } = await supabaseClient
       .from('credit_cards')
       .select(`
@@ -202,21 +187,21 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         forex_markup_pct,
         reward_type,
         category_badges,
-        key_perks,
-        reward_structure
+        key_perks
       `)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .limit(50);
     
     if (cardsError) throw cardsError;
     
-    // Fetch benefits for scoring
-    const { data: allBenefits } = await supabaseClient
+    // Fetch earn rates for all cards
+    const { data: allEarnRates } = await supabaseClient
       .from('card_benefits')
-      .select('*');
+      .select('card_id, category, earn_rate, earn_type, earn_rate_unit');
     
     console.log('[generate-recommendations] Found', allCards?.length || 0, 'active cards');
     
-    // Use EAV scoring if features are available
+    // Score cards if features available
     let scoredCards: any[] = [];
     
     if (userFeaturesData && allCards) {
@@ -225,23 +210,24 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
       const userFeatures = {
         pif_score: userFeaturesData.pif_score || 50,
         fee_tolerance_numeric: userFeaturesData.fee_tolerance_numeric || 1500,
-        travel_numeric: userFeaturesData.travel_numeric || 5,
-        lounge_numeric: userFeaturesData.lounge_numeric || 5,
-        forex_spend_pct: userFeaturesData.forex_spend_pct || 0,
         acceptance_risk_amex: userFeaturesData.acceptance_risk_amex || 60,
-        total_monthly_spend: userFeaturesData.total_monthly_spend || totalSpending / 3,
+        monthly_spend_estimate: userFeaturesData.monthly_spend_estimate || totalSpending / 3,
+        dining_share: userFeaturesData.dining_share || 0,
+        groceries_share: userFeaturesData.groceries_share || 0,
+        travel_share: userFeaturesData.travel_share || 0,
+        entertainment_share: userFeaturesData.entertainment_share || 0,
+        online_share: userFeaturesData.online_share || 0,
+        forex_share: userFeaturesData.forex_share || 0,
         category_spend: categoryTotals
       };
       
       // Score each card
       scoredCards = allCards.map(card => {
-        const cardBenefits = (allBenefits || []).filter(b => 
-          !b.applies_to_card_ids || b.applies_to_card_ids.includes(card.card_id)
-        );
+        const cardEarnRates = (allEarnRates || []).filter(r => r.card_id === card.card_id);
         
         const { score, explanation } = calculateMatchScore(userFeatures, {
           ...card,
-          benefits: cardBenefits
+          earn_rates: cardEarnRates
         });
         
         return {
@@ -251,21 +237,27 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         };
       }).sort((a, b) => b.matchScore - a.matchScore);
       
-      console.log('[generate-recommendations] Top 3 scored cards:', 
-        scoredCards.slice(0, 3).map(c => ({ name: c.name, score: c.matchScore }))
+      console.log('[generate-recommendations] Top 5 scored cards:', 
+        scoredCards.slice(0, 5).map(c => ({ name: c.name, score: c.matchScore }))
       );
+    } else {
+      // No scoring, use all cards
+      scoredCards = allCards || [];
+      console.log('[generate-recommendations] No user features, using all cards');
     }
     
-    // Generate recommendations using Lovable AI with scored cards
+    // Generate recommendations using Lovable AI
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const topScoredCards = scoredCards.slice(0, 8);
-    const cardContext = topScoredCards.map(c => 
-      `${c.name} (${c.issuer}) - Match Score: ${c.matchScore}/100, Fee: ₹${c.annual_fee}, ${c.matchExplanation?.join(', ') || ''}`
-    ).join('\n');
+    const topScoredCards = scoredCards.slice(0, 10);
+    const cardContext = topScoredCards.length > 0 
+      ? topScoredCards.map(c => 
+          `${c.name} (${c.issuer})${c.matchScore ? ` - Match: ${c.matchScore}/100` : ''}, Fee: ₹${c.annual_fee}`
+        ).join('\n')
+      : 'All available cards';
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

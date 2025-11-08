@@ -4,21 +4,25 @@
 export interface UserFeatures {
   pif_score: number;
   fee_tolerance_numeric: number;
-  travel_numeric: number;
-  lounge_numeric: number;
-  forex_spend_pct: number;
   acceptance_risk_amex: number;
-  total_monthly_spend: number;
+  monthly_spend_estimate: number;
+  dining_share: number;
+  groceries_share: number;
+  travel_share: number;
+  entertainment_share: number;
+  online_share: number;
+  forex_share: number;
   category_spend: Record<string, number>;
 }
 
-export interface CardBenefit {
-  benefit_type: string;
-  benefit_key: string;
-  benefit_value_type: 'boolean' | 'numeric' | 'text';
+export interface CardEarnRate {
+  category: string;
+  earn_rate: number;
+  earn_type: string;
+  earn_rate_unit: string;
 }
 
-export interface CardWithBenefits {
+export interface CardWithEarnRates {
   id: string;
   card_id: string;
   name: string;
@@ -29,48 +33,45 @@ export interface CardWithBenefits {
   forex_markup_pct: number;
   reward_type: string[];
   category_badges: string[];
-  benefits: CardBenefit[];
+  earn_rates: CardEarnRate[];
 }
 
 export function calculateMatchScore(
   userFeatures: UserFeatures,
-  card: CardWithBenefits
+  card: CardWithEarnRates
 ): { score: number; explanation: string[] } {
   
   const explanation: string[] = [];
   let totalScore = 0;
   
-  // 1. Fee Affordability (20%)
+  // 1. Fee Affordability (25%)
   const feeScore = calculateFeeScore(userFeatures.fee_tolerance_numeric, card.annual_fee, card.waiver_rule);
-  totalScore += feeScore * 0.20;
+  totalScore += feeScore * 0.25;
   if (feeScore >= 80) {
-    explanation.push(`Fee of ₹${card.annual_fee.toLocaleString()} fits budget`);
+    explanation.push(`Affordable fee of ₹${card.annual_fee.toLocaleString()}`);
   }
   
-  // 2. Category Alignment (30%)
-  const categoryScore = calculateCategoryScore(userFeatures.category_spend, card);
-  totalScore += categoryScore * 0.30;
+  // 2. Category Rewards Alignment (40%) - Most important
+  const categoryScore = calculateCategoryScore(userFeatures, card);
+  totalScore += categoryScore * 0.40;
   if (categoryScore >= 70) {
-    explanation.push(`Strong match with spending categories`);
+    explanation.push(`Great rewards on your top categories`);
   }
   
-  // 3. Travel Fit (20%)
+  // 3. Travel Fit (15%)
   const travelScore = calculateTravelScore(userFeatures, card);
-  totalScore += travelScore * 0.20;
-  if (travelScore >= 75 && userFeatures.travel_numeric > 6) {
-    explanation.push(`Excellent travel benefits`);
+  totalScore += travelScore * 0.15;
+  if (travelScore >= 70 && userFeatures.travel_share > 0.10) {
+    explanation.push(`Good travel benefits`);
   }
   
-  // 4. Network Acceptance (15%)
+  // 4. Network Acceptance (10%)
   const networkScore = calculateNetworkScore(card.network, userFeatures.acceptance_risk_amex);
-  totalScore += networkScore * 0.15;
+  totalScore += networkScore * 0.10;
   
-  // 5. Reward Type Match (15%)
-  const rewardScore = calculateRewardScore(userFeatures, card);
-  totalScore += rewardScore * 0.15;
-  if (rewardScore >= 70) {
-    explanation.push(`Rewards match your preferences`);
-  }
+  // 5. Spending Level Match (10%)
+  const spendScore = calculateSpendingMatch(userFeatures.monthly_spend_estimate, card.annual_fee);
+  totalScore += spendScore * 0.10;
   
   return {
     score: Math.round(Math.min(100, Math.max(0, totalScore))),
@@ -90,58 +91,59 @@ function calculateFeeScore(feeTolerance: number, annualFee: number, waiverRule?:
   return 20;
 }
 
-function calculateCategoryScore(categorySpend: Record<string, number>, card: CardWithBenefits): number {
-  const totalSpend = Object.values(categorySpend).reduce((sum, val) => sum + val, 0);
-  if (totalSpend === 0) return 50;
+function calculateCategoryScore(userFeatures: UserFeatures, card: CardWithEarnRates): number {
+  let score = 30; // Base score
   
-  let alignedSpend = 0;
-  const benefitKeys = card.benefits.map(b => b.benefit_key);
-  
-  const categoryMap: Record<string, string[]> = {
-    'Dining': ['cashback_dining'],
-    'Grocery': ['cashback_grocery'],
-    'Fuel': ['cashback_fuel'],
-    'Food Delivery': ['food_delivery_boost'],
-    'Online Shopping': ['ecommerce_boost', 'shopping_boost'],
-    'Entertainment': ['entertainment_boost'],
-    'Travel': ['flight_discount', 'hotel_discount', 'forex_markup_zero'],
-    'Utilities': ['cashback_utilities']
+  // Check earn rates for user's top spending categories
+  const categoryShares = {
+    'Dining': userFeatures.dining_share,
+    'Grocery': userFeatures.groceries_share,
+    'Travel': userFeatures.travel_share,
+    'Entertainment': userFeatures.entertainment_share,
+    'Online Shopping': userFeatures.online_share
   };
   
-  for (const [category, spend] of Object.entries(categorySpend)) {
-    const matchingBenefits = categoryMap[category] || [];
-    if (matchingBenefits.some(b => benefitKeys.includes(b))) {
-      alignedSpend += spend;
+  // Find top 3 categories by share
+  const topCategories = Object.entries(categoryShares)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  
+  // Check if card has good earn rates for top categories
+  for (const [category, share] of topCategories) {
+    if (share > 0.05) { // 5% or more of spending
+      const earnRate = card.earn_rates.find(r => 
+        r.category.toLowerCase().includes(category.toLowerCase())
+      );
+      
+      if (earnRate && earnRate.earn_rate > 0) {
+        // Award points based on earn rate and category importance
+        const categoryWeight = share * 100; // Convert to percentage
+        const earnBonus = Math.min(20, earnRate.earn_rate * 2);
+        score += categoryWeight * 0.3 + earnBonus;
+      }
     }
   }
   
-  const alignmentPct = (alignedSpend / totalSpend) * 100;
-  
-  if (benefitKeys.includes('cashback_general')) {
-    return Math.max(alignmentPct, 60);
-  }
-  
-  return Math.min(100, alignmentPct);
+  return Math.min(100, score);
 }
 
-function calculateTravelScore(userFeatures: UserFeatures, card: CardWithBenefits): number {
-  const travelNeeds = userFeatures.travel_numeric;
-  if (travelNeeds < 3) return 100;
+function calculateTravelScore(userFeatures: UserFeatures, card: CardWithEarnRates): number {
+  const travelShare = userFeatures.travel_share;
+  if (travelShare < 0.05) return 100; // Low travel needs = doesn't matter
   
-  let score = 0;
-  const benefitKeys = card.benefits.map(b => b.benefit_key);
+  let score = 40;
   
-  if (benefitKeys.includes('domestic_lounge')) score += 20;
-  if (benefitKeys.includes('intl_lounge')) score += 20;
-  if (benefitKeys.includes('priority_pass')) score += 25;
-  
-  if (userFeatures.forex_spend_pct > 5) {
-    if (benefitKeys.includes('forex_markup_zero')) score += 20;
-    else if (card.forex_markup_pct <= 2) score += 15;
+  // Check for travel category earn rates
+  const travelEarn = card.earn_rates.find(r => r.category.toLowerCase().includes('travel'));
+  if (travelEarn && travelEarn.earn_rate > 0) {
+    score += Math.min(40, travelEarn.earn_rate * 4);
   }
   
-  if (benefitKeys.includes('flight_discount')) score += 10;
-  if (benefitKeys.includes('hotel_discount')) score += 10;
+  // Forex markup matters for international travel
+  if (userFeatures.forex_share > 0.02) { // >2% forex spending
+    if (card.forex_markup_pct === 0) score += 20;
+    else if (card.forex_markup_pct <= 2) score += 10;
+  }
   
   return Math.min(100, score);
 }
@@ -153,21 +155,15 @@ function calculateNetworkScore(network: string, amexAcceptance: number): number 
   return 80;
 }
 
-function calculateRewardScore(userFeatures: UserFeatures, card: CardWithBenefits): number {
-  let score = 50;
-  const benefitKeys = card.benefits.map(b => b.benefit_key);
+function calculateSpendingMatch(monthlySpend: number, annualFee: number): number {
+  if (annualFee === 0) return 100;
   
-  const topCategories = Object.entries(userFeatures.category_spend)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([cat]) => cat);
+  // Card should generate at least 2x annual fee in value
+  const requiredSpend = (annualFee * 2) / 12; // Monthly spend needed
   
-  if (topCategories.includes('Dining') && benefitKeys.includes('cashback_dining')) score += 15;
-  if (topCategories.includes('Grocery') && benefitKeys.includes('cashback_grocery')) score += 15;
-  if (topCategories.includes('Food Delivery') && benefitKeys.includes('food_delivery_boost')) score += 15;
-  if (topCategories.includes('Online Shopping') && benefitKeys.includes('ecommerce_boost')) score += 15;
-  
-  if (benefitKeys.includes('cashback_general')) score += 10;
-  
-  return Math.min(100, score);
+  if (monthlySpend >= requiredSpend * 2) return 100;
+  if (monthlySpend >= requiredSpend) return 80;
+  if (monthlySpend >= requiredSpend * 0.7) return 60;
+  if (monthlySpend >= requiredSpend * 0.5) return 40;
+  return 20;
 }
