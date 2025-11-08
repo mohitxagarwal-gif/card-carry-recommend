@@ -26,6 +26,16 @@ export interface CreditCard {
   application_url?: string;
   popular_score: number;
   is_active: boolean;
+  // Detailed information fields for "Nerd Out" feature
+  detailed_reward_breakdown?: Record<string, any>;
+  reward_caps_details?: string;
+  detailed_benefits?: Record<string, any>;
+  earning_examples?: Record<string, any>;
+  fine_print?: string;
+  insider_tips?: string;
+  best_use_cases?: string;
+  hidden_fees?: string;
+  comparison_notes?: string;
 }
 
 export const useCards = () => {

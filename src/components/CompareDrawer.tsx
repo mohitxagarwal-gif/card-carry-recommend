@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompare } from "@/contexts/CompareContext";
 import { CreditCard } from "@/hooks/useCards";
@@ -10,6 +11,14 @@ import { Badge } from "./ui/badge";
 export const CompareDrawer = () => {
   const navigate = useNavigate();
   const { selectedCards, removeCard, clearAll } = useCompare();
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Listen for programmatic open event from toast action
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('openCompareDrawer', handleOpen);
+    return () => window.removeEventListener('openCompareDrawer', handleOpen);
+  }, []);
 
   if (selectedCards.length === 0) return null;
 
@@ -21,7 +30,7 @@ export const CompareDrawer = () => {
           <span className="text-sm md:text-base font-sans text-foreground">
             {selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected
           </span>
-          <Sheet>
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button variant="secondary" size="sm" className="font-sans gloss-band">
                 compare {selectedCards.length} {selectedCards.length === 1 ? 'card' : 'cards'} →

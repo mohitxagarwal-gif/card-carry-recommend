@@ -6,7 +6,9 @@ import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
 import { useCompare } from "@/contexts/CompareContext";
 import { CardDetailsModal } from "./CardDetailsModal";
+import { CardNerdOutModal } from "./CardNerdOutModal";
 import { toast } from "sonner";
+import { getIssuerBrand, getHeroFeature, getFeeStyle } from "@/lib/issuerBranding";
 
 interface CardTileProps {
   card: CreditCard;
@@ -16,6 +18,11 @@ export const CardTile = ({ card }: CardTileProps) => {
   const navigate = useNavigate();
   const { addCard, removeCard, isSelected, selectedCards } = useCompare();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [nerdOutOpen, setNerdOutOpen] = useState(false);
+  
+  const issuerBrand = getIssuerBrand(card.issuer);
+  const heroFeature = getHeroFeature(card);
+  const feeStyle = getFeeStyle(card.annual_fee);
 
   const handleCompareToggle = (checked: boolean) => {
     if (checked) {
@@ -24,7 +31,22 @@ export const CardTile = ({ card }: CardTileProps) => {
         return;
       }
       addCard(card);
-      toast.success(`${card.name} added to comparison`);
+      
+      // Enhanced toast with action when 2+ cards selected
+      if (selectedCards.length >= 1) {
+        toast.success(`${card.name} added to comparison`, {
+          description: `${selectedCards.length + 1} cards ready to compare`,
+          action: {
+            label: "Compare Now →",
+            onClick: () => {
+              window.dispatchEvent(new CustomEvent('openCompareDrawer'));
+            }
+          },
+          duration: 5000
+        });
+      } else {
+        toast.success(`${card.name} added to comparison`);
+      }
     } else {
       removeCard(card.id);
       toast.success(`${card.name} removed from comparison`);
@@ -33,13 +55,41 @@ export const CardTile = ({ card }: CardTileProps) => {
 
   return (
     <>
-      <div className="group glass-surface glass-highlight rounded-card border border-hairline hover:shadow-glass-elevated transition-all duration-220 p-6 flex flex-col gloss-band hover:-translate-y-1.5">
+      <div 
+        className="group glass-surface glass-highlight rounded-card border hover:shadow-glass-elevated transition-all duration-220 p-6 flex flex-col gloss-band hover:-translate-y-1.5 relative overflow-hidden"
+        style={{ 
+          borderColor: `hsl(${issuerBrand.color} / 0.2)`,
+          background: `linear-gradient(135deg, hsl(${issuerBrand.lightBg} / 0.3) 0%, transparent 50%)`
+        }}
+      >
+        {/* Hero Feature Badge */}
+        {heroFeature && (
+          <div 
+            className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+            style={{ 
+              backgroundColor: `hsl(${issuerBrand.color} / 0.1)`,
+              color: `hsl(${issuerBrand.color})`,
+              border: `1px solid hsl(${issuerBrand.color} / 0.2)`
+            }}
+          >
+            {heroFeature.icon} {heroFeature.label}
+          </div>
+        )}
+
         <div className="mb-4">
-          <h3 className="text-xl font-heading font-bold text-ink mb-1 card-emboss-title">
+          <h3 className="text-xl font-heading font-bold text-ink mb-1 card-emboss-title pr-24">
             {card.name}
           </h3>
           <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary" className="text-xs">
+            <Badge 
+              variant="secondary" 
+              className="text-xs"
+              style={{ 
+                backgroundColor: `hsl(${issuerBrand.lightBg})`,
+                color: `hsl(${issuerBrand.color})`,
+                borderColor: `hsl(${issuerBrand.color} / 0.2)`
+              }}
+            >
               {card.issuer}
             </Badge>
             <Badge variant="outline" className="text-xs">
@@ -58,9 +108,12 @@ export const CardTile = ({ card }: CardTileProps) => {
         </ul>
 
         <div className="mb-4">
-          <p className="text-base font-body text-ink font-semibold tabular-nums card-emboss-badge inline-block px-3 py-1 rounded-pill bg-muted">
-            {card.annual_fee === 0 ? "free" : `₹${card.annual_fee.toLocaleString('en-IN')}/yr`}
-          </p>
+          <Badge 
+            variant={feeStyle.variant}
+            className={`text-sm font-bold tabular-nums card-emboss-badge ${feeStyle.className}`}
+          >
+            {feeStyle.label}
+          </Badge>
           {card.waiver_rule && (
             <p className="text-xs font-body text-subtle mt-1">
               {card.waiver_rule}
@@ -91,14 +144,24 @@ export const CardTile = ({ card }: CardTileProps) => {
                 compare
               </label>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setDetailsOpen(true)}
-              className="text-sm font-body"
-            >
-              details
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setDetailsOpen(true)}
+                className="text-sm font-body"
+              >
+                details
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setNerdOutOpen(true)}
+                className="text-sm font-body"
+              >
+                🤓 nerd out
+              </Button>
+            </div>
           </div>
           <Button 
             variant="secondary" 
@@ -115,6 +178,12 @@ export const CardTile = ({ card }: CardTileProps) => {
         card={card}
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
+      />
+      
+      <CardNerdOutModal 
+        card={card}
+        open={nerdOutOpen}
+        onOpenChange={setNerdOutOpen}
       />
     </>
   );

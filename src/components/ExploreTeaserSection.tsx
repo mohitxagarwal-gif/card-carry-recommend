@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { creditCards } from "@/data/cardData";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { getIssuerBrand, getFeeStyle } from "@/lib/issuerBranding";
 
 const ExploreTeaserSection = () => {
   const navigate = useNavigate();
@@ -23,33 +24,58 @@ const ExploreTeaserSection = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {topCards.map((card, idx) => (
-            <div
-              key={card.id}
-              onClick={() => navigate("/cards")}
-              className="group glass-surface glass-highlight rounded-card hover:shadow-glass-elevated transition-all duration-220 p-6 cursor-pointer hover:-translate-y-1.5 gloss-band animate-fade-up"
-              style={{ animationDelay: `${idx * 60}ms` }}
-            >
-              <div className="mb-4">
-                <h3 className="text-lg font-heading font-bold text-foreground mb-1 card-emboss-title">
-                  {card.name}
-                </h3>
+          {topCards.map((card, idx) => {
+            const issuerBrand = getIssuerBrand(card.issuer);
+            const feeStyle = getFeeStyle(card.annualFee);
+            
+            return (
+              <div
+                key={card.id}
+                onClick={() => navigate("/cards")}
+                className="group glass-surface glass-highlight rounded-card hover:shadow-glass-elevated transition-all duration-220 p-6 cursor-pointer hover:-translate-y-1.5 gloss-band animate-fade-up relative overflow-hidden"
+                style={{ 
+                  animationDelay: `${idx * 60}ms`,
+                  borderColor: `hsl(${issuerBrand.color} / 0.2)`,
+                  background: `linear-gradient(135deg, hsl(${issuerBrand.lightBg} / 0.3) 0%, transparent 50%)`
+                }}
+              >
+                <div className="mb-4">
+                  <h3 className="text-lg font-heading font-bold text-foreground mb-1 card-emboss-title">
+                    {card.name}
+                  </h3>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge 
+                      variant="secondary" 
+                      className="text-xs"
+                      style={{ 
+                        backgroundColor: `hsl(${issuerBrand.lightBg})`,
+                        color: `hsl(${issuerBrand.color})`,
+                        borderColor: `hsl(${issuerBrand.color} / 0.2)`
+                      }}
+                    >
+                      {card.issuer}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {card.network}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <Badge 
+                    variant={feeStyle.variant}
+                    className={`text-sm font-bold tabular-nums card-emboss-badge ${feeStyle.className}`}
+                  >
+                    {feeStyle.label}
+                  </Badge>
+                </div>
+
                 <p className="text-sm font-sans text-muted-foreground">
-                  {card.issuer} • {card.network}
+                  {card.keyPerks[0]}
                 </p>
               </div>
-
-              <div className="mb-4">
-                <Badge variant="secondary" className="text-xs card-emboss-badge">
-                  {card.annualFee === 0 ? "No Fee" : `₹${card.annualFee.toLocaleString('en-IN')}/yr`}
-                </Badge>
-              </div>
-
-              <p className="text-sm font-sans text-muted-foreground">
-                {card.keyPerks[0]}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">

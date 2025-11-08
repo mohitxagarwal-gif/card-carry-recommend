@@ -326,19 +326,27 @@ export type Database = {
         Row: {
           annual_fee: number
           application_url: string | null
+          best_use_cases: string | null
           card_id: string
           category_badges: string[]
+          comparison_notes: string | null
           created_at: string | null
+          detailed_benefits: Json | null
+          detailed_reward_breakdown: Json | null
           docs_required: string | null
           downsides: string[]
+          earning_examples: Json | null
           eligibility: string | null
           employment_requirements: string[] | null
+          fine_print: string | null
           forex_markup: string
           forex_markup_pct: number
           geo_availability: Json | null
+          hidden_fees: string | null
           id: string
           ideal_for: string[]
           image_url: string | null
+          insider_tips: string | null
           is_active: boolean | null
           issuer: string
           key_perks: string[]
@@ -351,6 +359,7 @@ export type Database = {
           name: string
           network: string
           popular_score: number
+          reward_caps_details: string | null
           reward_structure: string
           reward_type: string[]
           tnc_url: string | null
@@ -361,19 +370,27 @@ export type Database = {
         Insert: {
           annual_fee: number
           application_url?: string | null
+          best_use_cases?: string | null
           card_id: string
           category_badges: string[]
+          comparison_notes?: string | null
           created_at?: string | null
+          detailed_benefits?: Json | null
+          detailed_reward_breakdown?: Json | null
           docs_required?: string | null
           downsides: string[]
+          earning_examples?: Json | null
           eligibility?: string | null
           employment_requirements?: string[] | null
+          fine_print?: string | null
           forex_markup: string
           forex_markup_pct: number
           geo_availability?: Json | null
+          hidden_fees?: string | null
           id?: string
           ideal_for: string[]
           image_url?: string | null
+          insider_tips?: string | null
           is_active?: boolean | null
           issuer: string
           key_perks: string[]
@@ -386,6 +403,7 @@ export type Database = {
           name: string
           network: string
           popular_score: number
+          reward_caps_details?: string | null
           reward_structure: string
           reward_type: string[]
           tnc_url?: string | null
@@ -396,19 +414,27 @@ export type Database = {
         Update: {
           annual_fee?: number
           application_url?: string | null
+          best_use_cases?: string | null
           card_id?: string
           category_badges?: string[]
+          comparison_notes?: string | null
           created_at?: string | null
+          detailed_benefits?: Json | null
+          detailed_reward_breakdown?: Json | null
           docs_required?: string | null
           downsides?: string[]
+          earning_examples?: Json | null
           eligibility?: string | null
           employment_requirements?: string[] | null
+          fine_print?: string | null
           forex_markup?: string
           forex_markup_pct?: number
           geo_availability?: Json | null
+          hidden_fees?: string | null
           id?: string
           ideal_for?: string[]
           image_url?: string | null
+          insider_tips?: string | null
           is_active?: boolean | null
           issuer?: string
           key_perks?: string[]
@@ -421,6 +447,7 @@ export type Database = {
           name?: string
           network?: string
           popular_score?: number
+          reward_caps_details?: string | null
           reward_structure?: string
           reward_type?: string[]
           tnc_url?: string | null
