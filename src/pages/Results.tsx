@@ -78,6 +78,8 @@ const Results = () => {
   const [hasExistingRecommendations, setHasExistingRecommendations] = useState(false);
   const [activeView, setActiveView] = useState<'review' | 'recommendations'>('review');
   const [matchScoreModal, setMatchScoreModal] = useState<{ isOpen: boolean; card: any } | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userPreferences, setUserPreferences] = useState<any>(null);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -197,15 +199,26 @@ const Results = () => {
           totalSpending: calculateTotalSpending(analysisData.transactions || [])
         });
         
-        // Fetch user profile for income info
+        // Fetch user profile for income info and completeness check
         const { data: profile } = await supabase
           .from('profiles')
-          .select('income_band_inr')
+          .select('income_band_inr, city, age_range')
           .eq('id', user.id)
           .single();
         
+        const { data: prefs } = await supabase
+          .from('user_preferences')
+          .select('fee_sensitivity, travel_frequency, lounge_importance, preference_type')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
         if (profile) {
           setUserIncome(profile.income_band_inr);
+          setUserProfile(profile);
+        }
+        
+        if (prefs) {
+          setUserPreferences(prefs);
         }
       } catch (error: any) {
         console.error('Error fetching analysis:', error);
@@ -458,6 +471,23 @@ const Results = () => {
                 }`}>Get Recommendations</span>
               </div>
             </div>
+          )}
+
+          {/* Incomplete Profile Alert */}
+          {showRecommendations && (!userProfile?.city || !userPreferences?.fee_sensitivity) && (
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-900">
+                These recommendations are based on limited profile data. 
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto ml-1 text-amber-700 underline"
+                  onClick={() => navigate('/profile')}
+                >
+                  Complete your profile
+                </Button> for more accurate matches.
+              </AlertDescription>
+            </Alert>
           )}
 
           <div className="text-center mb-12">

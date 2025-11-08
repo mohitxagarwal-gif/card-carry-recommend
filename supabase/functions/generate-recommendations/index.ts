@@ -20,16 +20,16 @@ const GenerateRecommendationsSchema = z.object({
   analysisId: z.string().uuid(),
   transactions: z.array(TransactionSchema).min(1).max(5000),
   profile: z.object({
-    age_range: z.string().optional(),
-    income_band_inr: z.string().optional(),
-    city: z.string().optional()
-  }).optional(),
+    age_range: z.string().nullish(),
+    income_band_inr: z.string().nullish(),
+    city: z.string().nullish()
+  }).nullish(),
   preferences: z.object({
-    fee_sensitivity: z.string().optional(),
-    travel_frequency: z.string().optional(),
-    lounge_importance: z.string().optional(),
-    preference_type: z.string().optional()
-  }).optional()
+    fee_sensitivity: z.string().nullish(),
+    travel_frequency: z.string().nullish(),
+    lounge_importance: z.string().nullish(),
+    preference_type: z.string().nullish()
+  }).nullish()
 });
 
 serve(async (req) => {
@@ -88,9 +88,36 @@ serve(async (req) => {
       userPreferences = fetchedPreferences || {};
     }
     
+    // Normalize null values to defaults
+    const normalizedProfile = {
+      age_range: userProfile?.age_range || 'not_specified',
+      income_band_inr: userProfile?.income_band_inr || 'not_specified',
+      city: userProfile?.city || 'metro'
+    };
+
+    const normalizedPreferences = {
+      fee_sensitivity: userPreferences?.fee_sensitivity || 'moderate',
+      travel_frequency: userPreferences?.travel_frequency || 'occasional',
+      lounge_importance: userPreferences?.lounge_importance || 'nice_to_have',
+      preference_type: userPreferences?.preference_type || 'balanced'
+    };
+    
     console.log('[generate-recommendations] User context:', {
       profile: userProfile,
       preferences: userPreferences
+    });
+    
+    console.log('[generate-recommendations] Normalized profile:', normalizedProfile);
+    console.log('[generate-recommendations] Profile completeness:', {
+      hasAge: !!userProfile?.age_range,
+      hasIncome: !!userProfile?.income_band_inr,
+      hasCity: !!userProfile?.city
+    });
+    console.log('[generate-recommendations] Preferences completeness:', {
+      hasFee: !!userPreferences?.fee_sensitivity,
+      hasTravel: !!userPreferences?.travel_frequency,
+      hasLounge: !!userPreferences?.lounge_importance,
+      hasPreferenceType: !!userPreferences?.preference_type
     });
 
     // Calculate spending summary from transactions (only debits = actual spending)
@@ -273,11 +300,11 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
             content: `You are a credit card recommendation expert for Indian users. Our AI scoring engine has already ranked cards by fit score. Focus on the TOP-SCORING cards below.
 
 USER PROFILE:
-- Age: ${userProfile?.age_range || 'Not specified'}
-- Income: ${userProfile?.income_band_inr || 'Not specified'}/month
-- Location: ${userProfile?.city || 'Not specified'}
-- Fee Sensitivity: ${userPreferences?.fee_sensitivity || 'medium'}
-- Travel Frequency: ${userPreferences?.travel_frequency || 'moderate'}
+- Age: ${normalizedProfile.age_range}${userProfile?.age_range ? '' : ' (estimated)'}
+- Income: ${normalizedProfile.income_band_inr}${userProfile?.income_band_inr ? '' : ' (estimated)'}/month
+- Location: ${normalizedProfile.city}${userProfile?.city ? '' : ' (assumed metro)'}
+- Fee Sensitivity: ${normalizedPreferences.fee_sensitivity}${userPreferences?.fee_sensitivity ? '' : ' (default)'}
+- Travel Frequency: ${normalizedPreferences.travel_frequency}${userPreferences?.travel_frequency ? '' : ' (default)'}
 
 TOP-RANKED CARDS (by AI match score):
 ${cardContext}

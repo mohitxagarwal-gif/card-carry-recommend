@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,7 +12,7 @@ import Header from "@/components/Header";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, TrendingUp } from "lucide-react";
+import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, TrendingUp, AlertCircle } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 
 const Profile = () => {
@@ -96,11 +97,50 @@ const Profile = () => {
                 <Label>City</Label>
                 <p className="text-sm text-muted-foreground mt-1">{profile.city || 'Not set'}</p>
               </div>
-              <Button variant="outline" onClick={() => window.location.href = '/onboarding/basics'}>
+              <Button variant="outline" onClick={() => navigate('/onboarding/profile')}>
                 Edit Basics
               </Button>
             </CardContent>
           </Card>
+
+          {/* Complete Profile Prompt */}
+          {(() => {
+            const missingFields: string[] = [];
+            if (!profile?.city) missingFields.push('City');
+            if (!preferences?.fee_sensitivity) missingFields.push('Fee Preference');
+            if (!preferences?.travel_frequency) missingFields.push('Travel Habits');
+            if (!preferences?.lounge_importance) missingFields.push('Lounge Importance');
+            
+            return missingFields.length > 0 ? (
+              <Card className="border-amber-200 bg-amber-50">
+                <CardHeader>
+                  <CardTitle className="text-amber-900 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Complete Your Profile
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-amber-800 mb-4">
+                    Add these details to improve your card recommendations:
+                  </p>
+                  <ul className="space-y-2 mb-4">
+                    {missingFields.map(field => (
+                      <li key={field} className="flex items-center gap-2 text-sm text-amber-900">
+                        <span className="text-amber-600 font-bold">•</span> {field}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button 
+                    variant="default"
+                    className="w-full"
+                    onClick={() => navigate('/onboarding/profile')}
+                  >
+                    Complete Profile
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null;
+          })()}
 
           {/* Derived Features */}
           {userFeatures && (
