@@ -128,6 +128,7 @@ const AdminBulkUpload = () => {
   const { data: role, isLoading: roleLoading } = useUserRole();
   const [parsedData, setParsedData] = useState<CardData[]>([]);
   const [images, setImages] = useState<File[]>([]);
+  const [imageMatches, setImageMatches] = useState<Map<string, string>>(new Map());
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
@@ -272,10 +273,47 @@ const AdminBulkUpload = () => {
 
   const onDropImages = (acceptedFiles: File[]) => {
     setImages(acceptedFiles);
-    toast({
-      title: "Images loaded",
-      description: `${acceptedFiles.length} images ready to upload`,
-    });
+    
+    // Match images to card IDs
+    if (parsedData.length > 0) {
+      const cardIds = parsedData.map(card => card.card_id);
+      const matches = new Map<string, string>();
+      
+      acceptedFiles.forEach(file => {
+        const matchedId = matchImageToCardId(file.name, cardIds);
+        if (matchedId) {
+          matches.set(file.name, matchedId);
+        }
+      });
+      
+      setImageMatches(matches);
+      const matchedCount = matches.size;
+      const unmatchedCount = acceptedFiles.length - matchedCount;
+      
+      toast({
+        title: "Images loaded",
+        description: `${matchedCount} matched, ${unmatchedCount} unmatched`,
+      });
+    } else {
+      toast({
+        title: "Images loaded",
+        description: `${acceptedFiles.length} images ready. Upload CSV first to see matches.`,
+      });
+    }
+  };
+
+  // Helper function for fuzzy filename matching
+  const matchImageToCardId = (filename: string, cardIds: string[]): string | null => {
+    const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.')) || filename;
+    
+    // Try exact match
+    if (cardIds.includes(nameWithoutExt)) return nameWithoutExt;
+    
+    // Normalize and try fuzzy match
+    const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedFilename = normalize(nameWithoutExt);
+    
+    return cardIds.find(id => normalize(id) === normalizedFilename) || null;
   };
 
   const { getRootProps: getCSVRootProps, getInputProps: getCSVInputProps, isDragActive: isCSVDragActive } = useDropzone({
@@ -325,7 +363,16 @@ example-card-1,Example Card,Example Bank,Visa,2500,10000 reward points,"Cashback
       // Upload images first
       const imageMap = new Map<string, string>();
       for (const image of images) {
-        const cardId = image.name.split('.')[0];
+        // Use matched card_id if available, otherwise fall back to filename-based matching
+        const matchedCardId = imageMatches.get(image.name);
+        const cardId = matchedCardId || image.name.split('.')[0];
+        
+        // Skip if no match found
+        if (!matchedCardId && !parsedData.find(c => c.card_id === cardId)) {
+          console.warn(`Skipping unmatched image: ${image.name}`);
+          continue;
+        }
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('card-images')
           .upload(`${cardId}.${image.name.split('.').pop()}`, image, {
@@ -553,17 +600,55 @@ example-card-1,Example Card,Example Bank,Visa,2500,10000 reward points,"Cashback
                 )}
               </div>
               {images.length > 0 && (
-                <div className="grid grid-cols-4 gap-4 mt-4">
-                  {images.slice(0, 8).map((img, idx) => (
-                    <div key={idx} className="text-center">
-                      <img
-                        src={URL.createObjectURL(img)}
-                        alt={img.name}
-                        className="w-full h-24 object-cover rounded border"
-                      />
-                      <p className="text-xs mt-1 truncate">{img.name}</p>
-                    </div>
-                  ))}
+                <div className="mt-6 space-y-4">
+                  <h4 className="text-sm font-medium">Image Preview & Matching</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {images.map((img, idx) => {
+                      const matchedCardId = imageMatches.get(img.name);
+                      const isMatched = !!matchedCardId;
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`border-2 rounded-lg p-2 ${
+                            isMatched 
+                              ? 'border-green-500/50 bg-green-500/5' 
+                              : 'border-red-500/50 bg-red-500/5'
+                          }`}
+                        >
+                          <img
+                            src={URL.createObjectURL(img)}
+                            alt={img.name}
+                            className="w-full h-24 object-cover rounded border border-border mb-2"
+                          />
+                          <p className="text-xs truncate font-medium mb-1">{img.name}</p>
+                          {isMatched ? (
+                            <p className="text-xs text-green-700 dark:text-green-400 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              → {matchedCardId}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-red-700 dark:text-red-400 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              No match
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Summary */}
+                  <Alert>
+                    <AlertDescription className="text-sm">
+                      <strong>{imageMatches.size}</strong> of {images.length} images matched to cards.
+                      {imageMatches.size < images.length && (
+                        <span className="block mt-1 text-muted-foreground">
+                          Unmatched images will be skipped during upload. Ensure filenames match card IDs.
+                        </span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
                 </div>
               )}
             </CardContent>

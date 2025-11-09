@@ -121,6 +121,20 @@ export const CardTile = ({ card }: CardTileProps) => {
           )}
         </div>
 
+        {/* Card Image Section */}
+        {card.image_url && (
+          <div className="mb-4 flex justify-center">
+            <div className="relative w-20 h-[50px] rounded-lg overflow-hidden shadow-md border border-hairline">
+              <img 
+                src={card.image_url} 
+                alt={`${card.name} card`}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        )}
+
         <div className="mb-4">
           <h3 className="text-xl font-heading font-bold text-ink mb-1 card-emboss-title">
             {card.name}

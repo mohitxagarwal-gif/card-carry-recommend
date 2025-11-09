@@ -59,14 +59,28 @@ export const CardDetailsModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <DialogTitle className="font-heading font-bold text-2xl mb-2">
-                {card.name}
-              </DialogTitle>
-              <p className="text-sm font-sans text-muted-foreground">
-                {card.issuer} • {card.network}
-              </p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4 flex-1">
+              {/* Card Image */}
+              {card.image_url && (
+                <div className="relative w-[120px] h-[75px] rounded-lg overflow-hidden shadow-md border border-hairline flex-shrink-0">
+                  <img 
+                    src={card.image_url} 
+                    alt={`${card.name} card`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              
+              {/* Card Details */}
+              <div>
+                <DialogTitle className="font-heading font-bold text-2xl mb-2">
+                  {card.name}
+                </DialogTitle>
+                <p className="text-sm font-sans text-muted-foreground">
+                  {card.issuer} • {card.network}
+                </p>
+              </div>
             </div>
             {renderActionButton()}
           </div>

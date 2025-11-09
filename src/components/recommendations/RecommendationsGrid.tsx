@@ -131,6 +131,20 @@ export const RecommendationsGrid = ({
               </div>
 
               <CardContent className="pt-6 space-y-4">
+                {/* Card Image */}
+                {allCards?.find(c => c.name === card.name)?.image_url && (
+                  <div className="flex justify-center mb-4">
+                    <div className="relative w-20 h-[50px] rounded-lg overflow-hidden shadow-md border border-hairline">
+                      <img 
+                        src={allCards.find(c => c.name === card.name)?.image_url} 
+                        alt={`${card.name} card`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
                   {idx < 3 && (
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">

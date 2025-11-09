@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
 import { includeInSpending, calculateTotalSpending, groupByCategory } from "@/lib/transactionRules";
 import { trackEvent } from "@/lib/analytics";
+import { useCards } from "@/hooks/useCards";
 import {
   Select,
   SelectContent,
@@ -69,6 +70,7 @@ const Results = () => {
   const location = useLocation();
   const analysisId = location.state?.analysisId;
   const { createSnapshot, latestSnapshot } = useRecommendationSnapshot();
+  const { data: allCards } = useCards();
   
   const [loading, setLoading] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
@@ -650,16 +652,33 @@ const Results = () => {
                   recommended credit cards
                 </h3>
                 <div id="recommendations-list" className="grid md:grid-cols-2 gap-6">
-                  {analysis.recommendedCards.map((card, index) => (
-                    <Card key={index} className="p-8 border-border hover:border-primary/50 transition-colors">
-                      <div className="space-y-4">
-                         {/* Badge Row */}
-                         <div className="flex items-start justify-between gap-2 min-h-[1.5rem]">
-                           {card.matchScore && card.matchScore >= 70 && (
-                             <Badge 
-                               variant="secondary" 
-                               className={
-                                 card.matchScore >= 85 
+                  {analysis.recommendedCards.map((card, index) => {
+                    const fullCard = allCards?.find(c => c.name === card.name);
+                    
+                    return (
+                      <Card key={index} className="p-8 border-border hover:border-primary/50 transition-colors">
+                        <div className="space-y-4">
+                          {/* Card Image */}
+                          {fullCard?.image_url && (
+                            <div className="flex justify-center mb-4">
+                              <div className="relative w-20 h-[50px] rounded-lg overflow-hidden shadow-md border border-hairline">
+                                <img 
+                                  src={fullCard.image_url} 
+                                  alt={`${card.name} card`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Badge Row */}
+                          <div className="flex items-start justify-between gap-2 min-h-[1.5rem]">
+                            {card.matchScore && card.matchScore >= 70 && (
+                              <Badge 
+                                variant="secondary" 
+                                className={
+                                  card.matchScore >= 85
                                    ? 'bg-green-500/10 text-green-700 border-green-500/20 text-xs'
                                    : card.matchScore >= 75
                                    ? 'bg-blue-500/10 text-blue-700 border-blue-500/20 text-xs'
@@ -720,17 +739,18 @@ const Results = () => {
                           </div>
                         )}
                         
-                        <div className="space-y-3">
-                          <CardStatusDropdown cardId={`${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()} />
-                          <CardActionBar 
-                            cardId={`${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()}
-                            issuer={card.issuer}
-                            name={card.name}
-                          />
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
+                         <div className="space-y-3">
+                           <CardStatusDropdown cardId={fullCard?.card_id || `${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()} />
+                           <CardActionBar 
+                             cardId={fullCard?.card_id || `${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()}
+                             issuer={card.issuer}
+                             name={card.name}
+                           />
+                         </div>
+                       </div>
+                     </Card>
+                   );
+                  })}
                 </div>
 
                 {/* Go to Dashboard CTA */}
