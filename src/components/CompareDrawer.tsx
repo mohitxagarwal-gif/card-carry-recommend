@@ -25,14 +25,14 @@ export const CompareDrawer = () => {
   return (
     <>
       {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 glass-surface glass-highlight border-t border-white/20 px-6 py-4 animate-slide-up-fade">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t-2 border-primary px-6 py-4 shadow-2xl">
         <div className="container mx-auto flex items-center justify-between">
-          <span className="text-sm md:text-base font-sans text-foreground">
+          <span className="text-sm md:text-base font-sans text-foreground font-semibold">
             {selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected
           </span>
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="secondary" size="sm" className="font-sans gloss-band">
+              <Button size="sm" className="font-sans">
                 compare {selectedCards.length} {selectedCards.length === 1 ? 'card' : 'cards'} →
               </Button>
             </SheetTrigger>
