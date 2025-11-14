@@ -8,11 +8,13 @@ import { InlinePreferencesModal } from "./InlinePreferencesModal";
 interface PersonalizationControlsProps {
   userPreferences: any;
   onPreferenceChange: (prefs: any) => void;
+  analysisId?: string | null;
 }
 
 export const PersonalizationControls = ({
   userPreferences,
-  onPreferenceChange
+  onPreferenceChange,
+  analysisId
 }: PersonalizationControlsProps) => {
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -105,6 +107,7 @@ export const PersonalizationControls = ({
       onSave={() => {
         onPreferenceChange(userPreferences);
       }}
+      analysisId={analysisId}
     />
     </>
   );
