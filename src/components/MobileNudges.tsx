@@ -9,7 +9,6 @@ export const MobileNudges = () => {
   const [showStickyBar, setShowStickyBar] = useState(false);
   const [showScrollBanner, setShowScrollBanner] = useState(false);
   const { selectedCards } = useCompare();
-  const [hasShownCompareToast, setHasShownCompareToast] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,24 +29,6 @@ export const MobileNudges = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  // Toast when 2+ cards are selected
-  useEffect(() => {
-    if (selectedCards.length >= 2 && !hasShownCompareToast) {
-      toast("Ready to compare?", {
-        description: "You've selected multiple cards",
-        action: {
-          label: "Compare now",
-          onClick: () => {
-            // The CompareDrawer sticky bar will handle this
-          },
-        },
-      });
-      setHasShownCompareToast(true);
-    } else if (selectedCards.length < 2) {
-      setHasShownCompareToast(false);
-    }
-  }, [selectedCards.length, hasShownCompareToast]);
 
   return (
     <>
