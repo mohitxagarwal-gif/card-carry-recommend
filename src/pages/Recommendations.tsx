@@ -194,6 +194,7 @@ const Recommendations = () => {
                 onPreferenceChange={(prefs) => {
                   toast.success("Preferences updated! Refresh to see new recommendations.");
                 }}
+                analysisId={latestSnapshot?.analysis_id}
               />
             </div>
           </div>
