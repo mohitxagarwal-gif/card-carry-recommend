@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { ExtendedProfileRow } from "@/types/supabase-extended";
 
 export const useConsent = () => {
   return useQuery({
@@ -16,11 +17,13 @@ export const useConsent = () => {
 
       if (error) throw error;
 
+      const profile = data as unknown as ExtendedProfileRow;
+
       return {
-        hasConsent: data?.data_processing_consent || false,
-        consentDate: data?.data_processing_consent_at,
-        termsVersion: data?.terms_version,
-        privacyVersion: data?.privacy_version,
+        hasConsent: profile?.data_processing_consent || false,
+        consentDate: profile?.data_processing_consent_at,
+        termsVersion: profile?.terms_version,
+        privacyVersion: profile?.privacy_version,
       };
     },
   });

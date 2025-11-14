@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { anonymizeTransactionsForExport } from "./merchantAnonymization";
+import type { AnalysisTransactionRow } from "@/types/supabase-extended";
 
 export const exportUserData = async () => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,7 +23,7 @@ export const exportUserData = async () => {
     supabase.from("user_shortlist").select("*").order("added_at", { ascending: false }),
     supabase.from("card_applications").select("*").order("created_at", { ascending: false }),
     supabase.from("user_cards").select("*").order("created_at", { ascending: false }),
-    supabase.from("analysis_transactions").select("*").eq("user_id", user.id).order("posted_date", { ascending: false }),
+    supabase.from("analysis_transactions" as any).select("*").eq("user_id", user.id).order("posted_date", { ascending: false }),
     supabase.from("fee_waiver_goals").select("*").order("created_at", { ascending: false }),
     supabase.from("user_reminders").select("*").order("reminder_date", { ascending: true }),
     supabase.from("user_preferences").select("*").single(),
@@ -39,7 +40,7 @@ export const exportUserData = async () => {
     shortlist: shortlist || [],
     applications: applications || [],
     my_cards: userCards || [],
-    transactions: anonymizeTransactionsForExport(transactions || [], false),
+    transactions: anonymizeTransactionsForExport((transactions || []) as unknown as AnalysisTransactionRow[], false),
     goals: goals || [],
     reminders: reminders || [],
     preferences,

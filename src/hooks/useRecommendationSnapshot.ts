@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RecommendationSnapshot } from "@/types/dashboard";
 import { toast } from "sonner";
+import type { RecommendationCardInsert } from "@/types/supabase-extended";
 
 export const useRecommendationSnapshot = () => {
   const queryClient = useQueryClient();
@@ -59,7 +60,7 @@ export const useRecommendationSnapshot = () => {
 
       // PHASE 1B: Also write to normalized recommendation_cards table
       if (snapshot && recommendedCards && recommendedCards.length > 0) {
-        const cardsForInsert = recommendedCards.map((card, index) => ({
+        const cardsForInsert: RecommendationCardInsert[] = recommendedCards.map((card, index) => ({
           user_id: user.id,
           snapshot_id: snapshot.id,
           card_id: card.card_id || card.cardId,
@@ -75,7 +76,7 @@ export const useRecommendationSnapshot = () => {
         }));
 
         const { error: cardsError } = await supabase
-          .from("recommendation_cards")
+          .from("recommendation_cards" as any)
           .insert(cardsForInsert);
 
         if (cardsError) {

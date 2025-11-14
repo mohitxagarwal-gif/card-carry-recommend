@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logAuditEvent } from "@/lib/auditLog";
+import type { ExtendedProfileUpdate } from "@/types/supabase-extended";
 
 interface ConsentModalProps {
   open: boolean;
@@ -37,14 +38,16 @@ export const ConsentModal = ({ open, onConsent, onDecline }: ConsentModalProps) 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      const updates: ExtendedProfileUpdate = {
+        data_processing_consent: true,
+        data_processing_consent_at: new Date().toISOString(),
+        terms_version: CURRENT_TERMS_VERSION,
+        privacy_version: CURRENT_PRIVACY_VERSION,
+      };
+
       const { error } = await supabase
         .from("profiles")
-        .update({
-          data_processing_consent: true,
-          data_processing_consent_at: new Date().toISOString(),
-          terms_version: CURRENT_TERMS_VERSION,
-          privacy_version: CURRENT_PRIVACY_VERSION,
-        })
+        .update(updates as any)
         .eq("id", user.id);
 
       if (error) throw error;
