@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logAuditEvent } from "./auditLog";
 
 export const ANALYSIS_EXPIRY_DAYS = 30;
 
@@ -35,6 +36,72 @@ export async function cleanupStaleAnalyses(userId: string) {
 
 export function clearLocalAnalysisCache(userId: string) {
   localStorage.removeItem(`last_analysis_${userId}`);
+}
+
+// Keys that should be preserved across logout (UI preferences only)
+const PRESERVED_KEYS = [
+  'theme',
+  'language',
+  'hide_outlink_modal',
+  'dashboard_tour_completed'
+];
+
+export async function handleLogout(): Promise<void> {
+  try {
+    // Log the logout event first (while we still have user context)
+    await logAuditEvent('USER_LOGOUT', { category: 'auth' });
+    
+    // Sign out from Supabase
+    await supabase.auth.signOut();
+    
+    // Clear localStorage except preserved keys
+    const preserved: Record<string, string | null> = {};
+    PRESERVED_KEYS.forEach(key => {
+      preserved[key] = localStorage.getItem(key);
+    });
+    
+    localStorage.clear();
+    
+    // Restore preserved keys
+    Object.entries(preserved).forEach(([key, value]) => {
+      if (value !== null) {
+        localStorage.setItem(key, value);
+      }
+    });
+    
+    // Clear sessionStorage completely
+    sessionStorage.clear();
+    
+    console.log('[SessionManager] Logout complete, sensitive data cleared');
+  } catch (error) {
+    console.error('[SessionManager] Error during logout:', error);
+    throw error;
+  }
+}
+
+// Clear specific user data on logout
+export function clearUserDataFromStorage(): void {
+  const keysToRemove = [
+    'offline_queue',
+    /^last_analysis_/,  // Matches all last_analysis_* keys
+    /^analysis_cache_/,
+    'user_preferences_cache',
+    'recommendation_cache'
+  ];
+  
+  // Remove matching keys
+  Object.keys(localStorage).forEach(key => {
+    const shouldRemove = keysToRemove.some(pattern => {
+      if (pattern instanceof RegExp) {
+        return pattern.test(key);
+      }
+      return key === pattern;
+    });
+    
+    if (shouldRemove) {
+      localStorage.removeItem(key);
+    }
+  });
 }
 
 export async function getCurrentSessionState(userId: string) {

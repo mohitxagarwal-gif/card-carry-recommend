@@ -42,7 +42,7 @@ export const useEligibilityScore = (cardId?: string) => {
         .maybeSingle();
 
       const { data: userCards } = await supabase
-        .from("user_owned_cards")
+        .from("user_cards")
         .select("*")
         .eq("user_id", user.id)
         .eq("is_active", true);
