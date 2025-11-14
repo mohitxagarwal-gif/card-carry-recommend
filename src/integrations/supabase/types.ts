@@ -83,6 +83,74 @@ export type Database = {
         }
         Relationships: []
       }
+      analysis_transactions: {
+        Row: {
+          amount_minor: number
+          analysis_id: string
+          categorization_confidence: number | null
+          category: string
+          created_at: string
+          deduplication_group_id: string | null
+          id: string
+          merchant_canonical: string | null
+          merchant_normalized: string
+          merchant_raw: string
+          posted_date: string
+          source_statement_path: string | null
+          subcategory: string | null
+          transaction_hash: string
+          transaction_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_minor: number
+          analysis_id: string
+          categorization_confidence?: number | null
+          category: string
+          created_at?: string
+          deduplication_group_id?: string | null
+          id?: string
+          merchant_canonical?: string | null
+          merchant_normalized: string
+          merchant_raw: string
+          posted_date: string
+          source_statement_path?: string | null
+          subcategory?: string | null
+          transaction_hash: string
+          transaction_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_minor?: number
+          analysis_id?: string
+          categorization_confidence?: number | null
+          category?: string
+          created_at?: string
+          deduplication_group_id?: string | null
+          id?: string
+          merchant_canonical?: string | null
+          merchant_normalized?: string
+          merchant_raw?: string
+          posted_date?: string
+          source_statement_path?: string | null
+          subcategory?: string | null
+          transaction_hash?: string
+          transaction_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_transactions_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "spending_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_events: {
         Row: {
           created_at: string | null
@@ -103,6 +171,42 @@ export type Database = {
           event_data?: Json | null
           event_type?: string
           id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          actor: string
+          created_at: string
+          event_category: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          request_id: string | null
+          severity: string | null
+          user_id: string | null
+        }
+        Insert: {
+          actor: string
+          created_at?: string
+          event_category?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          request_id?: string | null
+          severity?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          actor?: string
+          created_at?: string
+          event_category?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          request_id?: string | null
+          severity?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -517,6 +621,39 @@ export type Database = {
         }
         Relationships: []
       }
+      data_retention_config: {
+        Row: {
+          created_at: string | null
+          date_column: string
+          enabled: boolean | null
+          id: string
+          last_cleanup_at: string | null
+          retention_days: number
+          table_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date_column?: string
+          enabled?: boolean | null
+          id?: string
+          last_cleanup_at?: string | null
+          retention_days: number
+          table_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date_column?: string
+          enabled?: boolean | null
+          id?: string
+          last_cleanup_at?: string | null
+          retention_days?: number
+          table_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       fee_waiver_goals: {
         Row: {
           card_id: string
@@ -694,6 +831,8 @@ export type Database = {
           avatar_url: string | null
           city: string | null
           created_at: string
+          data_processing_consent: boolean | null
+          data_processing_consent_at: string | null
           email: string
           employment_type: string | null
           full_name: string | null
@@ -705,7 +844,9 @@ export type Database = {
           pay_in_full_habit: string | null
           phone_e164: string | null
           pincode: string | null
+          privacy_version: string | null
           profile_completion_percentage: number | null
+          terms_version: string | null
           timezone: string | null
           updated_at: string
         }
@@ -714,6 +855,8 @@ export type Database = {
           avatar_url?: string | null
           city?: string | null
           created_at?: string
+          data_processing_consent?: boolean | null
+          data_processing_consent_at?: string | null
           email: string
           employment_type?: string | null
           full_name?: string | null
@@ -725,7 +868,9 @@ export type Database = {
           pay_in_full_habit?: string | null
           phone_e164?: string | null
           pincode?: string | null
+          privacy_version?: string | null
           profile_completion_percentage?: number | null
+          terms_version?: string | null
           timezone?: string | null
           updated_at?: string
         }
@@ -734,6 +879,8 @@ export type Database = {
           avatar_url?: string | null
           city?: string | null
           created_at?: string
+          data_processing_consent?: boolean | null
+          data_processing_consent_at?: string | null
           email?: string
           employment_type?: string | null
           full_name?: string | null
@@ -745,11 +892,72 @@ export type Database = {
           pay_in_full_habit?: string | null
           phone_e164?: string | null
           pincode?: string | null
+          privacy_version?: string | null
           profile_completion_percentage?: number | null
+          terms_version?: string | null
           timezone?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      recommendation_cards: {
+        Row: {
+          benefits_matched: Json | null
+          card_id: string
+          confidence: string | null
+          created_at: string
+          eligibility_notes: string | null
+          estimated_annual_value_inr: number | null
+          id: string
+          match_score: number
+          rank: number
+          reasoning: string | null
+          snapshot_id: string
+          top_categories: Json | null
+          user_id: string
+          warnings: Json | null
+        }
+        Insert: {
+          benefits_matched?: Json | null
+          card_id: string
+          confidence?: string | null
+          created_at?: string
+          eligibility_notes?: string | null
+          estimated_annual_value_inr?: number | null
+          id?: string
+          match_score: number
+          rank: number
+          reasoning?: string | null
+          snapshot_id: string
+          top_categories?: Json | null
+          user_id: string
+          warnings?: Json | null
+        }
+        Update: {
+          benefits_matched?: Json | null
+          card_id?: string
+          confidence?: string | null
+          created_at?: string
+          eligibility_notes?: string | null
+          estimated_annual_value_inr?: number | null
+          id?: string
+          match_score?: number
+          rank?: number
+          reasoning?: string | null
+          snapshot_id?: string
+          top_categories?: Json | null
+          user_id?: string
+          warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_cards_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "recommendation_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recommendation_snapshots: {
         Row: {
@@ -877,12 +1085,18 @@ export type Database = {
         Row: {
           card_id: string
           created_at: string
+          credit_limit_estimate: number | null
           forex_pct: number | null
           id: string
           is_active: boolean | null
+          is_primary: boolean | null
+          issuer: string | null
           lounge_quota_total: number | null
           lounge_used: number | null
+          network: string | null
           opened_month: string | null
+          opened_year: number | null
+          product: string | null
           renewal_month: string | null
           updated_at: string
           user_id: string
@@ -890,12 +1104,18 @@ export type Database = {
         Insert: {
           card_id: string
           created_at?: string
+          credit_limit_estimate?: number | null
           forex_pct?: number | null
           id?: string
           is_active?: boolean | null
+          is_primary?: boolean | null
+          issuer?: string | null
           lounge_quota_total?: number | null
           lounge_used?: number | null
+          network?: string | null
           opened_month?: string | null
+          opened_year?: number | null
+          product?: string | null
           renewal_month?: string | null
           updated_at?: string
           user_id: string
@@ -903,12 +1123,18 @@ export type Database = {
         Update: {
           card_id?: string
           created_at?: string
+          credit_limit_estimate?: number | null
           forex_pct?: number | null
           id?: string
           is_active?: boolean | null
+          is_primary?: boolean | null
+          issuer?: string | null
           lounge_quota_total?: number | null
           lounge_used?: number | null
+          network?: string | null
           opened_month?: string | null
+          opened_year?: number | null
+          product?: string | null
           renewal_month?: string | null
           updated_at?: string
           user_id?: string
@@ -1206,11 +1432,41 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      schema_version: {
+        Row: {
+          updated_at: string | null
+          version: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       age_range_midpoint: { Args: { range: string }; Returns: number }
+      backfill_analysis_transactions: {
+        Args: never
+        Returns: {
+          analysis_id: string
+          status: string
+          transactions_migrated: number
+        }[]
+      }
+      backfill_recommendation_cards: {
+        Args: never
+        Returns: {
+          cards_migrated: number
+          snapshot_id: string
+          status: string
+        }[]
+      }
       cleanup_expired_phone_verifications: { Args: never; Returns: number }
+      cleanup_old_data: {
+        Args: never
+        Returns: {
+          cleanup_date: string
+          rows_deleted: number
+          table_name: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1219,6 +1475,14 @@ export type Database = {
         Returns: boolean
       }
       income_band_score: { Args: { band: string }; Returns: number }
+      migrate_user_owned_cards_to_user_cards: {
+        Args: never
+        Returns: {
+          migrated_count: number
+          skipped_count: number
+          status: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
