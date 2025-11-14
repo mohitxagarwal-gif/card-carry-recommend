@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { afterAuthRedirect, getReturnToFromQuery } from "@/lib/authUtils";
 import { trackAuthSuccess } from "@/lib/authAnalytics";
+import { logAuditEvent } from "@/lib/auditLog";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -76,6 +77,12 @@ const Auth = () => {
         
         toast.success('Email verified successfully!');
         trackAuthSuccess('email');
+        
+        // Log email confirmation in audit trail
+        await logAuditEvent('AUTH_EMAIL_CONFIRMED', {
+          category: 'auth',
+          metadata: { provider: 'email' }
+        });
         
         try {
           await afterAuthRedirect(session.user.id, getReturnToFromQuery(), navigate);
@@ -176,6 +183,12 @@ const Auth = () => {
         console.log('[Auth.tsx] Session found after OAuth callback');
         trackAuthSuccess('google');
         
+        // Log OAuth success in audit trail
+        await logAuditEvent('AUTH_SIGNIN_SUCCESS', {
+          category: 'auth',
+          metadata: { provider: 'google', method: 'oauth' }
+        });
+        
         try {
           await afterAuthRedirect(session.user.id, getReturnToFromQuery(), navigate);
         } catch (error) {
@@ -249,6 +262,12 @@ const Auth = () => {
       
       if (error) throw error;
       
+      // Log password reset request
+      await logAuditEvent('AUTH_PASSWORD_RESET_REQUESTED', {
+        category: 'auth',
+        metadata: { email }
+      });
+      
       toast.success('Password reset email sent! Please check your inbox.');
       setPasswordResetMode(false);
       setEmail('');
@@ -280,6 +299,11 @@ const Auth = () => {
       });
       
       if (error) throw error;
+      
+      // Log password reset completion
+      await logAuditEvent('AUTH_PASSWORD_RESET_COMPLETED', {
+        category: 'auth'
+      });
       
       toast.success('Password updated successfully! You can now sign in.');
       setPasswordResetMode(false);
@@ -344,6 +368,12 @@ const Auth = () => {
           setWaitingForProfile(true);
           trackAuthSuccess('email');
           
+          // Log signup success in audit trail
+          await logAuditEvent('AUTH_SIGNUP_SUCCESS', {
+            category: 'auth',
+            metadata: { provider: 'email', auto_confirmed: true }
+          });
+          
           try {
             await afterAuthRedirect(data.user.id, returnTo, navigate);
           } catch (error) {
@@ -371,6 +401,12 @@ const Auth = () => {
         if (data.user) {
           setWaitingForProfile(true);
           trackAuthSuccess('email');
+          
+          // Log signin success in audit trail
+          await logAuditEvent('AUTH_SIGNIN_SUCCESS', {
+            category: 'auth',
+            metadata: { provider: 'email', method: 'password' }
+          });
           
           try {
             await afterAuthRedirect(data.user.id, returnTo, navigate);
