@@ -15,6 +15,9 @@ import { useCards } from "@/hooks/useCards";
 import { useShortlist } from "@/hooks/useShortlist";
 import { useApplications } from "@/hooks/useApplications";
 import { CardActionBar } from "@/components/CardActionBar";
+import { IssuerOutlinkModal } from "@/components/IssuerOutlinkModal";
+import { toast } from "sonner";
+import { trackEvent } from "@/lib/analytics";
 
 interface RecommendationsGridProps {
   recommendedCards: any[];
@@ -38,6 +41,9 @@ export const RecommendationsGrid = ({
   const { data: allCards } = useCards();
   const { shortlist, addToShortlist, isInShortlist } = useShortlist();
   const { applications } = useApplications();
+  const [selectedCard, setSelectedCard] = useState<any>(null);
+  const [showOutlinkModal, setShowOutlinkModal] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState("");
 
   // Get unique issuers
   const issuers = Array.from(new Set(recommendedCards.map(c => c.issuer))).filter(Boolean);
@@ -202,8 +208,14 @@ export const RecommendationsGrid = ({
                     variant={isShortlisted ? "secondary" : "outline"}
                     size="sm"
                     className="flex-1"
-                    onClick={() => addToShortlist(cardId)}
-                    disabled={isShortlisted}
+                    onClick={() => {
+                      if (cardId) {
+                        addToShortlist(cardId);
+                      } else {
+                        toast.error("Card not found in database");
+                      }
+                    }}
+                    disabled={isShortlisted || !cardId}
                   >
                     {isShortlisted ? (
                       <>
@@ -222,11 +234,27 @@ export const RecommendationsGrid = ({
                     size="sm"
                     className="flex-1"
                     onClick={() => {
-                      // Navigate to card details or application
-                      window.open('#', '_blank');
+                      const fullCard = allCards?.find(c => c.name === card.name);
+                      if (!fullCard?.application_url) {
+                        toast.error("Application link not available");
+                        return;
+                      }
+                      
+                      const hideModal = localStorage.getItem('hide_outlink_modal') === 'true';
+                      
+                      if (hideModal) {
+                        window.open(fullCard.application_url, '_blank');
+                        trackEvent("recs_apply_direct", { cardId: fullCard.card_id });
+                      } else {
+                        setSelectedCard(fullCard);
+                        setPendingUrl(fullCard.application_url);
+                        setShowOutlinkModal(true);
+                        trackEvent("recs_apply_modal", { cardId: fullCard.card_id });
+                      }
                     }}
+                    disabled={!cardId}
                   >
-                    View Details
+                    Apply Now
                     <ExternalLink className="w-4 h-4 ml-1" />
                   </Button>
                 </div>
@@ -244,6 +272,27 @@ export const RecommendationsGrid = ({
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {selectedCard && (
+        <IssuerOutlinkModal
+          isOpen={showOutlinkModal}
+          onClose={() => {
+            setShowOutlinkModal(false);
+            setPendingUrl("");
+            setSelectedCard(null);
+          }}
+          onContinue={() => {
+            if (pendingUrl) {
+              window.open(pendingUrl, '_blank');
+            }
+            setShowOutlinkModal(false);
+            setPendingUrl("");
+            setSelectedCard(null);
+          }}
+          issuerName={selectedCard.issuer}
+          cardId={selectedCard.card_id}
+        />
       )}
     </div>
   );
