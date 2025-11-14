@@ -7,6 +7,8 @@ import { formatINR } from "@/lib/pdfProcessor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
+import { getDisplayMerchantName } from "@/lib/merchantAnonymization";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export interface Transaction {
   date: string;
@@ -32,6 +34,9 @@ interface TransactionReviewProps {
 }
 
 export function TransactionReview({ extractedData, onSubmit, onCancel }: TransactionReviewProps) {
+  const { data: userRole } = useUserRole();
+  const isAdmin = userRole === 'admin';
+  
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set([extractedData[0]?.fileName]));
   const [localData, setLocalData] = useState<ExtractedData[]>(
     extractedData.map(data => ({
@@ -214,7 +219,9 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
                         return (
                           <tr key={txIndex} className="border-t border-border/50 hover:bg-secondary/20">
                             <td className="p-3 text-xs font-sans text-foreground">{tx.date}</td>
-                            <td className="p-3 text-xs font-sans text-foreground">{tx.merchant}</td>
+                            <td className="p-3 text-xs font-sans text-foreground">
+                              {getDisplayMerchantName(tx.merchant, tx.category, null, isAdmin)}
+                            </td>
                             <td className="p-3">
                               <Select
                                 value={tx.category}
