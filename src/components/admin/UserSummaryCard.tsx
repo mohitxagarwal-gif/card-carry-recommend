@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Mail, MapPin, Wallet, FileText, Star, CreditCard, CheckCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ExtendedProfileRow } from "@/types/supabase-extended";
 
 interface UserSummaryCardProps {
   userId: string;
@@ -14,11 +15,13 @@ export default function UserSummaryCard({ userId }: UserSummaryCardProps) {
     queryKey: ["user-summary", userId],
     queryFn: async () => {
       // Fetch profile
-      const { data: profile } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .single();
+      
+      const profile = profileData as unknown as ExtendedProfileRow;
 
       // Fetch stats
       const [

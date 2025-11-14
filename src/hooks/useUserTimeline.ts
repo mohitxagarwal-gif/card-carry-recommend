@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { AuditLogRow } from "@/types/supabase-extended";
 
 export interface TimelineEvent {
   id: string;
@@ -29,23 +30,13 @@ export const useUserTimeline = (
       if (!userId) return [];
 
       // Fetch audit log entries
-      let auditQuery = supabase
-        .from("audit_log")
+      const { data: auditLogsRaw } = await supabase
+        .from("audit_log" as any)
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
-
-      if (filters?.category) {
-        auditQuery = auditQuery.eq("event_category", filters.category);
-      }
-      if (filters?.dateFrom) {
-        auditQuery = auditQuery.gte("created_at", filters.dateFrom);
-      }
-      if (filters?.dateTo) {
-        auditQuery = auditQuery.lte("created_at", filters.dateTo);
-      }
-
-      const { data: auditLogs } = await auditQuery;
+      
+      const auditLogs = auditLogsRaw as unknown as AuditLogRow[];
 
       // Fetch analytics events
       let analyticsQuery = supabase

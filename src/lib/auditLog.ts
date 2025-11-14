@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { AuditLogInsert } from "@/types/supabase-extended";
 
 export type AuditEventCategory = 
   | 'auth'
@@ -87,7 +88,7 @@ export async function logAuditEvent(
     };
 
     const { error } = await supabase
-      .from('audit_log')
+      .from("audit_log" as any)
       .insert(entry);
 
     if (error) {
@@ -122,7 +123,7 @@ export async function logAuditEvents(
     }));
 
     const { error } = await supabase
-      .from('audit_log')
+      .from("audit_log" as any)
       .insert(entries);
 
     if (error) {
