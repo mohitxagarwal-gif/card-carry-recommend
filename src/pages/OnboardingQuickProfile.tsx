@@ -217,20 +217,28 @@ export default function OnboardingQuickProfile() {
                 <Label>
                   Is this your first credit card? <span className="text-destructive">*</span>
                 </Label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3">
                   <Button
                     type="button"
                     variant={isFirstCard === true ? "default" : "outline"}
                     onClick={() => setIsFirstCard(true)}
+                    className="min-h-[56px] h-auto py-3 px-3 text-left justify-start"
                   >
-                    Yes - I'll upload bank statements
+                    <div className="w-full">
+                      <div className="font-semibold text-sm md:text-base mb-1">Yes - First Card</div>
+                      <div className="text-xs opacity-70">Upload bank statements</div>
+                    </div>
                   </Button>
                   <Button
                     type="button"
                     variant={isFirstCard === false ? "default" : "outline"}
                     onClick={() => setIsFirstCard(false)}
+                    className="min-h-[56px] h-auto py-3 px-3 text-left justify-start"
                   >
-                    No - I have credit card statements
+                    <div className="w-full">
+                      <div className="font-semibold text-sm md:text-base mb-1">No - Have Cards</div>
+                      <div className="text-xs opacity-70">Upload card statements</div>
+                    </div>
                   </Button>
                 </div>
               </div>

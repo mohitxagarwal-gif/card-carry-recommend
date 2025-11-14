@@ -81,7 +81,7 @@ export const ConsentModal = ({ open, onConsent, onDecline }: ConsentModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleDecline()}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[calc(100vh-4rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Data Processing Consent</DialogTitle>
           <DialogDescription className="space-y-4 pt-4">

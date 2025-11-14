@@ -74,18 +74,18 @@ export const CardTile = ({ card }: CardTileProps) => {
   return (
     <>
       <div 
-        className="group glass-surface glass-highlight rounded-card border hover:shadow-glass-elevated transition-all duration-220 p-6 flex flex-col gloss-band hover:-translate-y-1.5 relative overflow-hidden"
+        className="group glass-surface glass-highlight rounded-card border hover:shadow-glass-elevated transition-all duration-220 p-4 md:p-6 flex flex-col gloss-band hover:-translate-y-1.5 relative overflow-hidden"
         style={{ 
           borderColor: `hsl(${issuerBrand.color} / 0.2)`,
           background: `linear-gradient(135deg, hsl(${issuerBrand.lightBg} / 0.3) 0%, transparent 50%)`
         }}
       >
         {/* Dedicated Badge Row */}
-        <div className="flex items-start justify-between mb-4 min-h-[2rem] gap-2">
+        <div className="flex flex-wrap items-start justify-between mb-3 md:mb-4 min-h-[2rem] gap-2">
           {/* Left: Eligibility Badge */}
           {eligibilityBadge && (
             <div 
-              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${eligibilityBadge.color} border`}
+              className={`px-2 md:px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${eligibilityBadge.color} border`}
             >
               {eligibilityBadge.label}
             </div>
@@ -94,7 +94,7 @@ export const CardTile = ({ card }: CardTileProps) => {
           {/* Right: Hero Feature Badge */}
           {heroFeature && (
             <div 
-              className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ml-auto"
+              className="px-2 md:px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ml-auto"
               style={{ 
                 backgroundColor: `hsl(${issuerBrand.color} / 0.1)`,
                 color: `hsl(${issuerBrand.color})`,

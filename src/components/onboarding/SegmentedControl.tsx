@@ -10,7 +10,7 @@ interface SegmentedControlProps {
 
 export const SegmentedControl = ({ options, value, onValueChange, name }: SegmentedControlProps) => {
   return (
-    <RadioGroup value={value} onValueChange={onValueChange} className="grid grid-cols-2 md:grid-cols-5 gap-2">
+    <RadioGroup value={value} onValueChange={onValueChange} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
       {options.map((option) => (
         <div key={option.value} className="relative">
           <RadioGroupItem
@@ -20,7 +20,7 @@ export const SegmentedControl = ({ options, value, onValueChange, name }: Segmen
           />
           <Label
             htmlFor={`${name}-${option.value}`}
-            className="flex h-11 cursor-pointer items-center justify-center rounded-md border-2 border-muted bg-background px-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground transition-all"
+            className="flex min-h-[44px] cursor-pointer items-center justify-center rounded-md border-2 border-muted bg-background px-2 sm:px-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground transition-all text-xs sm:text-sm"
           >
             {option.label}
           </Label>
