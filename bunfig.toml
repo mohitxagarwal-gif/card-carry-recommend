@@ -1,6 +1,0 @@
-[install]
-# Skip optional dependencies to prevent canvas installation
-optional = false
-
-# Use exact versions
-exact = false
