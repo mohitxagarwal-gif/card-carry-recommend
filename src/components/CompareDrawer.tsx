@@ -24,15 +24,15 @@ export const CompareDrawer = () => {
 
   return (
     <>
-      {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t-2 border-primary px-6 py-4 shadow-2xl">
-        <div className="container mx-auto flex items-center justify-between">
-          <span className="text-sm md:text-base font-sans text-foreground font-semibold">
+      {/* Sticky Bottom Bar - Liquid Glass Effect */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-xl bg-card/30 border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.3)] before:absolute before:inset-0 before:bg-gradient-to-t before:from-primary/5 before:to-transparent before:pointer-events-none texture-noise">
+        <div className="container mx-auto flex items-center justify-between relative z-10">
+          <span className="text-sm md:text-base font-sans text-foreground font-bold drop-shadow-sm">
             {selectedCards.length} card{selectedCards.length !== 1 ? 's' : ''} selected
           </span>
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button size="sm" className="font-sans">
+              <Button size="sm" className="font-sans font-semibold shadow-lg hover:shadow-xl transition-shadow duration-200">
                 compare {selectedCards.length} {selectedCards.length === 1 ? 'card' : 'cards'} →
               </Button>
             </SheetTrigger>
