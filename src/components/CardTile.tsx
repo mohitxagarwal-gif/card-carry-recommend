@@ -64,22 +64,7 @@ export const CardTile = ({ card }: CardTileProps) => {
         return;
       }
       addCard(card);
-      
-      // Enhanced toast with action when 2+ cards selected
-      if (selectedCards.length >= 1) {
-        toast.success(`${card.name} added to comparison`, {
-          description: `${selectedCards.length + 1} cards ready to compare`,
-          action: {
-            label: "Compare Now →",
-            onClick: () => {
-              window.dispatchEvent(new CustomEvent('openCompareDrawer'));
-            }
-          },
-          duration: 5000
-        });
-      } else {
-        toast.success(`${card.name} added to comparison`);
-      }
+      toast.success(`${card.name} added to comparison`);
     } else {
       removeCard(card.id);
       toast.success(`${card.name} removed from comparison`);
