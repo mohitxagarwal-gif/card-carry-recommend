@@ -9,7 +9,7 @@ import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { processQueue } from "@/lib/offlineQueue";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { cleanupStaleAnalyses } from "@/lib/sessionManager";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";

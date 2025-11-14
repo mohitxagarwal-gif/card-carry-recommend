@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 
 interface IssuerOutlinkModalProps {
   isOpen: boolean;

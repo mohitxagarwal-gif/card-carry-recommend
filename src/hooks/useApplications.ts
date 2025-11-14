@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CardApplication } from "@/types/dashboard";
 import { toast } from "sonner";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 
 export const useApplications = () => {
   const queryClient = useQueryClient();

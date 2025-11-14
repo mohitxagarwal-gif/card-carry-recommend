@@ -11,7 +11,7 @@ import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { RadioGrid } from "@/components/onboarding/RadioGrid";
 import { CityCombobox } from "@/components/onboarding/CityCombobox";
 import { QuickSpendingHints } from "@/components/onboarding/QuickSpendingHints";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
 
 const AGE_OPTIONS = [

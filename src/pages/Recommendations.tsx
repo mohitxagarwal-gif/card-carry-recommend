@@ -12,7 +12,7 @@ import { ActionBar } from "@/components/recommendations/ActionBar";
 import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 
 interface UserProfile {
   age_range?: string;

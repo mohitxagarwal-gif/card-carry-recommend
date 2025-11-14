@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CardDetailsModal } from "@/components/CardDetailsModal";
 import { IssuerOutlinkModal } from "@/components/IssuerOutlinkModal";
 import { ExternalLink, FileText, X } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { CreditCard } from "@/hooks/useCards";
 import type { NavigateFunction } from "react-router-dom";
 

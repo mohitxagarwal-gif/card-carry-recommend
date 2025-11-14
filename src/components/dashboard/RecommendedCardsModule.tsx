@@ -9,7 +9,7 @@ import { CardDetailsModal } from "@/components/CardDetailsModal";
 import { IssuerOutlinkModal } from "@/components/IssuerOutlinkModal";
 import { Sparkles, ExternalLink, Upload, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { CreditCard } from "@/hooks/useCards";
 
 export const RecommendedCardsModule = () => {

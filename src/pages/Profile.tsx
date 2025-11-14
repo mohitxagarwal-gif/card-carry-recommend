@@ -13,7 +13,7 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, TrendingUp, AlertCircle } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { PreferencesModal } from "@/components/profile/PreferencesModal";
 
 const Profile = () => {
