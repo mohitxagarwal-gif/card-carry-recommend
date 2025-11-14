@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Settings, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { InlinePreferencesModal } from "./InlinePreferencesModal";
 
 interface PersonalizationControlsProps {
   userPreferences: any;
@@ -12,6 +14,8 @@ export const PersonalizationControls = ({
   userPreferences,
   onPreferenceChange
 }: PersonalizationControlsProps) => {
+  const [modalOpen, setModalOpen] = useState(false);
+
   const preferences = [
     {
       label: "Fee Sensitivity",
@@ -30,13 +34,14 @@ export const PersonalizationControls = ({
     },
     {
       label: "Reward Type",
-      value: userPreferences?.reward_preference || 'cashback',
+      value: userPreferences?.preference_type || 'cashback',
       icon: "🎁"
     }
   ];
 
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader>
         <CardTitle className="text-xl font-heading flex items-center gap-2">
           <Settings className="w-5 h-5 text-primary" />
@@ -66,7 +71,7 @@ export const PersonalizationControls = ({
         <Button
           variant="outline"
           className="w-full"
-          onClick={() => window.location.href = '/profile'}
+          onClick={() => setModalOpen(true)}
         >
           <Settings className="w-4 h-4 mr-2" />
           Edit Preferences
@@ -93,5 +98,14 @@ export const PersonalizationControls = ({
         </div>
       </CardContent>
     </Card>
+
+    <InlinePreferencesModal
+      isOpen={modalOpen}
+      onClose={() => setModalOpen(false)}
+      onSave={() => {
+        onPreferenceChange(userPreferences);
+      }}
+    />
+    </>
   );
 };
