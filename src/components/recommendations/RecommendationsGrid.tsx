@@ -17,7 +17,7 @@ import { useApplications } from "@/hooks/useApplications";
 import { CardActionBar } from "@/components/CardActionBar";
 import { IssuerOutlinkModal } from "@/components/IssuerOutlinkModal";
 import { toast } from "sonner";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 
 interface RecommendationsGridProps {
   recommendedCards: any[];

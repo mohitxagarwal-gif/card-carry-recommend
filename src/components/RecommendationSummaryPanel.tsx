@@ -5,7 +5,7 @@ import { Download, Mail, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportRecommendationsPDF } from "@/lib/exportPDF";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 
 interface RecommendationSummaryPanelProps {
   savingsMin: number;

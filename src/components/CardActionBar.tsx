@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Heart, CheckCircle } from "lucide-react";
 import { useShortlist } from "@/hooks/useShortlist";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { IssuerOutlinkModal } from "./IssuerOutlinkModal";
 import { EligibilityDetailsModal } from "./EligibilityDetailsModal";
 import { useState } from "react";

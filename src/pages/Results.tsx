@@ -15,7 +15,7 @@ import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
 import { includeInSpending, calculateTotalSpending, groupByCategory } from "@/lib/transactionRules";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { useCards } from "@/hooks/useCards";
 import {
   Select,

@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 import { useApplications } from "@/hooks/useApplications";
 import { useCards } from "@/hooks/useCards";
 import { Loader2, FileText, ExternalLink } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { CardStatusDropdown } from "@/components/CardStatusDropdown";
 
 const Applications = () => {

@@ -9,7 +9,7 @@ import { useApplications } from "@/hooks/useApplications";
 import { useUserCards } from "@/hooks/useUserCards";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
 import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus, RefreshCw, Sparkles } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
+import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { Badge } from "@/components/ui/badge";
 import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
 import { FeeWaiverGoalsModule } from "@/components/dashboard/FeeWaiverGoalsModule";
