@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { RecommendationSnapshot } from "@/types/dashboard";
+import { anonymizeTransactionsForExport } from "@/lib/merchantAnonymization";
 
 interface UserProfile {
   full_name: string | null;
@@ -77,8 +78,17 @@ export const exportRecommendationsPDF = (
     14,
     finalY + 15
   );
+  doc.text(
+    "Sensitive merchant names have been anonymized for your privacy.",
+    14,
+    finalY + 20
+  );
   
   // Save
   const filename = `card-carry-recommendations-${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
 };
+
+// Note: If transactions are added to PDF export in the future, use:
+// const anonymizedTransactions = anonymizeTransactionsForExport(transactions, false);
+// to anonymize merchant names before adding to the PDF
