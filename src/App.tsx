@@ -30,6 +30,7 @@ import AdminContentList from "./pages/AdminContentList";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminSiteContent from "./pages/AdminSiteContent";
 import AdminCardBenefits from "./pages/AdminCardBenefits";
+import AdminUserTimeline from "./pages/AdminUserTimeline";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 
@@ -184,6 +185,11 @@ const AppContent = () => {
       <Route path="/admin/card-benefits" element={
         <ProtectedRoute requireOnboarding={true}>
           <AdminCardBenefits />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/user-timeline" element={
+        <ProtectedRoute requireOnboarding={true}>
+          <AdminUserTimeline />
         </ProtectedRoute>
       } />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

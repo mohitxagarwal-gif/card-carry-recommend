@@ -23,6 +23,7 @@ const navItems = [
   { href: "/admin/site-content", icon: Edit, label: "Site Content" },
   { href: "/admin/categories", icon: Grid, label: "Categories" },
   { href: "/admin/analytics", icon: BarChart, label: "Analytics" },
+  { href: "/admin/user-timeline", icon: FileText, label: "User Timeline" },
 ];
 
 export const AdminLayout = ({ children }: AdminLayoutProps) => {

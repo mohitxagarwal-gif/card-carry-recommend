@@ -43,6 +43,13 @@ export interface UserCard {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // New fields from merge with user_owned_cards
+  issuer?: string | null;
+  network?: string | null;
+  product?: string | null;
+  opened_year?: number | null;
+  credit_limit_estimate?: number | null;
+  is_primary?: boolean;
 }
 
 export interface FeeWaiverGoal {
