@@ -41,7 +41,8 @@ export const useRecommendationSnapshot = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      const { error } = await supabase
+      // Insert the snapshot
+      const { data: snapshot, error: snapshotError } = await supabase
         .from("recommendation_snapshots")
         .insert({
           user_id: user.id,
@@ -50,12 +51,44 @@ export const useRecommendationSnapshot = () => {
           savings_max: savingsMax,
           confidence,
           recommended_cards: recommendedCards,
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (snapshotError) throw snapshotError;
+
+      // PHASE 1B: Also write to normalized recommendation_cards table
+      if (snapshot && recommendedCards && recommendedCards.length > 0) {
+        const cardsForInsert = recommendedCards.map((card, index) => ({
+          user_id: user.id,
+          snapshot_id: snapshot.id,
+          card_id: card.card_id || card.cardId,
+          rank: index + 1,
+          match_score: card.matchScore || card.score || 0,
+          estimated_annual_value_inr: card.estimatedAnnualValue || card.estimated_annual_value || null,
+          confidence: confidence,
+          reasoning: card.reasoning || null,
+          benefits_matched: card.benefitsMatched || card.benefits_matched || {},
+          top_categories: card.topCategories || card.top_categories || [],
+          warnings: card.warnings || [],
+          eligibility_notes: card.eligibilityNotes || card.eligibility_notes || null,
+        }));
+
+        const { error: cardsError } = await supabase
+          .from("recommendation_cards")
+          .insert(cardsForInsert);
+
+        if (cardsError) {
+          console.error('[useRecommendationSnapshot] Error writing normalized cards:', cardsError);
+          // Don't fail the whole operation if normalized table insert fails
+        }
+      }
+
+      return snapshot;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["latest-recommendation-snapshot"] });
+      queryClient.invalidateQueries({ queryKey: ["recommendation-cards"] });
     },
     onError: () => {
       toast.error("Failed to save recommendations");

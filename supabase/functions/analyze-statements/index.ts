@@ -237,6 +237,32 @@ Return ONLY valid JSON (no markdown):
       throw dbError;
     }
 
+    // PHASE 1B: Also write to normalized analysis_transactions table
+    console.log('[analyze-statements] Writing transactions to normalized table');
+    const transactionsForInsert = allTransactions.map((t: any) => ({
+      user_id: user.id,
+      analysis_id: analysis.id,
+      transaction_id: t.transaction_id || crypto.randomUUID(),
+      transaction_hash: t.transaction_id || crypto.randomUUID(),
+      posted_date: t.date,
+      amount_minor: Math.round(t.amount * 100),
+      merchant_raw: t.merchant,
+      merchant_normalized: t.merchant,
+      category: t.category,
+      subcategory: t.subcategory || null,
+    }));
+
+    const { error: transactionsError } = await supabaseClient
+      .from('analysis_transactions')
+      .insert(transactionsForInsert);
+
+    if (transactionsError) {
+      console.error('[analyze-statements] Error writing transactions:', transactionsError);
+      // Don't fail the whole analysis if normalized table insert fails
+    } else {
+      console.log('[analyze-statements] Successfully wrote', transactionsForInsert.length, 'transactions');
+    }
+
     console.log('[analyze-statements] Success, analysis ID:', analysis.id);
 
     return new Response(
