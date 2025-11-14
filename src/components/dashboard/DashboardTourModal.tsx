@@ -94,12 +94,7 @@ export const DashboardTourModal = ({ open, onOpenChange }: DashboardTourModalPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl">Dashboard Tour</DialogTitle>
-            <Button variant="ghost" size="icon" onClick={handleSkip}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-2xl">Dashboard Tour</DialogTitle>
           <div className="w-full bg-muted rounded-full h-2 mt-4">
             <div 
               className="bg-primary h-2 rounded-full transition-all duration-300"
