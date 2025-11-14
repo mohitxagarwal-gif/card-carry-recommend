@@ -67,8 +67,40 @@ export const useRecommendationSnapshot = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Fetch the analysis data which contains transactions
+      const { data: analysis, error: analysisError } = await supabase
+        .from('spending_analyses')
+        .select('analysis_data')
+        .eq('id', analysisId)
+        .single();
+
+      if (analysisError) throw analysisError;
+      
+      const analysisData = analysis?.analysis_data as any;
+      if (!analysisData?.transactions) {
+        throw new Error("No transaction data found in analysis");
+      }
+
+      // Fetch user profile and preferences
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('age_range, income_band_inr, city')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const { data: preferences } = await supabase
+        .from('user_preferences')
+        .select('fee_sensitivity, travel_frequency, lounge_importance, preference_type')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Call edge function with transactions and updated preferences
       const { data, error } = await supabase.functions.invoke('generate-recommendations', {
-        body: { analysisId }
+        body: {
+          transactions: analysisData.transactions,
+          profile: profile || undefined,
+          preferences: preferences || undefined
+        }
       });
 
       if (error) throw error;
