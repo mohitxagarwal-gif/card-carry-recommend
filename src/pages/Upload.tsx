@@ -14,6 +14,8 @@ import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { checkPDFEncryption, decryptAndExtractPDF, analyzeTransactions } from "@/lib/pdfProcessor";
 import { AnalysisLoadingScreen } from "@/components/AnalysisLoadingScreen";
 import { normalizeCategory } from "@/lib/categories";
+import { ConsentModal } from "@/components/ConsentModal";
+import { useConsent } from "@/hooks/useConsent";
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
 interface FileWithStatus {
   file: File;
@@ -38,6 +40,10 @@ const Upload = () => {
   const [analysisStep, setAnalysisStep] = useState<number>(0);
   const [analysisProgress, setAnalysisProgress] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  
+  const { data: consentData, refetch: refetchConsent } = useConsent();
   useEffect(() => {
     const initUser = async () => {
       const {
@@ -114,6 +120,16 @@ const Upload = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
+
+      // Check consent first
+      if (!consentData?.hasConsent) {
+        setPendingFiles(selectedFiles);
+        setShowConsentModal(true);
+        toast.info('Please review and accept our data processing terms to continue');
+        // Reset the file input
+        e.target.value = '';
+        return;
+      }
 
       // Validate file types - only PDFs
       const invalidFiles = selectedFiles.filter(file => !file.type.includes('pdf') && !file.name.endsWith('.pdf'));
@@ -701,6 +717,47 @@ const Upload = () => {
     await supabase.auth.signOut();
     navigate("/");
   };
+
+  const handleConsentGrant = async () => {
+    setShowConsentModal(false);
+    await refetchConsent();
+    
+    // Process pending files if any
+    if (pendingFiles && pendingFiles.length > 0) {
+      // Validate file types - only PDFs
+      const invalidFiles = pendingFiles.filter(file => !file.type.includes('pdf') && !file.name.endsWith('.pdf'));
+      if (invalidFiles.length > 0) {
+        toast.error('Please upload only PDF files');
+        setPendingFiles(null);
+        return;
+      }
+      
+      if (pendingFiles.length > 3) {
+        toast.error('Please upload a maximum of 3 statement files');
+        setPendingFiles(null);
+        return;
+      }
+
+      // Initialize files with status
+      const filesWithInitialStatus: FileWithStatus[] = pendingFiles.map(file => ({
+        file,
+        status: 'selected' as FileStatus,
+        progress: 0
+      }));
+      setFilesWithStatus(filesWithInitialStatus);
+      toast.success(`${pendingFiles.length} PDF file(s) selected`);
+
+      // Check for encryption
+      await checkFilesForEncryption(pendingFiles);
+      setPendingFiles(null);
+    }
+  };
+
+  const handleConsentDecline = () => {
+    setShowConsentModal(false);
+    setPendingFiles(null);
+    toast.info('You can upload statements after accepting the data processing consent');
+  };
   
   // If analyzing, show loading screen
   if (isAnalyzing) {
@@ -884,6 +941,12 @@ const Upload = () => {
       setFilesWithStatus([]);
       setEncryptedFiles([]);
     }} />
+
+      <ConsentModal
+        open={showConsentModal}
+        onConsent={handleConsentGrant}
+        onDecline={handleConsentDecline}
+      />
     </div>;
 };
 export default Upload;
