@@ -1,8 +1,5 @@
 import mixpanel, { Dict } from 'mixpanel-browser';
 
-// Mixpanel token (publishable key - safe to include in frontend code)
-const MIXPANEL_TOKEN = '666b0855f46b3d02b4ec33e48289acce';
-
 // Type for initialization status
 let isInitialized = false;
 
@@ -45,18 +42,19 @@ export function initMixpanel(): void {
     return;
   }
 
-  if (!MIXPANEL_TOKEN) {
-    console.warn('[Mixpanel] Token not configured, tracking disabled');
+  const token = import.meta.env.VITE_MIXPANEL_TOKEN;
+
+  if (!token) {
+    console.warn('[Mixpanel] VITE_MIXPANEL_TOKEN not configured, tracking disabled');
     return;
   }
 
-  // Debug: Log token and env var values
-  console.log('[Mixpanel Debug] Hardcoded token:', MIXPANEL_TOKEN);
-  console.log('[Mixpanel Debug] VITE_MIXPANEL_TOKEN env var:', import.meta.env.VITE_MIXPANEL_TOKEN);
+  // Debug: Log token value
+  console.log('[Mixpanel Debug] Token loaded from env:', token);
   console.log('[Mixpanel Debug] All env vars:', import.meta.env);
 
   try {
-    mixpanel.init(MIXPANEL_TOKEN, {
+    mixpanel.init(token, {
       debug: import.meta.env.DEV,
       track_pageview: false, // We'll handle this manually
       persistence: 'localStorage',
@@ -76,7 +74,7 @@ export function initMixpanel(): void {
  * Call this after successful login/signup.
  */
 export function identifyUser(userId: string, traits?: Dict): void {
-  if (!isInitialized || !MIXPANEL_TOKEN) {
+  if (!isInitialized) {
     return;
   }
 
@@ -100,7 +98,7 @@ export function identifyUser(userId: string, traits?: Dict): void {
  * IMPORTANT: Never include PII (email, phone, full name, exact location).
  */
 export function setUserProperties(properties: Dict): void {
-  if (!isInitialized || !MIXPANEL_TOKEN) {
+  if (!isInitialized) {
     return;
   }
 
@@ -117,7 +115,7 @@ export function setUserProperties(properties: Dict): void {
  * This is the main method for tracking user actions.
  */
 export function trackEvent(eventName: string, properties?: Dict): void {
-  if (!isInitialized || !MIXPANEL_TOKEN) {
+  if (!isInitialized) {
     // Silently skip if not initialized (don't spam console)
     return;
   }
@@ -145,7 +143,7 @@ export function trackPageView(path: string, properties?: Dict): void {
  * Clears user identification and local storage.
  */
 export function resetMixpanel(): void {
-  if (!isInitialized || !MIXPANEL_TOKEN) {
+  if (!isInitialized) {
     return;
   }
 
@@ -161,7 +159,7 @@ export function resetMixpanel(): void {
  * Opt user out of tracking.
  */
 export function optOut(): void {
-  if (!isInitialized || !MIXPANEL_TOKEN) {
+  if (!isInitialized) {
     return;
   }
 
@@ -177,7 +175,7 @@ export function optOut(): void {
  * Opt user back in to tracking.
  */
 export function optIn(): void {
-  if (!isInitialized || !MIXPANEL_TOKEN) {
+  if (!isInitialized) {
     return;
   }
 
