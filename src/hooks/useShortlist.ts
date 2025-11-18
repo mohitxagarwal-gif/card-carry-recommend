@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserShortlist } from "@/types/dashboard";
 import { toast } from "sonner";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
+import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 
 export const useShortlist = () => {
   const queryClient = useQueryClient();
@@ -57,6 +58,12 @@ export const useShortlist = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-shortlist"] });
+      
+      // Mixpanel event
+      trackMixpanelEvent('card.shortlisted', {
+        cardId: addToShortlist.variables,
+      });
+      
       toast.success("Added to shortlist");
     },
     onError: (error: any, cardId, context) => {
@@ -96,6 +103,12 @@ export const useShortlist = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-shortlist"] });
+      
+      // Mixpanel event
+      trackMixpanelEvent('card.removed_from_shortlist', {
+        cardId: removeFromShortlist.variables,
+      });
+      
       toast.success("Removed from shortlist");
     },
     onError: () => {

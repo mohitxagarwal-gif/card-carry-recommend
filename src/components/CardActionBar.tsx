@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Heart, CheckCircle } from "lucide-react";
 import { useShortlist } from "@/hooks/useShortlist";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
+import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 import { IssuerOutlinkModal } from "./IssuerOutlinkModal";
 import { EligibilityDetailsModal } from "./EligibilityDetailsModal";
 import { useState } from "react";
@@ -28,6 +29,12 @@ export const CardActionBar = ({ cardId, issuer, name }: CardActionBarProps) => {
   const handleApply = () => {
     const hideModal = localStorage.getItem('hide_outlink_modal') === 'true';
     const url = `https://${issuer.toLowerCase().replace(/\s/g, '')}.com/apply/${cardId}`;
+    
+    // Mixpanel event
+    trackMixpanelEvent('card.apply_clicked', {
+      cardId,
+      source: 'action_bar',
+    });
     
     if (hideModal) {
       trackEvent("recs_apply_click", { cardId, issuer });

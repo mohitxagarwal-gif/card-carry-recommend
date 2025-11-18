@@ -315,6 +315,12 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
               console.warn('[TransactionReview] Some transactions missing type');
             }
             
+            // Mixpanel event - review submitted
+            trackEvent('transactions.review_submitted', {
+              fileCount: localData.length,
+              totalTransactions: localData.reduce((sum, file) => sum + file.transactions.length, 0),
+            });
+            
             onSubmit(localData);
           }}
           className="flex-1"

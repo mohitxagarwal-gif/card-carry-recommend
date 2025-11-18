@@ -13,6 +13,7 @@ import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
+import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 
 interface UserProfile {
   age_range?: string;
@@ -80,6 +81,11 @@ const Recommendations = () => {
         trackEvent("recommendations_page_view", {
           hasSnapshot: !!latestSnapshot,
           hasAnalysis: !!analysisData
+        });
+        
+        // Mixpanel event
+        trackMixpanelEvent('recommendation.page_viewed', {
+          recommendationCount: latestSnapshot?.recommended_cards?.length || 0,
         });
       } catch (error) {
         console.error('Error loading recommendations:', error);

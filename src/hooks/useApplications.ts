@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CardApplication } from "@/types/dashboard";
 import { toast } from "sonner";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
+import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 
 export const useApplications = () => {
   const queryClient = useQueryClient();
@@ -84,8 +85,15 @@ export const useApplications = () => {
 
       return { previousApps };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["card-applications"] });
+      
+      // Mixpanel event
+      trackMixpanelEvent('application.status_updated', {
+        cardId: variables.cardId,
+        newStatus: variables.status,
+      });
+      
       toast.success("Status updated");
     },
     onError: (error, variables, context) => {
