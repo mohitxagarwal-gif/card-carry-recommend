@@ -7,6 +7,44 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Date parsing utility: DD/MM/YY -> YYYY-MM-DD
+function parseDate(dateStr: string): string {
+  // Handle formats: DD/MM/YY, DD/MM/YYYY, YYYY-MM-DD
+  if (dateStr.includes('-') && dateStr.length === 10) {
+    return dateStr; // Already in YYYY-MM-DD format
+  }
+  
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    // Convert 2-digit year to 4-digit (assuming 2000s)
+    const fullYear = year.length === 2 ? `20${year}` : year;
+    return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  throw new Error(`Invalid date format: ${dateStr}`);
+}
+
+// Generate deterministic transaction hash using SHA-256
+async function generateTransactionHash(params: {
+  postedDate: string;
+  amountMinor: number;
+  normalizedMerchant: string;
+}): Promise<string> {
+  const { postedDate, amountMinor, normalizedMerchant } = params;
+  
+  const composite = `${postedDate}|${amountMinor}|${normalizedMerchant}`;
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(composite);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  return hashHex;
+}
+
 // Phase 0: Standard categories
 const STANDARD_CATEGORIES = [
   "Food & Dining",
@@ -239,25 +277,57 @@ Return ONLY valid JSON (no markdown):
 
     // PHASE 1B: Also write to normalized analysis_transactions table
     console.log('[analyze-statements] Writing transactions to normalized table');
-    const transactionsForInsert = allTransactions.map((t: any) => ({
-      user_id: user.id,
-      analysis_id: analysis.id,
-      transaction_id: t.transaction_id || crypto.randomUUID(),
-      transaction_hash: t.transaction_id || crypto.randomUUID(),
-      posted_date: t.date,
-      amount_minor: Math.round(t.amount * 100),
-      merchant_raw: t.merchant,
-      merchant_normalized: t.merchant,
-      category: t.category,
-      subcategory: t.subcategory || null,
-    }));
+    
+    // Parse and hash transactions properly
+    const transactionsForInsert = await Promise.all(
+      allTransactions.map(async (t: any) => {
+        try {
+          const parsedDate = parseDate(t.date);
+          const amountMinor = Math.round(t.amount * 100);
+          const normalizedMerchant = t.merchant.trim();
+          
+          const transactionHash = await generateTransactionHash({
+            postedDate: parsedDate,
+            amountMinor,
+            normalizedMerchant
+          });
+          
+          return {
+            user_id: user.id,
+            analysis_id: analysis.id,
+            transaction_id: t.transaction_id || `txn_${transactionHash.substring(0, 16)}`,
+            transaction_hash: transactionHash,
+            posted_date: parsedDate,
+            amount_minor: amountMinor,
+            merchant_raw: t.merchant,
+            merchant_normalized: normalizedMerchant,
+            category: t.category,
+            subcategory: t.subcategory || null,
+          };
+        } catch (parseError) {
+          console.error('[analyze-statements] Error parsing transaction:', {
+            date: t.date,
+            merchant: t.merchant,
+            error: parseError
+          });
+          throw parseError;
+        }
+      })
+    );
 
     const { error: transactionsError } = await supabaseClient
       .from('analysis_transactions')
       .insert(transactionsForInsert);
 
     if (transactionsError) {
-      console.error('[analyze-statements] Error writing transactions:', transactionsError);
+      console.error('[analyze-statements] Error writing transactions:', {
+        error: transactionsError,
+        code: transactionsError.code,
+        message: transactionsError.message,
+        details: transactionsError.details,
+        hint: transactionsError.hint,
+        sampleTransaction: transactionsForInsert[0]
+      });
       // Don't fail the whole analysis if normalized table insert fails
     } else {
       console.log('[analyze-statements] Successfully wrote', transactionsForInsert.length, 'transactions');
