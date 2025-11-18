@@ -50,6 +50,11 @@ export function initMixpanel(): void {
     return;
   }
 
+  // Debug: Log token and env var values
+  console.log('[Mixpanel Debug] Hardcoded token:', MIXPANEL_TOKEN);
+  console.log('[Mixpanel Debug] VITE_MIXPANEL_TOKEN env var:', import.meta.env.VITE_MIXPANEL_TOKEN);
+  console.log('[Mixpanel Debug] All env vars:', import.meta.env);
+
   try {
     mixpanel.init(MIXPANEL_TOKEN, {
       debug: import.meta.env.DEV,
