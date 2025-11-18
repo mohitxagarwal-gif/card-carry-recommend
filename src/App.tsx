@@ -83,6 +83,9 @@ const AppContent = () => {
     // Initialize Mixpanel once on app startup
     initMixpanel();
     
+    // Health check event to verify Mixpanel is working
+    trackPageView('mixpanel_health_check', { location: 'app_mount' });
+    
     const initSession = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
