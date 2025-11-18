@@ -12,6 +12,7 @@ import { z } from "zod";
 import { afterAuthRedirect, getReturnToFromQuery } from "@/lib/authUtils";
 import { trackAuthSuccess } from "@/lib/authAnalytics";
 import { logAuditEvent } from "@/lib/auditLog";
+import { trackEvent } from "@/lib/analytics";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -77,6 +78,12 @@ const Auth = () => {
         
         toast.success('Email verified successfully!');
         trackAuthSuccess('email');
+        
+        // Mixpanel event
+        trackEvent('auth.signup_completed', {
+          provider: 'email',
+          source: 'email_confirmation',
+        });
         
         // Log email confirmation in audit trail
         await logAuditEvent('AUTH_EMAIL_CONFIRMED', {
@@ -182,6 +189,12 @@ const Auth = () => {
         
         console.log('[Auth.tsx] Session found after OAuth callback');
         trackAuthSuccess('google');
+        
+        // Mixpanel event
+        trackEvent('auth.login_success', {
+          provider: 'google',
+          returnTo: getReturnToFromQuery() || 'default',
+        });
         
         // Log OAuth success in audit trail
         await logAuditEvent('AUTH_SIGNIN_SUCCESS', {
@@ -305,6 +318,9 @@ const Auth = () => {
         category: 'auth'
       });
       
+      // Mixpanel event
+      trackEvent('auth.password_reset_completed');
+      
       toast.success('Password updated successfully! You can now sign in.');
       setPasswordResetMode(false);
       setNewPassword('');
@@ -356,9 +372,15 @@ const Auth = () => {
         if (data.user) {
           // Check if email confirmation is required
           if (!data.session) {
-            // Email confirmation required
+          // Email confirmation required
             setAwaitingConfirmation(true);
             setConfirmationEmail(email);
+            
+            // Mixpanel event
+            trackEvent('auth.signup_started', {
+              provider: 'email',
+            });
+            
             toast.success('Account created! Please check your email to verify your account.');
             return;
           }
@@ -401,6 +423,12 @@ const Auth = () => {
         if (data.user) {
           setWaitingForProfile(true);
           trackAuthSuccess('email');
+          
+          // Mixpanel event
+          trackEvent('auth.login_success', {
+            provider: 'email',
+            returnTo: returnTo || 'default',
+          });
           
           // Log signin success in audit trail
           await logAuditEvent('AUTH_SIGNIN_SUCCESS', {

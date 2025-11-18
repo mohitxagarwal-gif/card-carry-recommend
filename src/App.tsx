@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { cleanupStaleAnalyses } from "@/lib/sessionManager";
+import { initMixpanel, identifyUser, setUserProperties, buildUserProperties, trackPageView, resetMixpanel } from "@/lib/mixpanel";
+import { useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OnboardingQuickProfile from "./pages/OnboardingQuickProfile";
@@ -38,6 +40,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const { isOnline } = useOnlineStatus();
+  const location = useLocation();
 
   useEffect(() => {
     if (isOnline) {
@@ -75,16 +78,77 @@ const AppContent = () => {
     }
   }, [isOnline]);
 
+  // Initialize Mixpanel and session on mount
   useEffect(() => {
+    // Initialize Mixpanel once on app startup
+    initMixpanel();
+    
     const initSession = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await cleanupStaleAnalyses(user.id);
+        
+        // Identify user in Mixpanel
+        identifyUser(user.id);
+        
+        // Fetch and set user properties
+        const [profileRes, prefsRes, featuresRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', user.id).single(),
+          supabase.from('user_preferences').select('*').eq('user_id', user.id).single(),
+          supabase.from('user_features').select('*').eq('user_id', user.id).single(),
+        ]);
+        
+        if (profileRes.data) {
+          const userProps = buildUserProperties(
+            profileRes.data,
+            prefsRes.data,
+            featuresRes.data
+          );
+          setUserProperties(userProps);
+        }
       }
     };
     
     initSession();
   }, []);
+
+  // Auth state listener for login/logout
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // User just signed in - identify and set properties
+        identifyUser(session.user.id);
+        
+        // Fetch and set user properties
+        const [profileRes, prefsRes, featuresRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+          supabase.from('user_preferences').select('*').eq('user_id', session.user.id).single(),
+          supabase.from('user_features').select('*').eq('user_id', session.user.id).single(),
+        ]);
+        
+        if (profileRes.data) {
+          const userProps = buildUserProperties(
+            profileRes.data,
+            prefsRes.data,
+            featuresRes.data
+          );
+          setUserProperties(userProps);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        // User logged out - reset Mixpanel
+        resetMixpanel();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Page view tracking
+  useEffect(() => {
+    trackPageView(location.pathname, {
+      referrer: document.referrer,
+    });
+  }, [location.pathname]);
 
   return (
     <Routes>

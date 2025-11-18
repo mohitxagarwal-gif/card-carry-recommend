@@ -16,6 +16,7 @@ import { AnalysisLoadingScreen } from "@/components/AnalysisLoadingScreen";
 import { normalizeCategory } from "@/lib/categories";
 import { ConsentModal } from "@/components/ConsentModal";
 import { useConsent } from "@/hooks/useConsent";
+import { trackEvent } from "@/lib/analytics";
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
 interface FileWithStatus {
   file: File;
@@ -53,6 +54,11 @@ const Upload = () => {
       } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
+        
+        // Track upload page view
+        trackEvent('upload.page_viewed', {
+          hasRecentAnalysis: false, // Will be updated if detected
+        });
       }
     };
     initUser();
@@ -161,6 +167,13 @@ const Upload = () => {
         progress: 0
       }));
       setFilesWithStatus(filesWithInitialStatus);
+      
+      // Mixpanel event
+      trackEvent('upload.files_selected', {
+        fileCount: selectedFiles.length,
+        totalSizeKB: Math.round(selectedFiles.reduce((sum, f) => sum + f.size, 0) / 1024),
+      });
+      
       toast.success(`${selectedFiles.length} PDF file(s) selected`);
 
       // Check for encryption
@@ -209,6 +222,11 @@ const Upload = () => {
       // Some files are encrypted, show password modal
       setEncryptedFiles(encrypted);
       setShowPasswordModal(true);
+      
+      // Mixpanel event
+      trackEvent('upload.password_modal_shown', {
+        encryptedFileCount: encrypted.length,
+      });
     }
   };
   const handlePasswordSubmit = async (passwords: Map<string, string>) => {
@@ -227,6 +245,12 @@ const Upload = () => {
     const allExtractedData: ExtractedData[] = [];
     let completed = 0;
     const total = filesWithStatus.length;
+    
+    // Mixpanel event - extraction started
+    trackEvent('upload.extraction_started', {
+      fileCount: total,
+      mode: mode,
+    });
 
     // PHASE 2: Enhanced error messages with HTTP status awareness
     const getErrorMessage = (error: any, extractData?: any): string => {
@@ -295,6 +319,13 @@ const Upload = () => {
         const errorMessage = result.error || 'Failed to read PDF';
         const suggestion = getErrorSuggestion({ message: errorMessage });
         
+        // Mixpanel event - decryption failed
+        if (isEncrypted && errorMessage.toLowerCase().includes('password')) {
+          trackEvent('upload.decryption_failed', {
+            fileCount: 1,
+          });
+        }
+        
         setFilesWithStatus(prev => prev.map(f => 
           f.file.name === file.name ? {
             ...f,
@@ -308,6 +339,13 @@ const Upload = () => {
         });
         completed++;
         continue;
+      }
+      
+      // Mixpanel event - decryption success
+      if (isEncrypted) {
+        trackEvent('upload.decryption_success', {
+          fileCount: 1,
+        });
       }
 
       // Step 1.5: Validate extracted text length
@@ -472,6 +510,12 @@ const Upload = () => {
         const errorMessage = error.message || 'Failed to extract transactions';
         const suggestion = getErrorSuggestion(error);
         
+        // Mixpanel event - extraction failed
+        trackEvent('upload.extraction_failed', {
+          error: errorMessage.substring(0, 100), // Truncate for privacy
+          fileCount: 1,
+        });
+        
         setFilesWithStatus(prev => prev.map(f => 
           f.file.name === file.name ? {
             ...f,
@@ -500,6 +544,21 @@ const Upload = () => {
     if (allExtractedData.length > 0) {
       setExtractedData(allExtractedData);
       setShowReview(true);
+      
+      const extractedDateRange = {
+        start: new Date(Math.min(...allExtractedData.map(d => new Date(d.dateRange.start).getTime()))),
+        end: new Date(Math.max(...allExtractedData.map(d => new Date(d.dateRange.end).getTime()))),
+      };
+      
+      const totalTransactions = allExtractedData.reduce((sum, file) => sum + file.transactions.length, 0);
+      
+      // Mixpanel event - extraction completed
+      trackEvent('upload.extraction_completed', {
+        fileCount: allExtractedData.length,
+        totalTransactions,
+        statementPeriodDays: Math.round((extractedDateRange.end.getTime() - extractedDateRange.start.getTime()) / (1000 * 60 * 60 * 24)),
+        extractionMethod: 'pdf_text_extraction',
+      });
       toast.success(`Successfully processed ${allExtractedData.length} of ${total} statements!`, {
         description: `${allExtractedData.reduce((sum, d) => sum + d.transactions.length, 0)} transactions extracted`
       });

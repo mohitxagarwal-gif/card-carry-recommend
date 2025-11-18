@@ -2,13 +2,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, CheckCircle2, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatINR } from "@/lib/pdfProcessor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
 import { getDisplayMerchantName } from "@/lib/merchantAnonymization";
 import { useUserRole } from "@/hooks/useUserRole";
+import { trackEvent } from "@/lib/analytics";
 
 export interface Transaction {
   date: string;
@@ -48,6 +49,13 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
       }))
     }))
   );
+  
+  useEffect(() => {
+    trackEvent('transactions.review_opened', {
+      fileCount: extractedData.length,
+      totalTransactions: extractedData.reduce((sum, file) => sum + file.transactions.length, 0),
+    });
+  }, []);
 
   const toggleFile = (fileName: string) => {
     const newExpanded = new Set(expandedFiles);
@@ -63,6 +71,12 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
     const updatedData = [...localData];
     const transaction = updatedData[fileIndex].transactions[txIndex];
     const oldCategory = transaction.category;
+    
+    trackEvent('transactions.category_edited', {
+      categoryBefore: oldCategory,
+      categoryAfter: newCategory,
+      isOtherCategory: newCategory === 'other',
+    });
     
     // Update local state
     updatedData[fileIndex].transactions[txIndex].category = newCategory;
