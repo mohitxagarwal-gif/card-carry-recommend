@@ -10,6 +10,7 @@ import { useUserCards } from "@/hooks/useUserCards";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
 import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
+import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
 import { MyCardsModule } from "@/components/dashboard/MyCardsModule";
 import { FeeWaiverGoalsModule } from "@/components/dashboard/FeeWaiverGoalsModule";
@@ -52,6 +53,20 @@ const Dashboard = () => {
     trackEvent("dash_view");
     loadProfileData();
   }, []);
+  
+  // Track dashboard view with aggregate stats when all data loads
+  useEffect(() => {
+    if (!snapshotLoading && !shortlistLoading && !appsLoading && !cardsLoading) {
+      const activeCards = getActiveCards();
+      
+      trackMixpanelEvent('dashboard.viewed', {
+        shortlistSize: shortlist.length,
+        applicationsCount: applications.length,
+        ownedCardsCount: activeCards.length,
+        hasRecentAnalysis: !!latestSnapshot,
+      });
+    }
+  }, [snapshotLoading, shortlistLoading, appsLoading, cardsLoading, shortlist, applications, userCards, latestSnapshot]);
 
   // Check tour after all data loads
   useEffect(() => {

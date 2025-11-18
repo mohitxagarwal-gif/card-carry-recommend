@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight, ChevronLeft, X, Sparkles, Heart, FileText, CreditCard, TrendingUp } from "lucide-react";
+import { trackEvent } from "@/lib/analytics";
 
 interface TourStep {
   id: string;
@@ -60,6 +61,9 @@ export const DashboardTourModal = ({ open, onOpenChange }: DashboardTourModalPro
   useEffect(() => {
     if (open) {
       setCurrentStep(0);
+      
+      // Mixpanel event - tour started
+      trackEvent('dashboard.tour_started');
     }
   }, [open]);
 
@@ -79,6 +83,10 @@ export const DashboardTourModal = ({ open, onOpenChange }: DashboardTourModalPro
 
   const handleComplete = () => {
     localStorage.setItem("dashboard_tour_completed", "true");
+    
+    // Mixpanel event - tour completed
+    trackEvent('dashboard.tour_completed');
+    
     onOpenChange(false);
   };
 

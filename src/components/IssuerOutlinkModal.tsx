@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
+import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 
 interface IssuerOutlinkModalProps {
   isOpen: boolean;
@@ -27,7 +28,16 @@ export const IssuerOutlinkModal = ({
     if (dontShowAgain) {
       localStorage.setItem('hide_outlink_modal', 'true');
     }
+    
     trackEvent("issuer_outlink_modal_continue", { cardId, issuer: issuerName });
+    
+    // Mixpanel event
+    trackMixpanelEvent('card.issuer_link_opened', {
+      cardId,
+      issuer: issuerName,
+      source: 'issuer_modal',
+    });
+    
     onContinue();
   };
 

@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logAuditEvent } from "./auditLog";
+import { trackEvent } from "./analytics";
+import { resetMixpanel } from "./mixpanel";
 
 export const ANALYSIS_EXPIRY_DAYS = 30;
 
@@ -48,11 +50,17 @@ const PRESERVED_KEYS = [
 
 export async function handleLogout(): Promise<void> {
   try {
+    // Track logout event before clearing anything
+    trackEvent('auth.logout');
+    
     // Log the logout event first (while we still have user context)
     await logAuditEvent('USER_LOGOUT', { category: 'auth' });
     
     // Sign out from Supabase
     await supabase.auth.signOut();
+    
+    // Reset Mixpanel state
+    resetMixpanel();
     
     // Clear localStorage except preserved keys
     const preserved: Record<string, string | null> = {};

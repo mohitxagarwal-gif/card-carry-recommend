@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { STANDARD_CATEGORIES, normalizeCategory } from "@/lib/categories";
 import { includeInSpending, calculateTotalSpending, groupByCategory } from "@/lib/transactionRules";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
+import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 import { useCards } from "@/hooks/useCards";
 import {
   Select,
@@ -140,6 +141,14 @@ const Results = () => {
         const analysisData = data.analysis_data as unknown as AnalysisData;
         setAnalysis(analysisData);
         setEditedTransactions(analysisData.transactions || []);
+        
+        // Mixpanel event - analysis viewed
+        trackMixpanelEvent('analysis.viewed', {
+          analysisId: currentAnalysisId,
+          transactionCount: analysisData.transactions?.length || 0,
+          totalSpending: analysisData.totalSpending || 0,
+          periodDays: 30, // Approximate
+        });
         
         // Check if recommendations already exist for this analysis
         const { data: existingSnapshot } = await supabase
@@ -384,6 +393,16 @@ const Results = () => {
         setShowRecommendations(true);
         toast.success("Recommendations saved! View them anytime from your dashboard.");
         
+        // Mixpanel event - recommendation generation completed
+        trackMixpanelEvent('recommendation.generation_completed', {
+          analysisId,
+          snapshotId: 'pending', // Will be set after snapshot creation
+          recommendedCardsCount: recs.recommendedCards?.length || 0,
+          savingsMin: savings.min === Infinity ? 0 : savings.min,
+          savingsMax: savings.max === 0 ? 10000 : savings.max,
+          confidence: hasLowConfidence ? 'low' : editedTransactions.length > 100 ? 'high' : 'medium',
+        });
+        
         // Scroll to recommendations
         setTimeout(() => {
           document.getElementById('recommendations-section')?.scrollIntoView({ 
@@ -394,6 +413,13 @@ const Results = () => {
       }
     } catch (error: any) {
       console.error('Error generating recommendations:', error);
+      
+      // Mixpanel event - recommendation generation failed
+      trackMixpanelEvent('recommendation.generation_failed', {
+        analysisId,
+        error: error.message?.substring(0, 100) || 'unknown_error',
+      });
+      
       toast.error('Failed to generate recommendations. Please try again.');
     } finally {
       setIsGeneratingRecommendations(false);
