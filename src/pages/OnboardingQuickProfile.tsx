@@ -70,6 +70,11 @@ export default function OnboardingQuickProfile() {
 
     checkProfile();
     trackEvent("onboarding_quick_profile_view");
+    
+    // Mixpanel event
+    trackEvent("onboarding.profile_step_viewed", {
+      step: 'quick_profile',
+    });
   }, [navigate]);
 
   const handleSubmit = async (skipToUpload = false) => {
@@ -133,6 +138,31 @@ export default function OnboardingQuickProfile() {
       trackEvent("onboarding_quick_profile_complete", {
         has_spending_hints: !!spendData,
         is_first_card: isFirstCard,
+      });
+      
+      // Mixpanel events
+      trackEvent("onboarding.profile_form_submitted", {
+        ageRange,
+        incomeBand,
+        isFirstCard,
+        hasCity: !!city,
+        hasSpendingHints: topCategories.length > 0,
+      });
+      
+      if (topCategories.length > 0) {
+        trackEvent("onboarding.spending_hints_provided", {
+          categoriesCount: topCategories.length,
+          brandsCount: brands.length,
+          monthlySpendBucket: monthlySpend < 25000 ? '<25k'
+            : monthlySpend < 50000 ? '25-50k'
+            : monthlySpend < 100000 ? '50-100k'
+            : '100k+',
+        });
+      }
+      
+      trackEvent("onboarding.completed", {
+        dataSource: topCategories.length > 0 ? 'spending_hints' : 'profile_only',
+        timeToComplete: 'quick',
       });
 
       toast.success("Profile created! Let's find your best cards.");
