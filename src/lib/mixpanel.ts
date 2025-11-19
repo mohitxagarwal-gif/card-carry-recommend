@@ -55,7 +55,6 @@ export function initMixpanel(): void {
       track_pageview: false, // We'll handle this manually
       persistence: 'localStorage',
       ignore_dnt: false, // Respect Do Not Track
-      api_host: 'https://api-eu.mixpanel.com', // EU data residency
       autocapture: true, // Auto-track user interactions
       record_sessions_percent: 100, // Record 100% of sessions for replay
     });
