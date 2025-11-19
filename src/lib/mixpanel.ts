@@ -49,10 +49,6 @@ export function initMixpanel(): void {
     return;
   }
 
-  // Debug: Log token value
-  console.log('[Mixpanel Debug] Token loaded from env:', token);
-  console.log('[Mixpanel Debug] All env vars:', import.meta.env);
-
   try {
     mixpanel.init(token, {
       debug: import.meta.env.DEV,
@@ -60,6 +56,8 @@ export function initMixpanel(): void {
       persistence: 'localStorage',
       ignore_dnt: false, // Respect Do Not Track
       api_host: 'https://api-eu.mixpanel.com', // EU data residency
+      autocapture: true, // Auto-track user interactions
+      record_sessions_percent: 100, // Record 100% of sessions for replay
     });
     
     isInitialized = true;
