@@ -27,6 +27,7 @@ export default function OnboardingQuickSpends() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
   const deriveFeatures = useDeriveFeatures();
   const { createSnapshot } = useRecommendationSnapshot();
   
@@ -49,7 +50,22 @@ export default function OnboardingQuickSpends() {
         navigate("/auth");
         return;
       }
+      
+      // Verify profile is complete (age and income)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("age_range, income_band_inr")
+        .eq("id", user.id)
+        .single();
+      
+      if (!profile?.age_range || !profile?.income_band_inr) {
+        toast.error("Please complete your profile first");
+        navigate('/onboarding');
+        return;
+      }
+      
       setUserId(user.id);
+      setChecking(false);
     };
 
     checkAuth();
@@ -58,9 +74,19 @@ export default function OnboardingQuickSpends() {
 
   const handleSubmit = async () => {
     if (!userId) return;
+    if (monthlySpend < 5000) {
+      toast.error("Please enter a monthly spend of at least ₹5,000");
+      return;
+    }
 
     setLoading(true);
     try {
+      // Track quick spends completion
+      trackEvent("onboarding.quick_spends_completed", {
+        monthly_spend: monthlySpend,
+        categories: Object.keys(spendSplit).filter(k => spendSplit[k] > 0)
+      });
+
       // Step 1: Mark onboarding as complete
       const { error: profileError } = await supabase
         .from("profiles")
@@ -130,7 +156,7 @@ export default function OnboardingQuickSpends() {
     }
   };
 
-  if (!userId) {
+  if (checking || !userId) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -220,6 +246,17 @@ export default function OnboardingQuickSpends() {
                 disabled={loading}
               >
                 Upload Statements Instead
+              </Button>
+            </div>
+
+            {/* Alternative paths */}
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/upload')}>
+                Upload Statements Instead
+              </Button>
+              <span className="text-muted-foreground">or</span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/onboarding/goal-based')}>
+                Try Goal-Based
               </Button>
             </div>
           </Card>

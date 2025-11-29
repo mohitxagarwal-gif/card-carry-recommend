@@ -69,7 +69,7 @@ export const ProtectedRoute = ({
             trackOnboardingGateTriggered(missingFields);
             
             const returnTo = location.pathname + location.search;
-            navigate(`/onboarding/basics?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+            navigate(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
             return;
           }
         }
