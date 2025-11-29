@@ -17,8 +17,8 @@ const TransactionSchema = z.object({
 });
 
 const GenerateRecommendationsSchema = z.object({
-  analysisId: z.string().uuid(),
-  transactions: z.array(TransactionSchema).min(1).max(5000),
+  analysisId: z.string().uuid().nullish(),
+  transactions: z.array(TransactionSchema).min(1).max(5000).optional(),
   profile: z.object({
     age_range: z.string().nullish(),
     income_band_inr: z.string().nullish(),
@@ -29,7 +29,9 @@ const GenerateRecommendationsSchema = z.object({
     travel_frequency: z.string().nullish(),
     lounge_importance: z.string().nullish(),
     preference_type: z.string().nullish()
-  }).nullish()
+  }).nullish(),
+  customWeights: z.record(z.number()).optional(),
+  snapshotType: z.enum(['statement_based', 'quick_spends', 'goal_based']).optional()
 });
 
 serve(async (req) => {
@@ -54,14 +56,16 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { analysisId, transactions, profile, preferences } = GenerateRecommendationsSchema.parse(body);
+    const { analysisId, transactions, profile, preferences, customWeights, snapshotType } = GenerateRecommendationsSchema.parse(body);
     
     console.log('[generate-recommendations] Received request:', {
       userId: user.id,
       analysisId,
-      transactionsCount: transactions.length,
+      transactionsCount: transactions?.length || 0,
       hasProfile: !!profile,
-      hasPreferences: !!preferences
+      hasPreferences: !!preferences,
+      snapshotType: snapshotType || 'statement_based',
+      hasCustomWeights: !!customWeights
     });
     
     // Fetch user profile if not provided
@@ -121,8 +125,9 @@ serve(async (req) => {
     });
 
     // Calculate spending summary from transactions (only debits = actual spending)
-    const debitTransactions = transactions.filter((t: any) => t.transactionType !== 'credit');
-    const creditTransactions = transactions.filter((t: any) => t.transactionType === 'credit');
+    // For manual flows without transactions, fetch from user_features
+    const debitTransactions = transactions?.filter((t: any) => t.transactionType !== 'credit') || [];
+    const creditTransactions = transactions?.filter((t: any) => t.transactionType === 'credit') || [];
     
     const totalSpending = debitTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
     const totalCredits = creditTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
@@ -193,7 +198,7 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
       .maybeSingle();
     
     // If no features, try to derive them
-    if (!userFeaturesData && transactions.length > 0) {
+    if (!userFeaturesData && transactions && transactions.length > 0) {
       console.log('[generate-recommendations] Deriving features from transactions...');
       await supabaseClient.functions.invoke('derive-user-features', {
         body: { userId: user.id }
@@ -248,14 +253,23 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         category_spend: categoryTotals
       };
       
+      // Apply custom weights if provided (for goal-based flows)
+      // Note: scorer.ts doesn't support custom weights yet, so we just log for now
+      if (customWeights) {
+        console.log('[generate-recommendations] Custom weights provided (not yet applied to scoring):', customWeights);
+      }
+      
       // Score each card
       scoredCards = allCards.map(card => {
         const cardEarnRates = (allEarnRates || []).filter(r => r.card_id === card.card_id);
         
-        const { score, explanation } = calculateMatchScore(userFeatures, {
-          ...card,
-          earn_rates: cardEarnRates
-        });
+        const { score, explanation } = calculateMatchScore(
+          userFeatures,
+          {
+            ...card,
+            earn_rates: cardEarnRates
+          }
+        );
         
         return {
           ...card,
@@ -385,31 +399,33 @@ Recommend 3-4 cards with highest scores. Show CALCULATED savings and explain WHY
       };
     }
 
-    // Update the analysis in the database with recommendations
-    const { data: existingAnalysis } = await supabaseClient
-      .from('spending_analyses')
-      .select('analysis_data')
-      .eq('id', analysisId)
-      .single();
-
-    if (existingAnalysis) {
-      const updatedAnalysisData = {
-        ...existingAnalysis.analysis_data,
-        recommendedCards: recommendationsData.recommendedCards,
-        insights: [
-          ...(existingAnalysis.analysis_data.insights || []),
-          ...(recommendationsData.additionalInsights || [])
-        ]
-      };
-
-      const { error: updateError } = await supabaseClient
+    // Update the analysis in the database with recommendations (if analysisId provided)
+    if (analysisId) {
+      const { data: existingAnalysis } = await supabaseClient
         .from('spending_analyses')
-        .update({ analysis_data: updatedAnalysisData })
-        .eq('id', analysisId);
+        .select('analysis_data')
+        .eq('id', analysisId)
+        .single();
 
-      if (updateError) {
-        console.error('Database update error:', updateError);
-        throw updateError;
+      if (existingAnalysis) {
+        const updatedAnalysisData = {
+          ...existingAnalysis.analysis_data,
+          recommendedCards: recommendationsData.recommendedCards,
+          insights: [
+            ...(existingAnalysis.analysis_data.insights || []),
+            ...(recommendationsData.additionalInsights || [])
+          ]
+        };
+
+        const { error: updateError } = await supabaseClient
+          .from('spending_analyses')
+          .update({ analysis_data: updatedAnalysisData })
+          .eq('id', analysisId);
+
+        if (updateError) {
+          console.error('Database update error:', updateError);
+          throw updateError;
+        }
       }
     }
 

@@ -32,7 +32,7 @@ export const InlinePreferencesModal = ({ isOpen, onClose, onSave, analysisId }: 
       return;
     }
     
-    await refreshRecommendations(analysisId);
+    await refreshRecommendations({ analysisId });
     setHasChanges(false);
     onSave?.();
   };

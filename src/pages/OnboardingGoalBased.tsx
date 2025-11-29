@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Target, Plane, ShoppingBag, Utensils, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
+import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { cn } from "@/lib/utils";
 
@@ -118,6 +119,7 @@ export default function OnboardingGoalBased() {
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const deriveFeatures = useDeriveFeatures();
+  const { createSnapshot } = useRecommendationSnapshot();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -140,7 +142,18 @@ export default function OnboardingGoalBased() {
     setLoading(true);
 
     try {
-      // Step 1: Derive features with goal-based weights
+      // Step 1: Mark onboarding as complete
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      // Step 2: Derive features with goal-based weights
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
@@ -159,12 +172,12 @@ export default function OnboardingGoalBased() {
         goal: preset.id,
       });
 
-      // Step 2: Generate recommendations with custom weights
+      // Step 3: Generate recommendations with custom weights (no analysisId for manual flows)
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
         {
           body: {
-            userId,
+            analysisId: null,
             customWeights: preset.customWeights,
             snapshotType: "goal_based",
           },
@@ -173,11 +186,23 @@ export default function OnboardingGoalBased() {
 
       if (error) throw error;
 
+      // Step 4: Create snapshot
+      if (data?.recommendations) {
+        createSnapshot({
+          analysisId: null,
+          savingsMin: 0,
+          savingsMax: 50000,
+          confidence: "medium",
+          recommendedCards: data.recommendations.recommendedCards || [],
+          snapshotType: "goal_based",
+        });
+      }
+
       trackEvent("snapshot_created", {
         userId,
         snapshot_type: "goal_based",
         goal: preset.id,
-        confidence: data.confidence || "medium",
+        confidence: data?.confidence || "medium",
       });
 
       toast.success(`Recommendations tailored for ${preset.title}!`);
