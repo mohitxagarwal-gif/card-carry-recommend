@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [preferences, setPreferences] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const tourChecked = useRef(false);
 
   useEffect(() => {
     console.log('[Dashboard] Component mounted');
@@ -68,22 +69,15 @@ const Dashboard = () => {
     }
   }, [snapshotLoading, shortlistLoading, appsLoading, cardsLoading, shortlist, applications, userCards, latestSnapshot]);
 
-  // Check tour after all data loads
+  // Check tour after all data loads (only once)
   useEffect(() => {
-    if (!snapshotLoading && !shortlistLoading && !appsLoading && !cardsLoading) {
-      console.log('[Dashboard] All data loaded');
-      console.log('[Dashboard] Data:', {
-        hasSnapshot: !!latestSnapshot,
-        shortlistCount: shortlist.length,
-        appsCount: applications.length,
-        cardsCount: userCards.length
-      });
-
+    if (!snapshotLoading && !shortlistLoading && !appsLoading && !cardsLoading && !tourChecked.current) {
+      tourChecked.current = true;
+      
       const hasData = latestSnapshot || shortlist.length > 0 || applications.length > 0;
       const tourCompleted = localStorage.getItem("dashboard_tour_completed");
       
       if (!tourCompleted && latestSnapshot && hasData) {
-        console.log('[Dashboard] Showing tour - first visit with recommendations');
         setShowTour(true);
       }
     }
