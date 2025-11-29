@@ -48,12 +48,12 @@ const Index = () => {
             // Resume at results/transaction review page
             navigate(`/results?analysisId=${latestAnalysis.id}`, { replace: true });
           } else {
-            // Analysis is stale → fresh upload
-            navigate('/upload', { replace: true });
+            // Analysis is stale → fresh onboarding
+            navigate('/onboarding', { replace: true });
           }
         } else {
-          // No analysis at all → Upload
-          navigate('/upload', { replace: true });
+          // No analysis at all → Onboarding
+          navigate('/onboarding', { replace: true });
         }
       }
     };

@@ -117,6 +117,7 @@ export default function OnboardingGoalBased() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const deriveFeatures = useDeriveFeatures();
   const { createSnapshot } = useRecommendationSnapshot();
@@ -128,7 +129,22 @@ export default function OnboardingGoalBased() {
         navigate("/auth");
         return;
       }
+      
+      // Verify profile is complete (age and income)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("age_range, income_band_inr")
+        .eq("id", user.id)
+        .single();
+      
+      if (!profile?.age_range || !profile?.income_band_inr) {
+        toast.error("Please complete your profile first");
+        navigate('/onboarding');
+        return;
+      }
+      
       setUserId(user.id);
+      setChecking(false);
     };
 
     checkAuth();
@@ -142,6 +158,12 @@ export default function OnboardingGoalBased() {
     setLoading(true);
 
     try {
+      // Track goal selection
+      trackEvent("onboarding.goal_selected", {
+        goal_id: preset.id,
+        goal_title: preset.title
+      });
+
       // Step 1: Mark onboarding as complete
       const { error: profileError } = await supabase
         .from("profiles")
@@ -216,7 +238,7 @@ export default function OnboardingGoalBased() {
     }
   };
 
-  if (!userId) {
+  if (checking || !userId) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -301,21 +323,19 @@ export default function OnboardingGoalBased() {
           </div>
 
           {/* Alternative Options */}
-          <div className="flex gap-4 justify-center pt-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate("/onboarding/quick-spends")}
-              disabled={loading}
-            >
-              Enter Spending Manually
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/upload")}
-              disabled={loading}
-            >
-              Upload Statements
-            </Button>
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Want more accurate recommendations?
+            </p>
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/onboarding/quick-spends')} disabled={loading}>
+                Try QuickSpends
+              </Button>
+              <span className="text-muted-foreground">or</span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/upload')} disabled={loading}>
+                SmartScan Upload
+              </Button>
+            </div>
           </div>
         </div>
       </div>

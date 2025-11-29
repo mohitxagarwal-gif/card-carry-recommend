@@ -887,6 +887,15 @@ const Upload = () => {
               {mode === 'mixed' && 'You can add bank and card statements—use whatever you have handy.'}
               {!mode && 'Upload up to 3 months of PDF bank or credit card statements'}
             </p>
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/onboarding/quick-spends')}>
+                Quick Setup Instead
+              </Button>
+              <span className="text-muted-foreground text-sm">or</span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/onboarding/goal-based')}>
+                Try Goal-Based
+              </Button>
+            </div>
           </div>
 
           {/* Recent Analysis Alert */}

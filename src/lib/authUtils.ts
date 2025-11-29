@@ -139,10 +139,10 @@ export const afterAuthRedirect = async (
     console.log('[authUtils.ts:121] Missing fields:', missingFields);
     
     trackOnboardingGateTriggered(missingFields);
-    trackAuthRedirectNext(`/onboarding/profile?returnTo=${encodeURIComponent(safe)}`, 'onboarding');
+    trackAuthRedirectNext(`/onboarding?returnTo=${encodeURIComponent(safe)}`, 'onboarding');
     
-    console.log('[authUtils.ts:126] Navigating to /onboarding/profile');
-    navigate(`/onboarding/profile?returnTo=${encodeURIComponent(safe)}`, { replace: true });
+    console.log('[authUtils.ts:126] Navigating to /onboarding');
+    navigate(`/onboarding?returnTo=${encodeURIComponent(safe)}`, { replace: true });
     return;
   }
   
@@ -171,7 +171,7 @@ export const afterAuthRedirect = async (
     destination = '/dashboard';
     reason = 'has_recommendations';
   } else {
-    destination = '/upload';
+    destination = '/onboarding';
     reason = 'fallback';
   }
   
