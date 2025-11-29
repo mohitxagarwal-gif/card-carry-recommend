@@ -40,9 +40,8 @@ const Footer = () => {
         <div className="mt-12 pt-8 border-t border-hairline space-y-4">
           <div className="max-w-4xl mx-auto space-y-3 text-xs text-subtle text-center">
             <p className="font-body">
-              <strong className="text-ink font-semibold">affiliate disclosure:</strong> some links may be affiliate. 
-              if you apply through them, we may earn a commission—at no extra cost to you. 
-              this helps keep card & carry free.
+              <strong className="text-ink font-semibold">direct links:</strong> all "apply" buttons link directly 
+              to the bank's official application page. we don't earn commissions or fees from applications.
             </p>
             <p className="font-body">
               <strong className="text-ink font-semibold">education note:</strong> our picks are based on your inputs. 

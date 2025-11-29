@@ -55,12 +55,6 @@ export const IssuerOutlinkModal = ({
             We're redirecting you to <span className="font-medium text-foreground">{issuerName}</span>. 
             Please verify all terms and conditions on their official website.
           </p>
-          <div className="bg-accent/50 p-3 rounded-lg">
-            <p className="text-xs text-muted-foreground">
-              <strong>Affiliate Disclosure:</strong> This may be an affiliate link. 
-              We may earn a commission at no additional cost to you. This helps us keep Card & Carry free.
-            </p>
-          </div>
           <div className="flex items-center space-x-2">
             <Checkbox
               id="dont-show"

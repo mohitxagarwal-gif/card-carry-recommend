@@ -348,7 +348,6 @@ const Profile = () => {
             <CardContent className="space-y-2">
               <Button variant="link" className="p-0 h-auto">Terms of Service</Button>
               <Button variant="link" className="p-0 h-auto">Privacy Policy</Button>
-              <Button variant="link" className="p-0 h-auto">Affiliate Disclosure</Button>
             </CardContent>
           </Card>
 

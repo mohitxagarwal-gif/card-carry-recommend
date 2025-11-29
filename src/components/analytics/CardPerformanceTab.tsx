@@ -1,6 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCardPerformance, useCategoryPerformance, useIssuerPerformance } from "@/hooks/useCardAnalytics";
-import { useAffiliatePerformance } from "@/hooks/useAffiliateAnalytics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,9 +12,8 @@ export const CardPerformanceTab = () => {
   const { data: cardPerformance, isLoading: cardsLoading } = useCardPerformance();
   const { data: categoryPerformance, isLoading: categoriesLoading } = useCategoryPerformance();
   const { data: issuerPerformance, isLoading: issuersLoading } = useIssuerPerformance();
-  const { data: affiliatePerformance, isLoading: affiliateLoading } = useAffiliatePerformance();
 
-  if (cardsLoading || categoriesLoading || issuersLoading || affiliateLoading) {
+  if (cardsLoading || categoriesLoading || issuersLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-64" />
@@ -26,38 +24,6 @@ export const CardPerformanceTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Affiliate Performance Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Affiliate Clicks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{affiliatePerformance?.totalClicks || 0}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Clicks (30d)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{affiliatePerformance?.last30Days || 0}</div>
-            <p className="text-xs text-muted-foreground">Last 30 days</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Est. Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₹{Math.round(affiliatePerformance?.topCards?.reduce((sum, c) => sum + (c.estimatedRevenue || 0), 0) || 0).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Potential earnings</p>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Top Performing Cards */}
       <Card>

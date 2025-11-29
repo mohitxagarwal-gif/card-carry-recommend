@@ -304,11 +304,11 @@ SELECT card_id, added_at FROM user_shortlist WHERE user_id = '<user_id>';
 
 **SQL Verification**:
 ```sql
--- Check affiliate click logged
-SELECT user_id, card_id, clicked_at, utm_source, utm_medium
-FROM affiliate_clicks
+-- Check application tracking (note: no affiliate tracking)
+SELECT user_id, card_id, status, applied_date
+FROM card_applications
 WHERE user_id = '<user_id>' AND card_id = '<card_id>'
-ORDER BY clicked_at DESC LIMIT 1;
+ORDER BY created_at DESC LIMIT 1;
 ```
 
 ### Test Scenario: Track Card Application Status

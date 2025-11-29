@@ -14,7 +14,6 @@
 | `recs_viewed` | User viewed recommendations | `snapshot_id`, `card_count` | `Results.tsx` |
 | `card_shortlisted` | User added card to shortlist | `card_id`, `source` (recs/cards/dashboard) | Various |
 | `recs_apply_click` | User clicked "Apply" on recommended card | `card_id`, `rank`, `match_score` | `CardActionBar.tsx` |
-| `data_export` | User exported their data | (none) | `Profile.tsx` |
 | `parse_failed` | Statement parsing failed | `error_type`, `file_name` | `Upload.tsx` |
 | `edge_function_error` | Edge function invocation failed | `function_name`, `error_message` | Edge functions |
 
@@ -90,10 +89,10 @@ daily_recs AS (
   GROUP BY DATE(created_at)
 ),
 daily_applies AS (
-  SELECT DATE(clicked_at) as date, COUNT(DISTINCT user_id) as clicked_apply
-  FROM affiliate_clicks
-  WHERE clicked_at >= now() - interval '30 days'
-  GROUP BY DATE(clicked_at)
+  SELECT DATE(created_at) as date, COUNT(DISTINCT user_id) as clicked_apply
+  FROM card_applications
+  WHERE created_at >= now() - interval '30 days' AND status = 'applied'
+  GROUP BY DATE(created_at)
 )
 
 SELECT
