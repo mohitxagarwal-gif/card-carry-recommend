@@ -482,8 +482,6 @@ export type Database = {
       }
       credit_cards: {
         Row: {
-          affiliate_commission_rate: number | null
-          affiliate_partner: string | null
           annual_fee: number
           application_url: string | null
           best_use_cases: string | null
@@ -528,8 +526,6 @@ export type Database = {
           welcome_bonus: string
         }
         Insert: {
-          affiliate_commission_rate?: number | null
-          affiliate_partner?: string | null
           annual_fee: number
           application_url?: string | null
           best_use_cases?: string | null
@@ -574,8 +570,6 @@ export type Database = {
           welcome_bonus: string
         }
         Update: {
-          affiliate_commission_rate?: number | null
-          affiliate_partner?: string | null
           annual_fee?: number
           application_url?: string | null
           best_use_cases?: string | null
