@@ -151,29 +151,40 @@ const Dashboard = () => {
         return;
       }
 
-      // Get latest analysis
+      // Get latest analysis (may be null for manual onboarding flows)
       const { data: latestAnalysis } = await supabase
         .from('spending_analyses')
         .select('id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (!latestAnalysis) {
-        toast.error("No analysis found. Please upload statements first.");
+      // Check if we have user features (required for manual flows)
+      const { data: userFeatures } = await supabase
+        .from('user_features')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!latestAnalysis && !userFeatures) {
+        toast.error("No data found. Please upload statements or complete onboarding first.");
         return;
       }
 
-      // Step 1: Derive features
-      await deriveFeatures.mutateAsync({
-        userId: user.id,
-        analysisId: latestAnalysis.id,
-      });
+      // Step 1: Derive/update features
+      if (latestAnalysis) {
+        await deriveFeatures.mutateAsync({
+          userId: user.id,
+          analysisId: latestAnalysis.id,
+        });
+      }
 
-      // Step 2: Generate new recommendations
+      // Step 2: Generate new recommendations (works with or without analysisId)
       const { data: recData, error: recError } = await supabase.functions.invoke("generate-recommendations", {
-        body: { analysisId: latestAnalysis.id },
+        body: { 
+          analysisId: latestAnalysis?.id || null,
+        },
       });
 
       if (recError) throw recError;
@@ -181,7 +192,7 @@ const Dashboard = () => {
       // Step 3: Create new snapshot
       if (recData?.recommendations) {
         createSnapshot({
-          analysisId: latestAnalysis.id,
+          analysisId: latestAnalysis?.id || null,
           savingsMin: recData.savingsMin || 0,
           savingsMax: recData.savingsMax || 0,
           confidence: recData.confidence || 'medium',
@@ -190,7 +201,10 @@ const Dashboard = () => {
       }
 
       toast.success("Recommendations refreshed successfully!");
-      trackEvent("recommendations_refresh", { source: "dashboard" });
+      trackEvent("recommendations_refresh", { 
+        source: "dashboard",
+        hasAnalysis: !!latestAnalysis
+      });
       window.location.reload(); // Reload to show updated data
     } catch (error: any) {
       console.error("Refresh error:", error);

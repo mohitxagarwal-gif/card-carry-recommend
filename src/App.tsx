@@ -15,7 +15,10 @@ import { initMixpanel, identifyUser, setUserProperties, buildUserProperties, tra
 import { useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import OnboardingStart from "./pages/OnboardingStart";
 import OnboardingQuickProfile from "./pages/OnboardingQuickProfile";
+import OnboardingQuickSpends from "./pages/OnboardingQuickSpends";
+import OnboardingGoalBased from "./pages/OnboardingGoalBased";
 import Upload from "./pages/Upload";
 import Results from "./pages/Results";
 import Recommendations from "./pages/Recommendations";
@@ -158,10 +161,25 @@ const AppContent = () => {
             <Route path="/" element={<Index />} />
             <Route path="/about" element={<About />} />
             <Route path="/auth" element={<Auth />} />
-      {/* Streamlined onboarding - single quick profile step */}
+      {/* Streamlined onboarding - choose your path */}
+      <Route path="/onboarding" element={
+        <ProtectedRoute requireOnboarding={false}>
+          <OnboardingStart />
+        </ProtectedRoute>
+      } />
       <Route path="/onboarding/profile" element={
         <ProtectedRoute requireOnboarding={false}>
           <OnboardingQuickProfile />
+        </ProtectedRoute>
+      } />
+      <Route path="/onboarding/quick-spends" element={
+        <ProtectedRoute requireOnboarding={false}>
+          <OnboardingQuickSpends />
+        </ProtectedRoute>
+      } />
+      <Route path="/onboarding/goal-based" element={
+        <ProtectedRoute requireOnboarding={false}>
+          <OnboardingGoalBased />
         </ProtectedRoute>
       } />
       

@@ -32,12 +32,14 @@ export const useRecommendationSnapshot = () => {
       savingsMax,
       confidence,
       recommendedCards,
+      snapshotType,
     }: {
       analysisId: string | null;
       savingsMin: number;
       savingsMax: number;
       confidence: 'low' | 'medium' | 'high';
       recommendedCards: any[];
+      snapshotType?: 'statement_based' | 'quick_spends' | 'goal_based';
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -52,6 +54,7 @@ export const useRecommendationSnapshot = () => {
           savings_max: savingsMax,
           confidence,
           recommended_cards: recommendedCards,
+          snapshot_type: snapshotType || 'statement_based',
         })
         .select()
         .single();
@@ -97,22 +100,28 @@ export const useRecommendationSnapshot = () => {
   });
 
   const refreshRecommendations = useMutation({
-    mutationFn: async (analysisId: string) => {
+    mutationFn: async (params: { analysisId?: string | null; customWeights?: Record<string, number>; snapshotType?: string } = {}) => {
+      const { analysisId, customWeights, snapshotType } = params;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Fetch the analysis data which contains transactions
-      const { data: analysis, error: analysisError } = await supabase
-        .from('spending_analyses')
-        .select('analysis_data')
-        .eq('id', analysisId)
-        .single();
-
-      if (analysisError) throw analysisError;
+      let transactions = undefined;
       
-      const analysisData = analysis?.analysis_data as any;
-      if (!analysisData?.transactions) {
-        throw new Error("No transaction data found in analysis");
+      // Fetch the analysis data if analysisId provided
+      if (analysisId) {
+        const { data: analysis, error: analysisError } = await supabase
+          .from('spending_analyses')
+          .select('analysis_data')
+          .eq('id', analysisId)
+          .single();
+
+        if (analysisError) throw analysisError;
+        
+        const analysisData = analysis?.analysis_data as any;
+        if (!analysisData?.transactions) {
+          throw new Error("No transaction data found in analysis");
+        }
+        transactions = analysisData.transactions;
       }
 
       // Fetch user profile and preferences
@@ -131,9 +140,12 @@ export const useRecommendationSnapshot = () => {
       // Call edge function with transactions and updated preferences
       const { data, error } = await supabase.functions.invoke('generate-recommendations', {
         body: {
-          transactions: analysisData.transactions,
+          analysisId: analysisId || null,
+          transactions,
           profile: profile || undefined,
-          preferences: preferences || undefined
+          preferences: preferences || undefined,
+          customWeights,
+          snapshotType
         }
       });
 

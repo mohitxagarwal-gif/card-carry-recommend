@@ -61,7 +61,18 @@ export default function OnboardingQuickSpends() {
 
     setLoading(true);
     try {
-      // Step 1: Derive features from manual input
+      // Step 1: Mark onboarding as complete
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      // Step 2: Derive features from manual input
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
@@ -78,12 +89,12 @@ export default function OnboardingQuickSpends() {
         data_source: "self_report",
       });
 
-      // Step 2: Generate recommendations
+      // Step 3: Generate recommendations (no analysisId for manual flows)
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
         {
           body: {
-            userId,
+            analysisId: null,
             snapshotType: "quick_spends",
           },
         }
@@ -91,10 +102,22 @@ export default function OnboardingQuickSpends() {
 
       if (error) throw error;
 
+      // Step 4: Create snapshot
+      if (data?.recommendations) {
+        createSnapshot({
+          analysisId: null,
+          savingsMin: 0,
+          savingsMax: 50000,
+          confidence: "medium",
+          recommendedCards: data.recommendations.recommendedCards || [],
+          snapshotType: "quick_spends",
+        });
+      }
+
       trackEvent("snapshot_created", {
         userId,
         snapshot_type: "quick_spends",
-        confidence: data.confidence || "medium",
+        confidence: data?.confidence || "medium",
       });
 
       toast.success("Recommendations generated successfully!");
