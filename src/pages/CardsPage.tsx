@@ -16,11 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { FilterIcon, XIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 const CardsPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: creditCards = [], isLoading } = useCards();
+  const [user, setUser] = useState<User | null>(null);
   
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedIssuers, setSelectedIssuers] = useState<string[]>(
@@ -41,6 +44,15 @@ const CardsPage = () => {
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "");
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
   const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
+
+  // Check auth state
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Update URL when filters change
   useEffect(() => {
@@ -143,8 +155,10 @@ const CardsPage = () => {
     return cards;
   }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, sortBy, creditCards]);
 
-  // Show nudge after filters applied
+  // Show nudge after filters applied (only for non-logged-in users)
   useEffect(() => {
+    if (user) return; // Skip toast for logged-in users
+    
     const filterCount = selectedIssuers.length + selectedRewardTypes.length + selectedPerks.length + selectedNetworks.length;
     const hasFilters = filterCount >= 2 || search || selectedFeeRange || selectedForexRange;
     
@@ -162,7 +176,7 @@ const CardsPage = () => {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [selectedIssuers, selectedRewardTypes, selectedPerks, selectedNetworks, search, selectedFeeRange, selectedForexRange, hasAppliedFilters, navigate]);
+  }, [selectedIssuers, selectedRewardTypes, selectedPerks, selectedNetworks, search, selectedFeeRange, selectedForexRange, hasAppliedFilters, navigate, user]);
 
   if (isLoading) {
     return (
@@ -405,17 +419,19 @@ const CardsPage = () => {
             <div className="mb-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <h1 className="text-3xl lg:text-4xl font-heading font-bold text-foreground mb-2">
-                  explore & compare credit cards (india)
+                  {user ? "explore all cards" : "explore & compare credit cards (india)"}
                 </h1>
                 <p className="text-base lg:text-lg font-sans text-muted-foreground">
-                  Browse all active cards. Filter by fees, perks, and networks. Compare side-by-side.
+                  {user 
+                    ? "Browse all cards and compare with your personalized recommendations" 
+                    : "Browse all active cards. Filter by fees, perks, and networks. Compare side-by-side."}
                 </p>
               </div>
               <Button
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate(user ? "/recs" : "/auth")}
                 className="shrink-0 font-sans"
               >
-                Get personalized picks →
+                {user ? "View your recommendations →" : "Get personalized picks →"}
               </Button>
             </div>
 
