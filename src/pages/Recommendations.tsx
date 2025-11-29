@@ -35,6 +35,7 @@ const Recommendations = () => {
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [userFeatures, setUserFeatures] = useState<any>(null);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [filterIssuer, setFilterIssuer] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'match' | 'savings' | 'fee'>('match');
@@ -62,8 +63,16 @@ const Recommendations = () => {
           .eq('user_id', user.id)
           .maybeSingle();
 
+        // Fetch user features (for manual flows)
+        const { data: features } = await supabase
+          .from('user_features')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
         setUserProfile(profile);
         setUserPreferences(prefs);
+        setUserFeatures(features);
 
         // If we have a snapshot, fetch the associated analysis
         if (latestSnapshot?.analysis_id) {
@@ -192,6 +201,7 @@ const Recommendations = () => {
               <SpendingInsightsPanel
                 analysisData={analysisData}
                 snapshot={latestSnapshot}
+                userFeatures={userFeatures}
               />
             </div>
             <div>

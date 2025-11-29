@@ -359,6 +359,11 @@ const Dashboard = () => {
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
                       estimated annual savings
+            {(latestSnapshot as any).snapshot_type && (latestSnapshot as any).snapshot_type !== 'statement_based' && (
+              <span className="text-xs font-normal text-muted-foreground ml-2">
+                ({(latestSnapshot as any).snapshot_type === 'quick_spends' ? 'based on estimates' : 'goal-optimized'})
+              </span>
+            )}
                     </CardTitle>
                     <Button
                       variant="outline"
@@ -385,6 +390,12 @@ const Dashboard = () => {
                     }>
                       {latestSnapshot.confidence} confidence
                     </Badge>
+                    {(latestSnapshot as any).snapshot_type !== 'statement_based' && (
+                      <p className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
+                        <Sparkles className="w-4 h-4" />
+                        Upload statements for more accurate recommendations
+                      </p>
+                    )}
                     <Button 
                       variant="outline" 
                       size="sm" 
