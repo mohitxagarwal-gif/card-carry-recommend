@@ -9,6 +9,13 @@ interface DeriveRequest {
     spendSplit: Record<string, number>;
   };
   analysisId?: string;
+  options?: {
+    data_source?: 'statements' | 'self_report' | 'goal_based';
+    pif_score?: number;
+    fee_tolerance_numeric?: number;
+    acceptance_risk_amex?: number;
+    custom_weights?: Record<string, number>;
+  };
 }
 
 export const useDeriveFeatures = () => {

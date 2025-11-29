@@ -63,8 +63,6 @@ interface DetailedCardData {
   hidden_fees?: string;
   comparison_notes?: string;
   image_url?: string;
-  affiliate_partner?: string;
-  affiliate_commission_rate?: number;
 }
 
 const CardDetailsManager = () => {
@@ -85,8 +83,6 @@ const CardDetailsManager = () => {
     hidden_fees: "",
     comparison_notes: "",
     image_url: "",
-    affiliate_partner: "",
-    affiliate_commission_rate: undefined,
   });
   const [jsonErrors, setJsonErrors] = useState<Record<string, string>>({});
 
@@ -138,8 +134,6 @@ const CardDetailsManager = () => {
         hidden_fees: data.hidden_fees || "",
         comparison_notes: data.comparison_notes || "",
         image_url: data.image_url || "",
-        affiliate_partner: data.affiliate_partner || "",
-        affiliate_commission_rate: data.affiliate_commission_rate || undefined,
       });
     }
     setLoading(false);
@@ -207,8 +201,6 @@ const CardDetailsManager = () => {
           hidden_fees: formData.hidden_fees || null,
           comparison_notes: formData.comparison_notes || null,
           image_url: formData.image_url || null,
-          affiliate_partner: formData.affiliate_partner || null,
-          affiliate_commission_rate: formData.affiliate_commission_rate || null,
         })
         .eq("id", id);
 

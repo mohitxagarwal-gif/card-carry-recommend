@@ -13,6 +13,13 @@ interface DeriveRequest {
     spendSplit: Record<string, number>;
   };
   analysisId?: string;
+  options?: {
+    data_source?: 'statements' | 'self_report' | 'goal_based';
+    pif_score?: number;
+    fee_tolerance_numeric?: number;
+    acceptance_risk_amex?: number;
+    custom_weights?: Record<string, number>;
+  };
 }
 
 serve(async (req) => {
@@ -26,7 +33,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { userId, spendData, analysisId } = await req.json() as DeriveRequest;
+    const { userId, spendData, analysisId, options } = await req.json() as DeriveRequest;
 
     console.log(`[derive-user-features] Starting for user ${userId}`);
 
@@ -140,10 +147,10 @@ serve(async (req) => {
       console.log(`[derive-user-features] Applied defaults: ${monthlySpendEstimate}/mo, confidence: ${featureConfidence}`);
     }
 
-    // 3. Calculate derived features
-    const pifScore = calculatePIFScore(profile.pay_in_full_habit);
-    const feeToleranceMax = calculateFeeToleranceMax(prefs?.fee_tolerance_band);
-    const acceptanceRiskAmex = calculateAmexRisk(profile.pincode, profile.city);
+    // 3. Calculate derived features (with option overrides)
+    const pifScore = options?.pif_score ?? calculatePIFScore(profile.pay_in_full_habit);
+    const feeToleranceMax = options?.fee_tolerance_numeric ?? calculateFeeToleranceMax(prefs?.fee_tolerance_band);
+    const acceptanceRiskAmex = options?.acceptance_risk_amex ?? calculateAmexRisk(profile.pincode, profile.city);
 
     // Normalize category shares
     const onlineShare = spendSplit['online'] || spendSplit['online shopping'] || 0;
@@ -155,6 +162,22 @@ serve(async (req) => {
     const entertainmentShare = spendSplit['entertainment'] || 0;
     const forexShare = spendSplit['forex'] || spendSplit['international'] || 0;
 
+    // Override data_source if provided in options
+    if (options?.data_source) {
+      featureSource = options.data_source;
+    }
+    
+    // Calculate feature confidence based on source + completeness
+    if (options?.data_source === 'goal_based') {
+      featureConfidence = 0.5; // Medium confidence for goal-based
+    } else if (options?.data_source === 'self_report') {
+      // Base 0.5, increase with completeness
+      const hasSpendData = !!spendData;
+      const hasPreferences = !!(prefs?.fee_tolerance_band || prefs?.travel_frequency);
+      const completeness = (hasSpendData ? 0.5 : 0) + (hasPreferences ? 0.5 : 0);
+      featureConfidence = 0.5 * (0.6 + 0.4 * completeness);
+    }
+    
     // 4. Upsert to user_features
     const { error: featuresError } = await supabaseClient
       .from('user_features')
@@ -178,6 +201,7 @@ serve(async (req) => {
         last_statement_date: lastStmtEnd,
         feature_confidence: featureConfidence,
         transaction_count: transactionCount,
+        custom_weights: options?.custom_weights || null,
         updated_at: new Date().toISOString(),
       });
 
