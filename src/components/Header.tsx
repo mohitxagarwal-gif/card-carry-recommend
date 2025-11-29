@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
@@ -9,8 +9,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
-  const [currentPath, setCurrentPath] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -25,9 +25,6 @@ const Header = () => {
       setUser(session?.user || null);
     });
 
-    // Track current path for active state
-    setCurrentPath(window.location.pathname);
-
     // Handle scroll for glass effect
     const handleScroll = () => setIsScrolled(window.scrollY > 24);
     window.addEventListener('scroll', handleScroll);
@@ -38,7 +35,15 @@ const Header = () => {
     };
   }, []);
 
-  const isActive = (path: string) => currentPath === path;
+  const isActive = (path: string) => location.pathname === path;
+
+  const handleLogoClick = () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/");
+    }
+  };
 
   const handleNavClick = (path: string) => {
     navigate(path);
@@ -54,7 +59,7 @@ const Header = () => {
       <div className="container mx-auto px-4 md:px-6 lg:px-12 py-4 md:py-6">
         <div className="flex items-center justify-between">
           <button 
-            onClick={() => navigate("/")}
+            onClick={handleLogoClick}
             className="flex items-center cursor-pointer focus-ring"
           >
             <h1 className="text-xl md:text-2xl font-heading font-bold text-ink tracking-tight">
