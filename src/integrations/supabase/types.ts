@@ -962,6 +962,7 @@ export type Database = {
           recommended_cards: Json
           savings_max: number
           savings_min: number
+          snapshot_type: string | null
           updated_at: string
           user_id: string
         }
@@ -973,6 +974,7 @@ export type Database = {
           recommended_cards?: Json
           savings_max: number
           savings_min: number
+          snapshot_type?: string | null
           updated_at?: string
           user_id: string
         }
@@ -984,6 +986,7 @@ export type Database = {
           recommended_cards?: Json
           savings_max?: number
           savings_min?: number
+          snapshot_type?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1141,6 +1144,7 @@ export type Database = {
           bills_utilities_share: number | null
           cabs_fuel_share: number | null
           created_at: string | null
+          custom_weights: Json | null
           data_source: string | null
           dining_share: number | null
           entertainment_share: number | null
@@ -1166,6 +1170,7 @@ export type Database = {
           bills_utilities_share?: number | null
           cabs_fuel_share?: number | null
           created_at?: string | null
+          custom_weights?: Json | null
           data_source?: string | null
           dining_share?: number | null
           entertainment_share?: number | null
@@ -1191,6 +1196,7 @@ export type Database = {
           bills_utilities_share?: number | null
           cabs_fuel_share?: number | null
           created_at?: string | null
+          custom_weights?: Json | null
           data_source?: string | null
           dining_share?: number | null
           entertainment_share?: number | null
