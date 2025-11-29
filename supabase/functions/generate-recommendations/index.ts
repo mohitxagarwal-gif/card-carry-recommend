@@ -297,12 +297,11 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
       };
       
       // Apply custom weights if provided (for goal-based flows)
-      // Note: scorer.ts doesn't support custom weights yet, so we just log for now
       if (customWeights) {
-        console.log('[generate-recommendations] Custom weights provided (not yet applied to scoring):', customWeights);
+        console.log('[generate-recommendations] Custom weights provided:', customWeights);
       }
       
-      // Score each card
+      // Score each card (pass customWeights to scorer)
       scoredCards = allCards.map(card => {
         const cardEarnRates = (allEarnRates || []).filter(r => r.card_id === card.card_id);
         
@@ -311,7 +310,8 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
           {
             ...card,
             earn_rates: cardEarnRates
-          }
+          },
+          customWeights // Pass custom weights to scorer
         );
         
         return {

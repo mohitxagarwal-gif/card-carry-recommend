@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Target, Plane, ShoppingBag, Utensils, Sparkles } from "lucide-react";
+import { Loader2, Target, Plane, ShoppingBag, Utensils, Sparkles, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
 import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { cn } from "@/lib/utils";
+import { GoalQuestionModal } from "@/components/onboarding/GoalQuestionModal";
+import { CustomGoalChat } from "@/components/onboarding/CustomGoalChat";
 
 interface GoalPreset {
   id: string;
@@ -119,6 +121,9 @@ export default function OnboardingGoalBased() {
   const [userId, setUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [showCustomChat, setShowCustomChat] = useState(false);
+  const [currentPreset, setCurrentPreset] = useState<GoalPreset | null>(null);
   const deriveFeatures = useDeriveFeatures();
   const { createSnapshot } = useRecommendationSnapshot();
 
@@ -151,17 +156,39 @@ export default function OnboardingGoalBased() {
     trackEvent("onboarding.path_selected", { path: "goal_based" });
   }, [navigate]);
 
-  const handleGoalSelect = async (preset: GoalPreset) => {
+  const handleGoalSelect = (preset: GoalPreset) => {
+    if (!userId) return;
+    setCurrentPreset(preset);
+    setShowQuestionModal(true);
+  };
+
+  const handleCustomGoalSelect = () => {
+    if (!userId) return;
+    setShowCustomChat(true);
+  };
+
+  const processGoalRecommendations = async (
+    goalData: {
+      monthlySpend: number;
+      spendSplit: Record<string, number>;
+      customWeights?: Record<string, number>;
+      goalDescription?: string;
+    },
+    preset?: GoalPreset
+  ) => {
     if (!userId) return;
 
-    setSelectedGoal(preset.id);
+    const weights = goalData.customWeights || preset?.customWeights || {};
+    const goalId = preset?.id || "custom_goal";
+    const goalTitle = preset?.title || goalData.goalDescription || "Custom Goal";
+
+    setSelectedGoal(goalId);
     setLoading(true);
 
     try {
-      // Track goal selection
       trackEvent("onboarding.goal_selected", {
-        goal_id: preset.id,
-        goal_title: preset.title
+        goal_id: goalId,
+        goal_title: goalTitle,
       });
 
       // Step 1: Mark onboarding as complete
@@ -175,38 +202,41 @@ export default function OnboardingGoalBased() {
 
       if (profileError) throw profileError;
 
-      // Step 2: Derive features with goal-based weights
+      // Step 2: Derive features
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
-          monthlySpend: preset.estimatedSpend,
-          spendSplit: preset.spendSplit,
+          monthlySpend: goalData.monthlySpend,
+          spendSplit: goalData.spendSplit,
         },
         options: {
           data_source: "goal_based",
-          custom_weights: preset.customWeights,
+          custom_weights: weights,
         },
       });
 
       trackEvent("derive_features_called", {
         userId,
         data_source: "goal_based",
-        goal: preset.id,
+        goal: goalId,
       });
 
-      // Step 3: Generate recommendations with custom weights (no analysisId for manual flows)
+      // Step 3: Generate recommendations
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
         {
           body: {
             analysisId: null,
-            customWeights: preset.customWeights,
+            customWeights: weights,
             snapshotType: "goal_based",
           },
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        console.error("Recommendation generation error:", error);
+        throw error;
+      }
 
       // Step 4: Create snapshot
       if (data?.recommendations) {
@@ -223,18 +253,20 @@ export default function OnboardingGoalBased() {
       trackEvent("snapshot_created", {
         userId,
         snapshot_type: "goal_based",
-        goal: preset.id,
+        goal: goalId,
         confidence: data?.confidence || "medium",
       });
 
-      toast.success(`Recommendations tailored for ${preset.title}!`);
+      toast.success(`Recommendations tailored for ${goalTitle}!`);
       navigate("/recs");
     } catch (error: any) {
       console.error("Goal-based error:", error);
-      toast.error("Failed to generate recommendations");
+      toast.error("Failed to generate recommendations. Please try again.");
     } finally {
       setLoading(false);
       setSelectedGoal(null);
+      setShowQuestionModal(false);
+      setShowCustomChat(false);
     }
   };
 
@@ -320,7 +352,66 @@ export default function OnboardingGoalBased() {
                 </Card>
               );
             })}
+
+            {/* Custom Goal Card */}
+            <Card
+              className={cn(
+                "cursor-pointer transition-all hover:shadow-lg hover:border-primary/50 border-dashed",
+                selectedGoal === "custom_goal" && "border-primary shadow-lg"
+              )}
+              onClick={() => !loading && handleCustomGoalSelect()}
+            >
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-lg bg-primary/10">
+                    <MessageSquare className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-xl mb-2">
+                      Custom Goal - Chat with AI
+                    </CardTitle>
+                    <CardDescription>
+                      Tell us your unique spending habits and priorities
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Our AI will ask you a few questions to understand your needs and find the perfect cards for you.
+                </p>
+                {selectedGoal === "custom_goal" && loading && (
+                  <div className="flex items-center justify-center gap-2 mt-4 text-sm text-primary">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating recommendations...
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
+
+          {/* Modals */}
+          {currentPreset && (
+            <GoalQuestionModal
+              open={showQuestionModal}
+              goalId={currentPreset.id}
+              goalTitle={currentPreset.title}
+              defaultSpend={currentPreset.estimatedSpend}
+              onComplete={(data) =>
+                processGoalRecommendations(data, currentPreset)
+              }
+              onCancel={() => {
+                setShowQuestionModal(false);
+                setCurrentPreset(null);
+              }}
+            />
+          )}
+
+          <CustomGoalChat
+            open={showCustomChat}
+            onComplete={(data) => processGoalRecommendations(data)}
+            onCancel={() => setShowCustomChat(false)}
+          />
 
           {/* Alternative Options */}
           <div className="text-center space-y-2">
