@@ -124,18 +124,60 @@ serve(async (req) => {
       hasPreferenceType: !!userPreferences?.preference_type
     });
 
+    // Fetch user features early (needed for manual flows)
+    console.log('[generate-recommendations] Fetching user features...');
+    const { data: userFeaturesData } = await supabaseClient
+      .from('user_features')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     // Calculate spending summary from transactions (only debits = actual spending)
     // For manual flows without transactions, fetch from user_features
     const debitTransactions = transactions?.filter((t: any) => t.transactionType !== 'credit') || [];
     const creditTransactions = transactions?.filter((t: any) => t.transactionType === 'credit') || [];
     
-    const totalSpending = debitTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    let totalSpending = debitTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
     const totalCredits = creditTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
     
-    const categoryTotals: Record<string, number> = {};
+    let categoryTotals: Record<string, number> = {};
     debitTransactions.forEach((t: any) => {
       categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
     });
+    
+    let spendingSummarySource = 'transactions';
+    
+    // If no transactions, build from user_features (QuickSpends/Goal-Based flows)
+    if (debitTransactions.length === 0 && userFeaturesData) {
+      spendingSummarySource = 'user_features';
+      const monthlySpend = userFeaturesData.monthly_spend_estimate || 50000;
+      totalSpending = monthlySpend;
+      
+      // Map user_features spend shares to category totals
+      const categoryMapping: Record<string, string> = {
+        'online_share': 'Online',
+        'dining_share': 'Dining',
+        'groceries_share': 'Groceries',
+        'travel_share': 'Travel',
+        'entertainment_share': 'Entertainment',
+        'bills_utilities_share': 'Bills & Utilities',
+        'cabs_fuel_share': 'Fuel',
+        'rent_share': 'Rent',
+        'forex_share': 'International'
+      };
+      
+      for (const [key, categoryName] of Object.entries(categoryMapping)) {
+        const shareValue = userFeaturesData[key as keyof typeof userFeaturesData];
+        if (typeof shareValue === 'number' && shareValue > 0) {
+          categoryTotals[categoryName] = monthlySpend * shareValue;
+        }
+      }
+      
+      console.log('[generate-recommendations] Built spending from user_features:', {
+        monthlySpend,
+        categoryCount: Object.keys(categoryTotals).length
+      });
+    }
     
     // Get top merchants by spending
     const merchantTotals: Record<string, number> = {};
@@ -166,36 +208,37 @@ serve(async (req) => {
 
     const topCategories = categories.slice(0, 5);
 
+    // Data source context for AI prompting
+    const dataSourceNote = snapshotType === 'quick_spends'
+      ? 'User provided estimated spending patterns (self-reported, may be less granular than statement analysis)'
+      : snapshotType === 'goal_based'
+      ? 'User is optimizing for specific goals - prioritize cards matching their stated priorities'
+      : 'Spending calculated from actual bank statement transactions (highest precision)';
+
     // Format data for AI with enhanced context
     const spendingSummary = `
-SPENDING OVERVIEW:
+SPENDING OVERVIEW (Source: ${spendingSummarySource}):
 Total Debits (Spending): ₹${totalSpending.toLocaleString('en-IN')}
-Total Credits (Refunds/Income): ₹${totalCredits.toLocaleString('en-IN')}
+${debitTransactions.length > 0 ? `Total Credits (Refunds/Income): ₹${totalCredits.toLocaleString('en-IN')}
 Net Spending: ₹${(totalSpending - totalCredits).toLocaleString('en-IN')}
 Number of Transactions: ${debitTransactions.length} debits, ${creditTransactions.length} credits
-Average Transaction Size: ₹${(totalSpending / debitTransactions.length).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+Average Transaction Size: ₹${(totalSpending / debitTransactions.length).toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : 'Monthly estimate provided by user'}
 
-TOP MERCHANTS (by spending):
+${topMerchants.length > 0 ? `TOP MERCHANTS (by spending):
 ${topMerchants.join('\n')}
 
 RECURRING EXPENSES:
-${recurringMerchants.length > 0 ? recurringMerchants.slice(0, 5).join(', ') : 'None detected'}
+${recurringMerchants.length > 0 ? recurringMerchants.slice(0, 5).join(', ') : 'None detected'}` : ''}
 
 TOP SPENDING CATEGORIES:
-${topCategories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')} (${cat.percentage.toFixed(1)}% of total spending)`).join('\n')}
+${topCategories.length > 0 ? topCategories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')} (${cat.percentage.toFixed(1)}% of total spending)`).join('\n') : 'No category breakdown available'}
 
-ALL CATEGORIES BREAKDOWN:
-${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')}`).join('\n')}
+${categories.length > 5 ? `ALL CATEGORIES BREAKDOWN:
+${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN')}`).join('\n')}` : ''}
     `.trim();
 
-    // Phase 5: Fetch user features and use scoring
-    console.log('[generate-recommendations] Fetching user features and card earn rates...');
-    
-    const { data: userFeaturesData } = await supabaseClient
-      .from('user_features')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // Phase 5: Fetch card earn rates and use scoring
+    console.log('[generate-recommendations] Fetching card earn rates...');
     
     // If no features, try to derive them
     if (!userFeaturesData && transactions && transactions.length > 0) {
@@ -250,7 +293,7 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         entertainment_share: userFeaturesData.entertainment_share || 0,
         online_share: userFeaturesData.online_share || 0,
         forex_share: userFeaturesData.forex_share || 0,
-        category_spend: categoryTotals
+        category_spend: Object.keys(categoryTotals).length > 0 ? categoryTotals : {}
       };
       
       // Apply custom weights if provided (for goal-based flows)
@@ -313,6 +356,8 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
             role: 'system',
             content: `You are a credit card recommendation expert for Indian users. Our AI scoring engine has already ranked cards by fit score. Focus on the TOP-SCORING cards below.
 
+DATA CONTEXT: ${dataSourceNote}
+
 USER PROFILE:
 - Age: ${normalizedProfile.age_range}${userProfile?.age_range ? '' : ' (estimated)'}
 - Income: ${normalizedProfile.income_band_inr}${userProfile?.income_band_inr ? '' : ' (estimated)'}/month
@@ -326,11 +371,12 @@ ${cardContext}
 CRITICAL RULES:
 - ONLY recommend cards from the above list
 - Prioritize cards with higher match scores (75+ are excellent fits)
-- Use ACTUAL spending data to calculate savings
+- Use ${spendingSummarySource === 'transactions' ? 'ACTUAL spending data' : 'estimated spending'} to calculate savings
 - Focus on the top 3-4 cards with best scores
 - Consider fee vs benefits tradeoff for each income band
 - For travel frequency 'frequent', emphasize lounge/forex benefits
 - For fee_sensitivity 'high', prioritize cards with scores 75+ AND fees under ₹1500
+${snapshotType === 'goal_based' ? '- User has specific goals - prioritize cards matching their stated goals' : ''}
 
 Return ONLY valid JSON with this EXACT structure (no markdown):
 {
@@ -348,7 +394,8 @@ Return ONLY valid JSON with this EXACT structure (no markdown):
     "insight about spending pattern",
     "optimization suggestion",
     "potential savings opportunity"
-  ]
+  ],
+  "confidence": "${spendingSummarySource === 'transactions' ? 'high' : 'medium'}"
 }
 
 Recommend 3-4 cards with highest scores. Show CALCULATED savings and explain WHY the match score is high.`
