@@ -197,7 +197,7 @@
 **User Entry**: Admin nav  
 **Dependencies**:
 - `analytics_events` table
-- `profiles`, `spending_analyses`, `recommendation_snapshots`, `card_applications`, `affiliate_clicks` tables
+- `profiles`, `spending_analyses`, `recommendation_snapshots`, `card_applications` tables
 - Custom SQL aggregations
 
 ### `/admin/user-timeline` - User Activity Timeline

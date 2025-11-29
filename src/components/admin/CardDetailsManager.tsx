@@ -491,8 +491,8 @@ const CardDetailsManager = () => {
           <TabsContent value="media" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Images & Affiliate Links</CardTitle>
-                <CardDescription>Upload card images and manage affiliate tracking</CardDescription>
+                <CardTitle>Images</CardTitle>
+                <CardDescription>Upload and manage card images</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <ImageUploadField
@@ -500,26 +500,6 @@ const CardDetailsManager = () => {
                   onUrlChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
                   cardId={id || ""}
                 />
-                <div>
-                  <Label htmlFor="affiliate_partner">Affiliate Partner</Label>
-                  <Input
-                    id="affiliate_partner"
-                    value={formData.affiliate_partner}
-                    onChange={(e) => setFormData(prev => ({ ...prev, affiliate_partner: e.target.value }))}
-                    placeholder="e.g., ClearTax, Paisabazaar"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="commission_rate">Commission Rate (%)</Label>
-                  <Input
-                    id="commission_rate"
-                    type="number"
-                    step="0.01"
-                    value={formData.affiliate_commission_rate || ""}
-                    onChange={(e) => setFormData(prev => ({ ...prev, affiliate_commission_rate: parseFloat(e.target.value) || undefined }))}
-                    placeholder="e.g., 2.5"
-                  />
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

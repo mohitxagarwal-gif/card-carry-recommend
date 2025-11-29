@@ -72,7 +72,7 @@ We track user card ownership and application status to:
 
 ### Usage & Behavior Data
 
-**Tables:** `analytics_events`, `card_views`, `affiliate_clicks`, `audit_log`
+**Tables:** `analytics_events`, `card_views`, `audit_log`
 
 We track user interactions to:
 - Improve our recommendation algorithm
@@ -108,7 +108,6 @@ We automatically clean up old, granular data:
 | Transaction-level details | 18 months |
 | Analytics events | 24 months |
 | Card view events | 12 months |
-| Affiliate click tracking | 24 months |
 | Audit logs | 24 months |
 | Old recommendation snapshots | 18 months |
 
@@ -228,10 +227,9 @@ Every significant action is logged in `audit_log`:
 We **do not sell** user data to third parties.
 
 **Limited sharing scenarios:**
-- **Affiliate partners:** When a user clicks an affiliate link, we may share:
-  - Anonymized click ID
-  - Card of interest
-  - No personal information is shared
+- **No affiliate relationships:** We do not participate in affiliate programs or earn commissions. 
+  All "apply" links go directly to bank websites. We don't track referrals or receive compensation 
+  when users apply for cards.
 - **Service providers:** Cloud infrastructure (Supabase/AWS)
   - Governed by Data Processing Agreements (DPAs)
   - No data access without explicit purpose
