@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.derive-user-features]
 verify_jwt = true
+
+[functions.goal-chat]
+verify_jwt = true

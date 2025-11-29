@@ -38,40 +38,50 @@ export interface CardWithEarnRates {
 
 export function calculateMatchScore(
   userFeatures: UserFeatures,
-  card: CardWithEarnRates
+  card: CardWithEarnRates,
+  customWeights?: Record<string, number>
 ): { score: number; explanation: string[] } {
   
   const explanation: string[] = [];
   let totalScore = 0;
   
-  // 1. Fee Affordability (25%)
+  // Default weights (can be overridden by customWeights)
+  const weights = {
+    feeAffordability: customWeights?.feeAffordability ?? 0.25,
+    categoryAlignment: customWeights?.categoryAlignment ?? 0.40,
+    travelFit: customWeights?.travelFit ?? 0.15,
+    networkAcceptance: customWeights?.networkAcceptance ?? 0.10,
+    spendingMatch: customWeights?.spendingMatch ?? 0.10,
+  };
+  
+  // 1. Fee Affordability
   const feeScore = calculateFeeScore(userFeatures.fee_tolerance_numeric, card.annual_fee, card.waiver_rule);
-  totalScore += feeScore * 0.25;
+  totalScore += feeScore * weights.feeAffordability;
   if (feeScore >= 80) {
     explanation.push(`Affordable fee of ₹${card.annual_fee.toLocaleString()}`);
   }
   
-  // 2. Category Rewards Alignment (40%) - Most important
+  // 2. Category Rewards Alignment
   const categoryScore = calculateCategoryScore(userFeatures, card);
-  totalScore += categoryScore * 0.40;
+  totalScore += categoryScore * weights.categoryAlignment;
   if (categoryScore >= 70) {
     explanation.push(`Great rewards on your top categories`);
   }
   
-  // 3. Travel Fit (15%)
+  // 3. Travel Fit
   const travelScore = calculateTravelScore(userFeatures, card);
-  totalScore += travelScore * 0.15;
+  totalScore += travelScore * weights.travelFit;
   if (travelScore >= 70 && userFeatures.travel_share > 0.10) {
     explanation.push(`Good travel benefits`);
   }
   
-  // 4. Network Acceptance (10%)
+  // 4. Network Acceptance
   const networkScore = calculateNetworkScore(card.network, userFeatures.acceptance_risk_amex);
-  totalScore += networkScore * 0.10;
+  totalScore += networkScore * weights.networkAcceptance;
   
-  // 5. Spending Level Match (10%)
+  // 5. Spending Level Match
   const spendScore = calculateSpendingMatch(userFeatures.monthly_spend_estimate, card.annual_fee);
-  totalScore += spendScore * 0.10;
+  totalScore += spendScore * weights.spendingMatch;
   
   return {
     score: Math.round(Math.min(100, Math.max(0, totalScore))),
