@@ -4,6 +4,7 @@ import HowItWorksSection from "@/components/HowItWorksSection";
 import ExploreTeaserSection from "@/components/ExploreTeaserSection";
 import FAQSection from "@/components/FAQSection";
 import Footer from "@/components/Footer";
+import SectionDivider from "@/components/SectionDivider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,10 +65,31 @@ const Index = () => {
     <div className="min-h-screen bg-background font-sans">
       <Header />
       <main>
-        <HeroSection />
-        <HowItWorksSection />
-        <ExploreTeaserSection />
-        <FAQSection />
+        {/* Hero - White background with gradient fade */}
+        <div className="bg-gradient-to-b from-background to-muted/20">
+          <HeroSection />
+        </div>
+        
+        <SectionDivider />
+        
+        {/* How It Works - Subtle gray tint */}
+        <div className="bg-muted/30">
+          <HowItWorksSection />
+        </div>
+        
+        <SectionDivider />
+        
+        {/* Explore Cards - White with top accent */}
+        <div className="bg-background border-t border-primary/10">
+          <ExploreTeaserSection />
+        </div>
+        
+        <SectionDivider />
+        
+        {/* FAQ - Subtle indigo tint */}
+        <div className="bg-primary/[0.02]">
+          <FAQSection />
+        </div>
       </main>
       <Footer />
     </div>
