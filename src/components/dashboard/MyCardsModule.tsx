@@ -71,7 +71,7 @@ export const MyCardsModule = () => {
                   placeholder="e.g., hdfc-diners-privilege"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="opened_month">Opened Month</Label>
                   <Input
@@ -91,7 +91,7 @@ export const MyCardsModule = () => {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="forex_pct">Forex % (e.g., 3.5)</Label>
                   <Input
@@ -130,14 +130,14 @@ export const MyCardsModule = () => {
             {activeCards.map((card) => (
               <div
                 key={card.id}
-                className="border border-border rounded-lg p-4 space-y-2 hover:border-primary/50 transition-colors"
+                className="border border-border rounded-lg p-3 sm:p-4 space-y-2 hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{card.card_id}</div>
-                    <div className="flex gap-2 mt-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{card.card_id}</div>
+                    <div className="flex flex-wrap gap-2 mt-1">
                       {card.renewal_month && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs whitespace-nowrap">
                           Renews: {new Date(card.renewal_month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                         </Badge>
                       )}

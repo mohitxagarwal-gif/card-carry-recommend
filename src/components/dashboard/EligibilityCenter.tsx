@@ -68,9 +68,9 @@ export const EligibilityCenter = () => {
           <h4 className="text-sm font-semibold">Score Breakdown</h4>
           {Object.entries(eligibility.breakdown).map(([key, value]) => (
             <div key={key} className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="capitalize">{key}</span>
-                <span className={getScoreColor(value as number)}>{value}%</span>
+              <div className="flex items-center justify-between text-sm gap-2">
+                <span className="capitalize min-w-0 truncate">{key}</span>
+                <span className={`${getScoreColor(value as number)} flex-shrink-0`}>{value}%</span>
               </div>
               <Progress value={value as number} className="h-1.5" />
             </div>
@@ -79,12 +79,13 @@ export const EligibilityCenter = () => {
 
         {/* Missing Fields */}
         {eligibility.missingFields.length > 0 && (
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 space-y-2">
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 sm:p-4 space-y-2">
             <h4 className="text-sm font-semibold text-yellow-700">Missing Information</h4>
             <ul className="text-sm text-muted-foreground space-y-1">
               {eligibility.missingFields.map((field) => (
-                <li key={field} className="flex items-center gap-2">
-                  <span className="text-yellow-600">•</span> {field}
+                <li key={field} className="flex items-start gap-2">
+                  <span className="text-yellow-600 flex-shrink-0">•</span>
+                  <span className="flex-1 min-w-0">{field}</span>
                 </li>
               ))}
             </ul>

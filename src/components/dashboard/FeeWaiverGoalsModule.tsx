@@ -102,17 +102,17 @@ export const FeeWaiverGoalsModule = () => {
               const progress = calculateProgress(goal);
               return (
                 <div key={goal.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-sm">{goal.card_id}</div>
-                    <div className="text-sm font-medium">{progress}%</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-sm truncate flex-1 min-w-0">{goal.card_id}</div>
+                    <div className="text-sm font-medium flex-shrink-0">{progress}%</div>
                   </div>
                   <Progress 
                     value={progress} 
                     className="h-2"
                   />
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>₹{goal.current_amount?.toLocaleString('en-IN') || 0}</span>
-                    <span>₹{goal.target_amount.toLocaleString('en-IN')}</span>
+                    <span className="break-all">₹{goal.current_amount?.toLocaleString('en-IN') || 0}</span>
+                    <span className="break-all">₹{goal.target_amount.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               );

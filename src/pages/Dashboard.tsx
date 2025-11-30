@@ -239,11 +239,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
       <Header />
       
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <h1 className="text-4xl font-heading font-bold text-foreground mb-8">
+      <main className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-6xl">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-foreground mb-6 sm:mb-8">
           your dashboard
         </h1>
 
@@ -298,9 +298,9 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 {generateNextSteps(latestSnapshot, applications, shortlist, userCards, navigate).map((step) => (
-                  <div key={step.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <span>{step.text}</span>
-                    <Button size="sm" onClick={step.action}>
+                  <div key={step.id} className="flex flex-wrap items-center gap-3 p-3 border rounded-lg">
+                    <span className="flex-1 min-w-0 text-sm">{step.text}</span>
+                    <Button size="sm" onClick={step.action} className="w-full sm:w-auto flex-shrink-0">
                       {step.cta}
                     </Button>
                   </div>
@@ -312,12 +312,12 @@ const Dashboard = () => {
             {latestSnapshot && (
               <Card data-tour-id="recommendations-module">
                 <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5" />
-                      estimated annual savings
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0 gap-3">
+                    <CardTitle className="flex flex-wrap items-center gap-2">
+                      <TrendingUp className="w-5 h-5 flex-shrink-0" />
+                      <span>estimated annual savings</span>
             {(latestSnapshot as any).snapshot_type && (latestSnapshot as any).snapshot_type !== 'statement_based' && (
-              <span className="text-xs font-normal text-muted-foreground ml-2">
+              <span className="text-xs font-normal text-muted-foreground">
                 ({(latestSnapshot as any).snapshot_type === 'quick_spends' ? 'based on estimates' : 'goal-optimized'})
               </span>
             )}
@@ -327,6 +327,7 @@ const Dashboard = () => {
                       size="sm"
                       onClick={handleRefreshRecommendations}
                       disabled={refreshing}
+                      className="w-full sm:w-auto"
                     >
                       <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                       {refreshing ? 'Refreshing...' : 'Refresh'}
@@ -335,7 +336,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <p className="text-3xl font-heading font-bold text-primary tabular-nums">
+                    <p className="text-2xl sm:text-3xl font-heading font-bold text-primary tabular-nums break-words">
                       ₹{latestSnapshot.savings_min.toLocaleString()} - ₹{latestSnapshot.savings_max.toLocaleString()}
                     </p>
                     <Badge variant="outline" className={
