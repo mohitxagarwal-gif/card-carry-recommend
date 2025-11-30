@@ -258,7 +258,7 @@ export default function OnboardingGoalBased() {
       });
 
       // Step 1: Derive features
-      console.log("[Goal-Based] Step 2: Deriving features...");
+      console.log("[Goal-Based] Step 1: Deriving features...");
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
