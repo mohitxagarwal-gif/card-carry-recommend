@@ -25,6 +25,19 @@ export const ProtectedRoute = ({
 
     // Not authenticated
     if (!isAuthenticated) {
+      // Check for saved progress to give auth state time to load
+      const hasSavedProgress = 
+        localStorage.getItem('smartscan_progress_') ||
+        localStorage.getItem('goalpick_progress_') ||
+        localStorage.getItem('quickSpends_draft');
+      
+      // If user has progress, they might have just refreshed
+      // Give the auth state a moment to resolve before redirecting
+      if (hasSavedProgress) {
+        console.log('[ProtectedRoute] Progress detected, allowing auth to resolve...');
+        return;
+      }
+      
       const returnTo = location.pathname + location.search;
       navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
       return;

@@ -279,8 +279,56 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
         ))}
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-4 pt-4">
+      {/* Action Buttons - Mobile Sticky Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-3 
+                      backdrop-blur-xl bg-card/90 border-t border-border/30 
+                      shadow-[0_-4px_20px_rgba(0,0,0,0.1)]
+                      sm:hidden pb-24">
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onCancel} className="flex-1">
+            Cancel
+          </Button>
+          <Button onClick={() => {
+            // Validate all transactions have categories
+            const allHaveCategories = localData.every(ed => 
+              ed.transactions.every(t => t.category && t.category.length > 0)
+            );
+            
+            const allHaveTypes = localData.every(ed =>
+              ed.transactions.every(t => t.transactionType === 'debit' || t.transactionType === 'credit')
+            );
+            
+            console.log('[TransactionReview] Submitting edited data:', {
+              totalTransactions: localData.reduce((sum, ed) => sum + ed.transactions.length, 0),
+              filesCount: localData.length,
+              allHaveCategories,
+              allHaveTypes,
+              sampleTransaction: localData[0]?.transactions[0]
+            });
+            
+            if (!allHaveCategories) {
+              console.warn('[TransactionReview] Some transactions missing categories');
+            }
+            
+            if (!allHaveTypes) {
+              console.warn('[TransactionReview] Some transactions missing type');
+            }
+            
+            // Mixpanel event - review submitted
+            trackEvent('transactions.review_submitted', {
+              fileCount: localData.length,
+              totalTransactions: localData.reduce((sum, file) => sum + file.transactions.length, 0),
+            });
+            
+            onSubmit(localData);
+          }} className="flex-1">
+            Get Recommendations →
+          </Button>
+        </div>
+      </div>
+
+      {/* Action Buttons - Desktop */}
+      <div className="hidden sm:flex gap-4 pt-4">
         <Button
           variant="outline"
           onClick={onCancel}

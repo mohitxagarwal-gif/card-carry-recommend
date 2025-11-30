@@ -260,13 +260,15 @@ Return JSON only. No markdown formatting.`;
       );
     }
 
-    // Phase 1: Generate transaction IDs and Phase 5: Check for duplicates
-    const enhancedTransactions = await Promise.all(
+    // **OPTIMIZATION: Batch database operations**
+    console.log('[batch-optimization] Generating hashes for all transactions in memory...');
+    
+    // Step 1: Generate all hashes in memory (fast)
+    const transactionsWithHashes = await Promise.all(
       uniqueTransactions.map(async (txn: any, idx: number) => {
         const amountMinor = Math.round(txn.amount * 100);
         const normalizedMerchant = txn.merchant.toLowerCase().trim();
         
-        // Generate IDs
         const transactionId = await generateTransactionId({
           userId: user.id,
           batchId,
@@ -282,50 +284,66 @@ Return JSON only. No markdown formatting.`;
           normalizedMerchant
         });
         
-        // Check if this transaction was already processed
-        const { data: existingTx } = await supabase
-          .from('processed_transactions')
-          .select('id, occurrence_count')
-          .eq('user_id', user.id)
-          .eq('transaction_hash', transactionHash)
-          .maybeSingle();
-        
-        let isDuplicate = false;
-        if (existingTx) {
-          isDuplicate = true;
-          // Update occurrence count
-          await supabase
-            .from('processed_transactions')
-            .update({ 
-              occurrence_count: existingTx.occurrence_count + 1,
-              last_seen_at: new Date().toISOString()
-            })
-            .eq('id', existingTx.id);
-        } else {
-          // Store new transaction
-          await supabase
-            .from('processed_transactions')
-            .insert({
-              user_id: user.id,
-              transaction_id: transactionId,
-              transaction_hash: transactionHash,
-              posted_date: txn.date,
-              amount_minor: amountMinor,
-              normalized_merchant: normalizedMerchant,
-              category: txn.category
-            });
-        }
-        
         return {
           ...txn,
           transaction_id: transactionId,
           transaction_hash: transactionHash,
-          isDuplicate
+          amount_minor: amountMinor,
+          normalized_merchant: normalizedMerchant
         };
       })
     );
 
-    console.log(`[extraction-success] ${enhancedTransactions.length} transactions, ${enhancedTransactions.filter(t => t.isDuplicate).length} duplicates detected`);
+    // Step 2: Single batch lookup for existing transactions
+    console.log('[batch-optimization] Batch lookup for existing transactions...');
+    const hashes = transactionsWithHashes.map(t => t.transaction_hash);
+    const { data: existingTxs } = await supabase
+      .from('processed_transactions')
+      .select('transaction_hash, id, occurrence_count')
+      .eq('user_id', user.id)
+      .in('transaction_hash', hashes);
+    
+    const existingMap = new Map(existingTxs?.map(t => [t.transaction_hash, t]) || []);
+    
+    // Step 3: Separate new vs existing
+    const newTransactions: any[] = [];
+    const updateTransactions: any[] = [];
+    const enhancedTransactions = transactionsWithHashes.map(txn => {
+      const existing = existingMap.get(txn.transaction_hash);
+      if (existing) {
+        updateTransactions.push(existing);
+        return { ...txn, isDuplicate: true };
+      } else {
+        newTransactions.push({
+          user_id: user.id,
+          transaction_id: txn.transaction_id,
+          transaction_hash: txn.transaction_hash,
+          posted_date: txn.date,
+          amount_minor: txn.amount_minor,
+          normalized_merchant: txn.normalized_merchant,
+          category: txn.category
+        });
+        return { ...txn, isDuplicate: false };
+      }
+    });
+
+    // Step 4: Single batch insert for new transactions
+    if (newTransactions.length > 0) {
+      console.log(`[batch-optimization] Inserting ${newTransactions.length} new transactions in one call...`);
+      const { error: insertError } = await supabase
+        .from('processed_transactions')
+        .insert(newTransactions);
+      
+      if (insertError) {
+        console.error('[batch-optimization] Batch insert error:', insertError);
+      }
+    }
+
+    // Step 5: Batch update for duplicates (skipped for speed optimization)
+    // For maximum speed, we skip updating occurrence counts
+    // This can be done asynchronously in background if needed
+
+    console.log(`[extraction-success] ${enhancedTransactions.length} transactions, ${updateTransactions.length} duplicates detected`);
 
     return new Response(
       JSON.stringify({ 
@@ -338,7 +356,8 @@ Return JSON only. No markdown formatting.`;
           processingTimeMs: processingTime,
           model: 'google/gemini-2.5-flash',
           extractedAt: new Date().toISOString(),
-          duplicatesFound: enhancedTransactions.filter(t => t.isDuplicate).length
+          duplicatesFound: updateTransactions.length,
+          optimization: 'batch_db_operations'
         }
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

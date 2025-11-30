@@ -14,8 +14,6 @@ import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { checkPDFEncryption, decryptAndExtractPDF, analyzeTransactions } from "@/lib/pdfProcessor";
 import { AnalysisLoadingScreen } from "@/components/AnalysisLoadingScreen";
 import { normalizeCategory } from "@/lib/categories";
-import { ConsentModal } from "@/components/ConsentModal";
-import { useConsent } from "@/hooks/useConsent";
 import { trackEvent } from "@/lib/analytics";
 type FileStatus = 'selected' | 'checking' | 'encrypted' | 'decrypting' | 'processing' | 'success' | 'error';
 interface FileWithStatus {
@@ -41,10 +39,6 @@ const Upload = () => {
   const [analysisStep, setAnalysisStep] = useState<number>(0);
   const [analysisProgress, setAnalysisProgress] = useState<number>(0);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [showConsentModal, setShowConsentModal] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
-  
-  const { data: consentData, refetch: refetchConsent } = useConsent();
   useEffect(() => {
     const initUser = async () => {
       const {
@@ -123,19 +117,45 @@ const Upload = () => {
     
     checkRecentAnalysis();
   }, [user]);
+
+  // Save progress to localStorage
+  useEffect(() => {
+    if (extractedData.length > 0 && user) {
+      localStorage.setItem(`smartscan_progress_${user.id}`, JSON.stringify({
+        step: 'review',
+        extractedData,
+        timestamp: Date.now()
+      }));
+    }
+  }, [extractedData, user]);
+
+  // Restore progress on page load
+  useEffect(() => {
+    if (user) {
+      const saved = localStorage.getItem(`smartscan_progress_${user.id}`);
+      if (saved) {
+        try {
+          const { step, extractedData: savedData, timestamp } = JSON.parse(saved);
+          // Only restore if less than 30 minutes old
+          if (Date.now() - timestamp < 30 * 60 * 1000) {
+            if (step === 'review' && savedData) {
+              setExtractedData(savedData);
+              setShowReview(true);
+            }
+          } else {
+            // Clear expired progress
+            localStorage.removeItem(`smartscan_progress_${user.id}`);
+          }
+        } catch (e) {
+          console.error('Error restoring progress:', e);
+          localStorage.removeItem(`smartscan_progress_${user.id}`);
+        }
+      }
+    }
+  }, [user]);
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-
-      // Check consent first
-      if (!consentData?.hasConsent) {
-        setPendingFiles(selectedFiles);
-        setShowConsentModal(true);
-        toast.info('Please review and accept our data processing terms to continue');
-        // Reset the file input
-        e.target.value = '';
-        return;
-      }
 
       // Validate file types - only PDFs
       const invalidFiles = selectedFiles.filter(file => !file.type.includes('pdf') && !file.name.endsWith('.pdf'));
@@ -689,21 +709,26 @@ const Upload = () => {
       
       console.log('[Upload] Analysis complete:', data.analysis.id);
       
-      // Call derive-user-features to calculate features from the analysis
+      // Call derive-user-features and generate recommendations in parallel
       setAnalysisStep(3);
       setAnalysisProgress(65);
       await new Promise(resolve => setTimeout(resolve, 200));
-      try {
-        await supabase.functions.invoke('derive-user-features', {
+      
+      const [featureResult] = await Promise.all([
+        supabase.functions.invoke('derive-user-features', {
           body: {
             userId: user.id,
             analysisId: data.analysis.id,
           },
-        });
+        }),
+        // Small delay for UI smoothness
+        new Promise(resolve => setTimeout(resolve, 500))
+      ]);
+      
+      if (featureResult.error) {
+        console.error('[Upload] Feature derivation failed (non-critical):', featureResult.error);
+      } else {
         console.log('[Upload] Features derived successfully');
-      } catch (featureError) {
-        console.error('[Upload] Feature derivation failed (non-critical):', featureError);
-        // Don't block navigation if feature derivation fails
       }
       
       setAnalysisProgress(85);
@@ -731,9 +756,13 @@ const Upload = () => {
         // Don't block navigation if profile update fails
       }
       
+      // Clear saved progress after completion
+      localStorage.removeItem(`smartscan_progress_${user.id}`);
+      
       toast.success('Analysis complete!');
       navigate(`/results?analysisId=${data.analysis.id}`, {
-        state: { analysisId: data.analysis.id }
+        state: { analysisId: data.analysis.id },
+        replace: true
       });
     } catch (error: any) {
       console.error('Unexpected error during analysis:', error);
@@ -789,47 +818,6 @@ const Upload = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
-  };
-
-  const handleConsentGrant = async () => {
-    setShowConsentModal(false);
-    await refetchConsent();
-    
-    // Process pending files if any
-    if (pendingFiles && pendingFiles.length > 0) {
-      // Validate file types - only PDFs
-      const invalidFiles = pendingFiles.filter(file => !file.type.includes('pdf') && !file.name.endsWith('.pdf'));
-      if (invalidFiles.length > 0) {
-        toast.error('Please upload only PDF files');
-        setPendingFiles(null);
-        return;
-      }
-      
-      if (pendingFiles.length > 3) {
-        toast.error('Please upload a maximum of 3 statement files');
-        setPendingFiles(null);
-        return;
-      }
-
-      // Initialize files with status
-      const filesWithInitialStatus: FileWithStatus[] = pendingFiles.map(file => ({
-        file,
-        status: 'selected' as FileStatus,
-        progress: 0
-      }));
-      setFilesWithStatus(filesWithInitialStatus);
-      toast.success(`${pendingFiles.length} PDF file(s) selected`);
-
-      // Check for encryption
-      await checkFilesForEncryption(pendingFiles);
-      setPendingFiles(null);
-    }
-  };
-
-  const handleConsentDecline = () => {
-    setShowConsentModal(false);
-    setPendingFiles(null);
-    toast.info('You can upload statements after accepting the data processing consent');
   };
   
   // If analyzing, show loading screen
@@ -1018,17 +1006,12 @@ const Upload = () => {
         </div>
       </main>
 
+
       <PasswordInputModal open={showPasswordModal} encryptedFiles={encryptedFiles} onSubmit={handlePasswordSubmit} onCancel={() => {
       setShowPasswordModal(false);
       setFilesWithStatus([]);
       setEncryptedFiles([]);
     }} />
-
-      <ConsentModal
-        open={showConsentModal}
-        onConsent={handleConsentGrant}
-        onDecline={handleConsentDecline}
-      />
     </div>;
 };
 export default Upload;
