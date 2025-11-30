@@ -1,5 +1,12 @@
 import mixpanel, { Dict } from 'mixpanel-browser';
 
+// TypeScript declaration for window.mixpanel
+declare global {
+  interface Window {
+    mixpanel?: any;
+  }
+}
+
 // Type for initialization status
 let isInitialized = false;
 
@@ -42,6 +49,13 @@ export function initMixpanel(): void {
     return;
   }
 
+  // Check if Mixpanel was already loaded by CDN snippet
+  if (typeof window.mixpanel !== 'undefined' && window.mixpanel.__loaded) {
+    isInitialized = true;
+    console.log('[Mixpanel] Already initialized via CDN snippet');
+    return;
+  }
+
   const token = import.meta.env.VITE_MIXPANEL_TOKEN;
 
   if (!token) {
@@ -57,6 +71,7 @@ export function initMixpanel(): void {
       ignore_dnt: false, // Respect Do Not Track
       autocapture: true, // Auto-track user interactions
       record_sessions_percent: 100, // Record 100% of sessions for replay
+      api_host: 'https://api-eu.mixpanel.com', // EU data residency
     });
     
     isInitialized = true;
