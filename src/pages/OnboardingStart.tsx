@@ -152,6 +152,12 @@ export default function OnboardingStart() {
         travel_frequency: skip ? "occasional" : travelFrequency || "occasional",
         lounge_importance: skip ? "medium" : loungeImportance || "medium",
         reward_preference: skip ? "both" : rewardPreference || "both",
+        // Map fee_sensitivity to fee_tolerance_band for backward compatibility
+        fee_tolerance_band: ({
+          'low': 'any_2x_roi',    // Willing to pay any fee if worth it
+          'medium': '<=5k',        // Up to ₹5000
+          'high': '<=1k',          // Only up to ₹1000
+        } as const)[skip ? "medium" : feeSensitivity || "medium"] || '<=5k'
       };
 
       // Check if preferences already exist

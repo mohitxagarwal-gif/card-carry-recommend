@@ -13,6 +13,9 @@ export interface UserFeatures {
   online_share: number;
   forex_share: number;
   category_spend: Record<string, number>;
+  travel_numeric?: number;      // 0-10 travel frequency score
+  lounge_numeric?: number;      // 0-10 lounge importance score
+  reward_preference?: string;   // 'cashback' | 'points' | 'both'
 }
 
 export interface CardEarnRate {
@@ -45,14 +48,8 @@ export function calculateMatchScore(
   const explanation: string[] = [];
   let totalScore = 0;
   
-  // Default weights (can be overridden by customWeights)
-  const weights = {
-    feeAffordability: customWeights?.feeAffordability ?? 0.25,
-    categoryAlignment: customWeights?.categoryAlignment ?? 0.40,
-    travelFit: customWeights?.travelFit ?? 0.15,
-    networkAcceptance: customWeights?.networkAcceptance ?? 0.10,
-    spendingMatch: customWeights?.spendingMatch ?? 0.10,
-  };
+  // Get adjusted weights based on user preferences
+  const weights = getAdjustedWeights(userFeatures, customWeights);
   
   // 1. Fee Affordability
   const feeScore = calculateFeeScore(userFeatures.fee_tolerance_numeric, card.annual_fee, card.waiver_rule);
@@ -83,10 +80,69 @@ export function calculateMatchScore(
   const spendScore = calculateSpendingMatch(userFeatures.monthly_spend_estimate, card.annual_fee);
   totalScore += spendScore * weights.spendingMatch;
   
+  // 6. Apply reward preference boost
+  const rewardBoost = applyRewardPreferenceBoost(totalScore, card, userFeatures.reward_preference);
+  totalScore = rewardBoost;
+  
   return {
     score: Math.round(Math.min(100, Math.max(0, totalScore))),
     explanation
   };
+}
+
+// Dynamically adjust weights based on user profile
+function getAdjustedWeights(
+  userFeatures: UserFeatures, 
+  customWeights?: Record<string, number>
+): Record<string, number> {
+  // Start with defaults or custom weights
+  const weights = {
+    feeAffordability: customWeights?.feeAffordability ?? 0.25,
+    categoryAlignment: customWeights?.categoryAlignment ?? 0.40,
+    travelFit: customWeights?.travelFit ?? 0.15,
+    networkAcceptance: customWeights?.networkAcceptance ?? 0.10,
+    spendingMatch: customWeights?.spendingMatch ?? 0.10,
+  };
+  
+  // Boost travel weight for frequent travelers (travel_numeric >= 7)
+  if (userFeatures.travel_numeric && userFeatures.travel_numeric >= 7) {
+    weights.travelFit = 0.25;  // Up from 0.15
+    weights.categoryAlignment -= 0.10;
+  }
+  
+  // Boost fee weight for fee-sensitive users (fee_tolerance < 1000)
+  if (userFeatures.fee_tolerance_numeric < 1000) {
+    weights.feeAffordability = 0.30;  // Up from 0.25
+    weights.categoryAlignment -= 0.05;
+  }
+  
+  return weights;
+}
+
+// Filter/boost cards based on reward preference
+function applyRewardPreferenceBoost(
+  score: number, 
+  card: CardWithEarnRates, 
+  rewardPref?: string
+): number {
+  if (!rewardPref || rewardPref === 'both') return score;
+  
+  if (rewardPref === 'cashback' && card.reward_type.includes('cashback')) {
+    return score + 5;
+  }
+  if (rewardPref === 'points' && card.reward_type.includes('points')) {
+    return score + 5;
+  }
+  
+  // Penalize cards that don't match preference
+  if (rewardPref === 'cashback' && !card.reward_type.includes('cashback')) {
+    return score - 3;
+  }
+  if (rewardPref === 'points' && !card.reward_type.includes('points')) {
+    return score - 3;
+  }
+  
+  return score;
 }
 
 function calculateFeeScore(feeTolerance: number, annualFee: number, waiverRule?: string): number {

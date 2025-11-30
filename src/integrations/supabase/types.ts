@@ -1153,13 +1153,16 @@ export type Database = {
           forex_share: number | null
           groceries_share: number | null
           last_statement_date: string | null
+          lounge_numeric: number | null
           monthly_spend_estimate: number | null
           months_coverage: number | null
           online_share: number | null
           pif_score: number | null
           rent_share: number | null
+          reward_preference: string | null
           spend_split_json: Json | null
           transaction_count: number | null
+          travel_numeric: number | null
           travel_share: number | null
           updated_at: string | null
           upi_cc_share: number | null
@@ -1179,13 +1182,16 @@ export type Database = {
           forex_share?: number | null
           groceries_share?: number | null
           last_statement_date?: string | null
+          lounge_numeric?: number | null
           monthly_spend_estimate?: number | null
           months_coverage?: number | null
           online_share?: number | null
           pif_score?: number | null
           rent_share?: number | null
+          reward_preference?: string | null
           spend_split_json?: Json | null
           transaction_count?: number | null
+          travel_numeric?: number | null
           travel_share?: number | null
           updated_at?: string | null
           upi_cc_share?: number | null
@@ -1205,13 +1211,16 @@ export type Database = {
           forex_share?: number | null
           groceries_share?: number | null
           last_statement_date?: string | null
+          lounge_numeric?: number | null
           monthly_spend_estimate?: number | null
           months_coverage?: number | null
           online_share?: number | null
           pif_score?: number | null
           rent_share?: number | null
+          reward_preference?: string | null
           spend_split_json?: Json | null
           transaction_count?: number | null
+          travel_numeric?: number | null
           travel_share?: number | null
           updated_at?: string | null
           upi_cc_share?: number | null
