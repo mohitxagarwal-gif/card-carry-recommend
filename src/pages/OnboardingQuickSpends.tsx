@@ -167,7 +167,7 @@ export default function OnboardingQuickSpends() {
       });
 
       // Step 2: Generate recommendations
-      console.log("[QuickSpends] Step 3: Generating recommendations...");
+      console.log("[QuickSpends] Step 2: Generating recommendations...");
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
         {
@@ -190,19 +190,21 @@ export default function OnboardingQuickSpends() {
       
       console.log("[QuickSpends] ✓ Recommendations generated, count:", data.recommendations.recommendedCards?.length || 0);
 
-      // Step 4: Create snapshot
-      console.log("[QuickSpends] Step 4: Creating snapshot...");
-      if (data?.recommendations) {
-        await createSnapshot({
-          analysisId: null,
-          savingsMin: 0,
-          savingsMax: 50000,
-          confidence: "medium",
-          recommendedCards: data.recommendations.recommendedCards || [],
-          snapshotType: "quick_spends",
-        });
+      // Step 3: Create snapshot
+      console.log("[QuickSpends] Step 3: Creating snapshot...");
+      const snapshot = await createSnapshot({
+        analysisId: null,
+        savingsMin: 0,
+        savingsMax: 50000,
+        confidence: "medium",
+        recommendedCards: data.recommendations.recommendedCards || [],
+        snapshotType: "quick_spends",
+      });
+      
+      if (!snapshot) {
+        throw new Error("Failed to create snapshot");
       }
-      console.log("[QuickSpends] ✓ Snapshot created");
+      console.log("[QuickSpends] ✓ Snapshot created:", snapshot.id);
 
       trackEvent("snapshot_created", {
         userId,
@@ -210,9 +212,26 @@ export default function OnboardingQuickSpends() {
         confidence: data?.confidence || "medium",
       });
 
-      // Clear saved progress
+      // Step 4: NOW mark onboarding as complete (AFTER snapshot)
+      console.log("[QuickSpends] Step 4: Marking onboarding complete...");
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (profileError) {
+        console.error("[QuickSpends] Profile update failed:", profileError);
+        throw profileError;
+      }
+      console.log("[QuickSpends] ✓ Onboarding marked complete");
+
+      // Clear saved progress and generating flag
       console.log("[QuickSpends] Clearing saved progress...");
       localStorage.removeItem('quickSpends_draft');
+      localStorage.removeItem(`generating_recommendations_${userId}`);
 
       // Show success and reset loading before navigation
       toast.success("Recommendations generated successfully!");
