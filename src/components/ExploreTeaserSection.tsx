@@ -3,27 +3,32 @@ import { creditCards } from "@/data/cardData";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { getIssuerBrand, getFeeStyle } from "@/lib/issuerBranding";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 const ExploreTeaserSection = () => {
   const navigate = useNavigate();
+  const { ref, isVisible } = useScrollReveal({ threshold: 0.1 });
   const topCards = creditCards
     .filter(card => card.isActive)
     .sort((a, b) => b.popularScore - a.popularScore)
     .slice(0, 6);
 
   return (
-    <section className="py-16 lg:py-24 bg-background" id="explore-cards">
+    <section ref={ref} className="py-16 lg:py-24 bg-background" id="explore-cards">
       <div className="container mx-auto px-6 lg:px-12">
-        <div className="mb-8">
-          <h2 className="text-3xl lg:text-4xl font-heading font-bold text-foreground mb-3">
+        <div className={`mb-12 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <div className="text-xs font-sans tracking-wide text-primary/60 uppercase mb-3 font-semibold">
+            popular picks
+          </div>
+          <h2 className="text-4xl lg:text-5xl font-heading font-bold text-foreground mb-4">
             explore top indian credit cards
           </h2>
-          <p className="text-base lg:text-lg font-sans text-muted-foreground">
+          <p className="text-base lg:text-lg font-sans text-muted-foreground max-w-2xl">
             browse by fees and perks. compare side-by-side.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
           {topCards.map((card, idx) => {
             const issuerBrand = getIssuerBrand(card.issuer);
             const feeStyle = getFeeStyle(card.annualFee);
@@ -32,9 +37,9 @@ const ExploreTeaserSection = () => {
               <div
                 key={card.id}
                 onClick={() => navigate("/cards")}
-                className="group glass-surface glass-highlight rounded-card hover:shadow-glass-elevated transition-all duration-220 p-6 cursor-pointer hover:-translate-y-1.5 gloss-band animate-fade-up relative overflow-hidden"
+                className={`group glass-surface glass-highlight rounded-card hover:shadow-glass-elevated transition-all duration-300 p-7 cursor-pointer hover:-translate-y-2 gloss-band relative overflow-hidden ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                 style={{ 
-                  animationDelay: `${idx * 60}ms`,
+                  transitionDelay: isVisible ? `${idx * 80 + 200}ms` : '0ms',
                   borderColor: `hsl(${issuerBrand.color} / 0.2)`,
                   background: `linear-gradient(135deg, hsl(${issuerBrand.lightBg} / 0.3) 0%, transparent 50%)`
                 }}
@@ -70,7 +75,7 @@ const ExploreTeaserSection = () => {
                   </Badge>
                 </div>
 
-                <p className="text-sm font-sans text-muted-foreground">
+                <p className="text-sm font-sans text-muted-foreground leading-relaxed">
                   {card.keyPerks[0]}
                 </p>
               </div>
@@ -78,7 +83,7 @@ const ExploreTeaserSection = () => {
           })}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 transition-all duration-700 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <Button
             variant="outline"
             onClick={() => navigate("/cards")}

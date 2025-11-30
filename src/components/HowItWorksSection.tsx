@@ -1,6 +1,6 @@
 import { useSiteContent } from "@/hooks/useSiteContent";
-import { GlassCard } from "./ui/glass-card";
 import { SparklesIcon, RewardsIcon, CashbackIcon } from "./icons";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 interface SiteContent {
   content: any;
@@ -8,6 +8,7 @@ interface SiteContent {
 
 const HowItWorksSection = () => {
   const { siteContent } = useSiteContent("how_it_works");
+  const { ref, isVisible } = useScrollReveal({ threshold: 0.15 });
 
   const content = (siteContent as SiteContent | null)?.content || {
     title: "how card & carry works",
@@ -46,37 +47,38 @@ const HowItWorksSection = () => {
   };
 
   return (
-    <section id="how-it-works" className="container mx-auto px-4 md:px-6 lg:px-12 py-12 md:py-24 lg:py-32 scroll-mt-20">
+    <section ref={ref} id="how-it-works" className="container mx-auto px-4 md:px-6 lg:px-12 py-16 md:py-24 lg:py-28 scroll-mt-20">
       <div className="max-w-6xl mx-auto">
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-foreground text-center mb-8 md:mb-12 lg:mb-16 leading-tight">
+        <h2 className={`text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-foreground text-center mb-12 md:mb-16 leading-tight transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           {content.title}
         </h2>
 
-        <div className="grid md:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 lg:gap-10 max-w-6xl mx-auto">
           {content.steps.map((step: any, idx: number) => (
-            <GlassCard
+            <div
               key={step.number}
-              variant="elevated"
-              className="p-4 md:p-6 lg:p-8 group cursor-pointer animate-fade-up"
-              style={{ animationDelay: `${idx * 60}ms` }}
+              className={`group cursor-pointer p-6 md:p-8 rounded-card bg-background/80 border border-border/50 shadow-md hover:shadow-xl hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+              style={{ 
+                transitionDelay: isVisible ? `${idx * 100 + 200}ms` : '0ms'
+              }}
             >
-              <div className="mb-4 md:mb-6 group-hover:rotate-[10deg] transition-transform duration-140">
+              <div className="mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                 {getIcon(step.icon)}
               </div>
-              <div className="text-4xl md:text-6xl lg:text-7xl font-heading font-bold text-primary/10 mb-3 md:mb-4">
+              <div className="text-5xl md:text-6xl font-heading font-bold text-primary/15 mb-4">
                 {step.number}
               </div>
-              <h3 className="text-xl md:text-2xl lg:text-3xl font-heading font-bold text-foreground mb-3 md:mb-4">
+              <h3 className="text-xl md:text-2xl font-heading font-bold text-foreground mb-3">
                 {step.title}
               </h3>
-              <p className="text-sm md:text-base lg:text-lg font-sans text-muted-foreground leading-relaxed">
+              <p className="text-sm md:text-base font-sans text-muted-foreground leading-relaxed">
                 {step.description}
               </p>
-            </GlassCard>
+            </div>
           ))}
         </div>
         
-        <div className="text-center mt-12 animate-fade-up" style={{ animationDelay: '180ms' }}>
+        <div className={`text-center mt-12 transition-all duration-700 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <a 
             href="/auth"
             className="inline-flex items-center text-base md:text-lg font-sans text-primary hover:text-primary/80 transition-colors duration-300 underline underline-offset-4"
