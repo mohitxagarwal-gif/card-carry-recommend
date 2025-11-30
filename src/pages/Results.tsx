@@ -765,14 +765,15 @@ const Results = () => {
                           </div>
                         )}
                         
-                         <div className="space-y-3">
-                           <CardStatusDropdown cardId={fullCard?.card_id || `${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()} />
-                           <CardActionBar 
-                             cardId={fullCard?.card_id || `${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()}
-                             issuer={card.issuer}
-                             name={card.name}
-                           />
-                         </div>
+                          <div className="space-y-3">
+                            <CardStatusDropdown cardId={fullCard?.card_id || `${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()} />
+                            <CardActionBar 
+                              cardId={fullCard?.card_id || `${card.issuer}-${card.name}`.replace(/\s/g, '-').toLowerCase()}
+                              issuer={card.issuer}
+                              name={card.name}
+                              applicationUrl={fullCard?.application_url || undefined}
+                            />
+                          </div>
                        </div>
                      </Card>
                    );
