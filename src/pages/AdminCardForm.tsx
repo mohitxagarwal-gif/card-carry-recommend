@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 import {
   Form,
   FormControl,
@@ -304,12 +305,14 @@ const AdminCardForm = () => {
     }
   };
 
+  // Show loading screen until role verification completes
   if (roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <CardLoadingScreen message="Verifying access..." variant="fullPage" />;
+  }
+
+  // Don't render admin UI until verified as admin
+  if (role !== "admin") {
+    return null;
   }
 
   return (

@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCards } from "@/hooks/useCards";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, Upload } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -49,12 +50,14 @@ const Admin = () => {
     }
   };
 
+  // Show loading screen until role verification completes
   if (roleLoading || cardsLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <CardLoadingScreen message="Loading admin panel..." variant="fullPage" />;
+  }
+
+  // Don't render admin UI until verified as admin
+  if (role !== "admin") {
+    return null;
   }
 
   return (
