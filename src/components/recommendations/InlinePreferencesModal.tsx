@@ -80,7 +80,7 @@ export const InlinePreferencesModal = ({ isOpen, onClose, onSave, analysisId }: 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="never">Never</SelectItem>
+                <SelectItem value="rarely">Rarely</SelectItem>
                 <SelectItem value="occasional">Occasional (1-2 times/year)</SelectItem>
                 <SelectItem value="frequent">Frequent (3-6 times/year)</SelectItem>
                 <SelectItem value="very_frequent">Very Frequent (7+ times/year)</SelectItem>
@@ -108,8 +108,8 @@ export const InlinePreferencesModal = ({ isOpen, onClose, onSave, analysisId }: 
           <div className="space-y-2">
             <Label>🎁 Reward Preference</Label>
             <Select 
-              value={preferences?.preference_type || 'cashback'}
-              onValueChange={(value) => handlePreferenceChange({ preference_type: value as any })}
+              value={preferences?.reward_preference || 'cashback'}
+              onValueChange={(value) => handlePreferenceChange({ reward_preference: value as any })}
             >
               <SelectTrigger>
                 <SelectValue />

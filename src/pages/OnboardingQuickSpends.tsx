@@ -313,13 +313,6 @@ export default function OnboardingQuickSpends() {
                   </>
                 )}
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/upload")}
-                disabled={loading}
-              >
-                Upload Statements Instead
-              </Button>
             </div>
 
             {/* Alternative paths */}
