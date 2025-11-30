@@ -219,12 +219,17 @@ export default function OnboardingGoalBased() {
     setLoading(true);
 
     try {
+      console.log('[Goal-Based] === STARTING RECOMMENDATION GENERATION ===');
+      console.log('[Goal-Based] Goal:', { goalId, goalTitle });
+      console.log('[Goal-Based] Monthly spend:', goalData.monthlySpend);
+      
       trackEvent("onboarding.goal_selected", {
         goal_id: goalId,
         goal_title: goalTitle,
       });
 
       // Step 1: Mark onboarding as complete
+      console.log("[Goal-Based] Step 1: Marking onboarding complete...");
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -233,10 +238,14 @@ export default function OnboardingGoalBased() {
         })
         .eq("id", userId);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("[Goal-Based] Profile update failed:", profileError);
+        throw profileError;
+      }
+      console.log("[Goal-Based] ✓ Onboarding marked complete");
 
       // Step 2: Derive features
-      console.log("[Goal-Based] Deriving features...");
+      console.log("[Goal-Based] Step 2: Deriving features...");
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
@@ -248,6 +257,7 @@ export default function OnboardingGoalBased() {
           custom_weights: weights,
         },
       });
+      console.log("[Goal-Based] ✓ Features derived");
 
       trackEvent("derive_features_called", {
         userId,
@@ -256,7 +266,7 @@ export default function OnboardingGoalBased() {
       });
 
       // Step 3: Generate recommendations
-      console.log("[Goal-Based] Generating recommendations...");
+      console.log("[Goal-Based] Step 3: Generating recommendations...");
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
         {
@@ -269,21 +279,28 @@ export default function OnboardingGoalBased() {
       );
 
       if (error) {
-        console.error("[Goal-Based] Failed to generate recommendations:", error);
+        console.error("[Goal-Based] Recommendation generation error:", error);
         throw new Error(error.message || "Failed to generate recommendations");
       }
 
-      // Step 4: Create snapshot
-      if (data?.recommendations) {
-        await createSnapshot({
-          analysisId: null,
-          savingsMin: 0,
-          savingsMax: 50000,
-          confidence: "medium",
-          recommendedCards: data.recommendations.recommendedCards || [],
-          snapshotType: "goal_based",
-        });
+      if (!data?.recommendations) {
+        console.error("[Goal-Based] No recommendations in response:", data);
+        throw new Error("No recommendations returned from server");
       }
+      
+      console.log("[Goal-Based] ✓ Recommendations generated, count:", data.recommendations.recommendedCards?.length || 0);
+
+      // Step 4: Create snapshot
+      console.log("[Goal-Based] Step 4: Creating snapshot...");
+      await createSnapshot({
+        analysisId: null,
+        savingsMin: 0,
+        savingsMax: 50000,
+        confidence: "medium",
+        recommendedCards: data.recommendations.recommendedCards || [],
+        snapshotType: "goal_based",
+      });
+      console.log("[Goal-Based] ✓ Snapshot created");
 
       trackEvent("snapshot_created", {
         userId,
@@ -292,23 +309,43 @@ export default function OnboardingGoalBased() {
         confidence: data?.confidence || "medium",
       });
 
-      console.log('[Goal-Based] Recommendations generated successfully');
-      toast.success(`Recommendations tailored for ${goalTitle}!`);
-      
-      // Clear saved progress after completion
+      // Clear saved progress
+      console.log("[Goal-Based] Clearing saved progress...");
       if (userId) {
         localStorage.removeItem(`goalpick_progress_${userId}`);
       }
       
-      // Force refresh auth session cache to prevent navigation race condition
+      // Close modal and reset states BEFORE navigation
+      console.log("[Goal-Based] Resetting UI states...");
+      setLoading(false);
+      setSelectedGoal(null);
+      setShowQuestionModal(false);
+      setShowCustomChat(false);
+      
+      // Show success message
+      toast.success(`Recommendations tailored for ${goalTitle}!`);
+      
+      // Force refresh auth session cache
+      console.log("[Goal-Based] Refreshing auth cache...");
       queryClient.invalidateQueries({ queryKey: ['auth-session'] });
       
-      // Small delay to ensure cache invalidation propagates
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Small delay for state updates to propagate
+      await new Promise(resolve => setTimeout(resolve, 150));
       
+      // Navigate
+      console.log("[Goal-Based] === NAVIGATING TO RECOMMENDATIONS ===");
       navigate("/recs?from=onboarding", { replace: true });
+      
+      // Safety: Force navigation if React Router fails
+      setTimeout(() => {
+        if (window.location.pathname !== '/recs') {
+          console.warn('[Goal-Based] React Router navigation failed, forcing with window.location');
+          window.location.href = '/recs?from=onboarding';
+        }
+      }, 2000);
+      
     } catch (error: any) {
-      console.error("[Goal-Based] Error:", error);
+      console.error("[Goal-Based] === ERROR ===", error);
       const errorMessage = error.message || "Failed to generate recommendations. Please try again.";
       toast.error(errorMessage);
       
@@ -317,7 +354,8 @@ export default function OnboardingGoalBased() {
         goal: goalId,
         error: errorMessage,
       });
-    } finally {
+      
+      // Reset states on error
       setLoading(false);
       setSelectedGoal(null);
       setShowQuestionModal(false);
