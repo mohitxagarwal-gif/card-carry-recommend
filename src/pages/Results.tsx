@@ -403,9 +403,9 @@ const Results = () => {
           confidence: hasLowConfidence ? 'low' : editedTransactions.length > 100 ? 'high' : 'medium',
         });
         
-        // Scroll to recommendations
+        // Scroll to success card
         setTimeout(() => {
-          document.getElementById('recommendations-section')?.scrollIntoView({ 
+          document.getElementById('success-card')?.scrollIntoView({ 
             behavior: 'smooth',
             block: 'start'
           });
@@ -647,6 +647,44 @@ const Results = () => {
                     These recommendations are based on limited data. Upload more statements or recategorize "Other" transactions for better accuracy.
                   </AlertDescription>
                 </Alert>
+              )}
+              
+              {/* Success Card - Shown after recommendations are ready */}
+              {showRecommendations && analysis?.recommendedCards && analysis.recommendedCards.length > 0 && (
+                <Card id="success-card" className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/30 mb-8">
+                  <CardContent className="pt-8 pb-8 text-center space-y-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-2">
+                      <Sparkles className="w-8 h-8 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <h2 className="text-2xl font-heading font-bold">
+                        Your Personalized Recommendations Are Ready! 🎉
+                      </h2>
+                      <p className="text-muted-foreground max-w-2xl mx-auto">
+                        Based on your spending patterns, we've identified the best cards for you. Review your matches below or explore more options.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                      <Button 
+                        size="lg" 
+                        onClick={() => navigate('/recs?from=smartscan', { replace: true })}
+                        className="min-h-[48px]"
+                      >
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        View Full Recommendations
+                      </Button>
+                      <Button 
+                        size="lg" 
+                        variant="outline"
+                        onClick={() => navigate('/dashboard', { replace: true })}
+                        className="min-h-[48px]"
+                      >
+                        <Home className="w-4 h-4 mr-2" />
+                        Go to Dashboard
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
               
               {/* Personalization Opportunity */}
