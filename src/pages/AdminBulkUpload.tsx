@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Upload, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import { Upload, CheckCircle2, AlertCircle, Download, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 interface CardData {
   card_id: string;
@@ -471,12 +472,14 @@ example-card-1,Example Card,Example Bank,Visa,2500,10000 reward points,"Cashback
     setUploadProgress(0);
   };
 
+  // Show loading screen until role verification completes
   if (roleLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <CardLoadingScreen message="Verifying access..." variant="fullPage" />;
+  }
+
+  // Don't render admin UI until verified as admin
+  if (role !== "admin") {
+    return null;
   }
 
   return (
