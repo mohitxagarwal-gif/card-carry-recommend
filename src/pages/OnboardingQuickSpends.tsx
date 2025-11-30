@@ -110,12 +110,17 @@ export default function OnboardingQuickSpends() {
 
     setLoading(true);
     try {
+      console.log('[QuickSpends] === STARTING RECOMMENDATION GENERATION ===');
+      console.log('[QuickSpends] Monthly spend:', monthlySpend);
+      console.log('[QuickSpends] Spend split:', spendSplit);
+      
       trackEvent("onboarding.quick_spends_completed", {
         monthly_spend: monthlySpend,
         categories: Object.keys(spendSplit).filter(k => spendSplit[k] > 0)
       });
 
       // Step 1: Mark onboarding as complete
+      console.log("[QuickSpends] Step 1: Marking onboarding complete...");
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -124,10 +129,14 @@ export default function OnboardingQuickSpends() {
         })
         .eq("id", userId);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("[QuickSpends] Profile update failed:", profileError);
+        throw profileError;
+      }
+      console.log("[QuickSpends] ✓ Onboarding marked complete");
 
       // Step 2: Derive features from manual input
-      console.log("[QuickSpends] Deriving features...");
+      console.log("[QuickSpends] Step 2: Deriving features...");
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
@@ -138,6 +147,7 @@ export default function OnboardingQuickSpends() {
           data_source: "self_report",
         },
       });
+      console.log("[QuickSpends] ✓ Features derived");
 
       trackEvent("derive_features_called", {
         userId,
@@ -145,7 +155,7 @@ export default function OnboardingQuickSpends() {
       });
 
       // Step 3: Generate recommendations
-      console.log("[QuickSpends] Generating recommendations...");
+      console.log("[QuickSpends] Step 3: Generating recommendations...");
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
         {
@@ -157,11 +167,19 @@ export default function OnboardingQuickSpends() {
       );
 
       if (error) {
-        console.error("[QuickSpends] Failed to generate recommendations:", error);
+        console.error("[QuickSpends] Recommendation generation error:", error);
         throw new Error(error.message || "Failed to generate recommendations");
       }
 
+      if (!data?.recommendations) {
+        console.error("[QuickSpends] No recommendations in response:", data);
+        throw new Error("No recommendations returned from server");
+      }
+      
+      console.log("[QuickSpends] ✓ Recommendations generated, count:", data.recommendations.recommendedCards?.length || 0);
+
       // Step 4: Create snapshot
+      console.log("[QuickSpends] Step 4: Creating snapshot...");
       if (data?.recommendations) {
         await createSnapshot({
           analysisId: null,
@@ -172,6 +190,7 @@ export default function OnboardingQuickSpends() {
           snapshotType: "quick_spends",
         });
       }
+      console.log("[QuickSpends] ✓ Snapshot created");
 
       trackEvent("snapshot_created", {
         userId,
@@ -179,21 +198,36 @@ export default function OnboardingQuickSpends() {
         confidence: data?.confidence || "medium",
       });
 
+      // Clear saved progress
+      console.log("[QuickSpends] Clearing saved progress...");
       localStorage.removeItem('quickSpends_draft');
 
+      // Show success and reset loading before navigation
       toast.success("Recommendations generated successfully!");
+      setLoading(false);
       
-      // Force refresh auth session cache to prevent navigation race condition
+      // Force refresh auth session cache
+      console.log("[QuickSpends] Refreshing auth cache...");
       queryClient.invalidateQueries({ queryKey: ['auth-session'] });
       
-      // Small delay to ensure cache invalidation propagates
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Small delay for state updates to propagate
+      await new Promise(resolve => setTimeout(resolve, 150));
       
+      // Navigate
+      console.log("[QuickSpends] === NAVIGATING TO RECOMMENDATIONS ===");
       navigate("/recs?from=onboarding", { replace: true });
+      
+      // Safety: Force navigation if React Router fails
+      setTimeout(() => {
+        if (window.location.pathname !== '/recs') {
+          console.warn('[QuickSpends] React Router navigation failed, forcing with window.location');
+          window.location.href = '/recs?from=onboarding';
+        }
+      }, 2000);
+      
     } catch (error: any) {
-      console.error("[QuickSpends] Error:", error);
+      console.error("[QuickSpends] === ERROR ===", error);
       toast.error(error.message || "Failed to generate recommendations");
-    } finally {
       setLoading(false);
     }
   };

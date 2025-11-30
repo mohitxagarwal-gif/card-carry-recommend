@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,18 @@ export function GoalQuestionModal({
   const [step, setStep] = useState(1);
   const [monthlySpend, setMonthlySpend] = useState(defaultSpend);
   const [additionalData, setAdditionalData] = useState<Record<string, any>>({});
+
+  // Safety timeout: If loading stays true for too long, reset
+  useEffect(() => {
+    if (!loading) return;
+    
+    const timeout = setTimeout(() => {
+      console.warn('[GoalQuestionModal] Loading timeout - forcing modal close');
+      onCancel();
+    }, 60000); // 60 second safety timeout
+    
+    return () => clearTimeout(timeout);
+  }, [loading, onCancel]);
 
   const handleComplete = () => {
     let spendSplit: Record<string, number> = {};
