@@ -284,6 +284,7 @@ export default function OnboardingGoalBased() {
         confidence: data?.confidence || "medium",
       });
 
+      console.log('[Goal-Based] Recommendations generated successfully');
       toast.success(`Recommendations tailored for ${goalTitle}!`);
       
       // Force refresh auth session cache to prevent navigation race condition
@@ -295,7 +296,14 @@ export default function OnboardingGoalBased() {
       navigate("/recs?from=onboarding", { replace: true });
     } catch (error: any) {
       console.error("[Goal-Based] Error:", error);
-      toast.error(error.message || "Failed to generate recommendations. Please try again.");
+      const errorMessage = error.message || "Failed to generate recommendations. Please try again.";
+      toast.error(errorMessage);
+      
+      trackEvent("goal_based.error", {
+        userId,
+        goal: goalId,
+        error: errorMessage,
+      });
     } finally {
       setLoading(false);
       setSelectedGoal(null);

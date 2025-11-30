@@ -391,7 +391,7 @@ const Results = () => {
         });
         
         setShowRecommendations(true);
-        toast.success("Recommendations saved! View them anytime from your dashboard.");
+        setActiveView('recommendations');
         
         // Mixpanel event - recommendation generation completed
         trackMixpanelEvent('recommendation.generation_completed', {
@@ -594,6 +594,49 @@ const Results = () => {
           {showRecommendations && analysis.recommendedCards && analysis.recommendedCards.length > 0 && (
             <>
               <div id="recommendations-section"></div>
+              
+              {/* Success Card - Only show when we just generated recommendations, not when loading existing ones */}
+              {!hasExistingRecommendations && (
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardContent className="pt-6">
+                    <div className="text-center space-y-4">
+                      <div className="flex justify-center">
+                        <div className="bg-primary/10 p-3 rounded-full">
+                          <Sparkles className="h-8 w-8 text-primary" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-heading font-bold text-foreground mb-2">
+                          🎉 Your recommendations are ready!
+                        </h3>
+                        <p className="text-muted-foreground mb-6">
+                          We've analyzed your spending and found the best cards for you
+                        </p>
+                      </div>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <Button 
+                          size="lg"
+                          onClick={() => navigate('/recs?from=smartscan')}
+                        >
+                          <ArrowUpCircle className="h-4 w-4 mr-2" />
+                          View Full Recommendations
+                        </Button>
+                        <Button 
+                          size="lg"
+                          variant="outline"
+                          onClick={() => navigate('/dashboard')}
+                        >
+                          <LayoutDashboard className="h-4 w-4 mr-2" />
+                          Go to Dashboard
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        You can access these recommendations anytime from your dashboard
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
               
               
               {/* Low Confidence Warning */}

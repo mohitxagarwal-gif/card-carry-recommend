@@ -27,7 +27,7 @@ export function CustomGoalChat({ open, onComplete, onCancel }: CustomGoalChatPro
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hi! I'm here to help you find the perfect credit card. What's most important to you in a credit card? (e.g., travel rewards, cashback, low fees, etc.)",
+      content: "Hi! What's your main priority for a credit card? (e.g., travel, cashback, shopping)",
     },
   ]);
   const [input, setInput] = useState("");
@@ -92,14 +92,15 @@ export function CustomGoalChat({ open, onComplete, onCancel }: CustomGoalChatPro
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && !conversationComplete && onCancel()}>
-      <DialogContent className="sm:max-w-[600px] h-[600px] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] h-[70vh] sm:h-[600px] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Sparkles className="w-5 h-5 text-primary" />
-            Custom Goal - AI Assistant
+            <span className="hidden sm:inline">Custom Goal - AI Assistant</span>
+            <span className="sm:hidden">AI Assistant</span>
           </DialogTitle>
-          <DialogDescription>
-            Tell me about your spending habits and priorities, and I'll help find the best cards for you
+          <DialogDescription className="text-sm">
+            Share your priorities to get personalized recommendations
           </DialogDescription>
         </DialogHeader>
 
