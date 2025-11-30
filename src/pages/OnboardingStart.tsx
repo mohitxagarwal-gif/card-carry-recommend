@@ -13,6 +13,7 @@ import { TrustBadge } from "@/components/onboarding/TrustBadge";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { isOnboardingComplete } from "@/lib/authUtils";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55+"];
 const INCOME_BANDS = [
@@ -239,9 +240,10 @@ export default function OnboardingStart() {
 
   if (checking) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <CardLoadingScreen
+        message="Setting up your journey..."
+        variant="fullPage"
+      />
     );
   }
 

@@ -11,6 +11,7 @@ import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { SpendingSliders } from "@/components/onboarding/SpendingSliders";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 interface SpendSplit {
   online: number;
@@ -212,9 +213,10 @@ export default function OnboardingQuickSpends() {
 
   if (checking || !userId) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <CardLoadingScreen
+        message="Analyzing your spending..."
+        variant="fullPage"
+      />
     );
   }
 

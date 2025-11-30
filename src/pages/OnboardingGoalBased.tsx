@@ -11,6 +11,7 @@ import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { cn } from "@/lib/utils";
 import { GoalQuestionModal } from "@/components/onboarding/GoalQuestionModal";
 import { CustomGoalChat } from "@/components/onboarding/CustomGoalChat";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 interface GoalPreset {
   id: string;
@@ -296,9 +297,10 @@ export default function OnboardingGoalBased() {
 
   if (checking || !userId) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <CardLoadingScreen
+        message="Crafting your goals..."
+        variant="fullPage"
+      />
     );
   }
 

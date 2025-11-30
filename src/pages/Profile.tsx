@@ -12,9 +12,10 @@ import Header from "@/components/Header";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, TrendingUp, AlertCircle } from "lucide-react";
+import { User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, TrendingUp, AlertCircle } from "lucide-react";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { PreferencesModal } from "@/components/profile/PreferencesModal";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -57,9 +58,10 @@ const Profile = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+        <CardLoadingScreen
+          message="Loading your profile..."
+          variant="inline"
+        />
       </div>
     );
   }

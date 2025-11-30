@@ -8,7 +8,8 @@ import { useShortlist } from "@/hooks/useShortlist";
 import { useApplications } from "@/hooks/useApplications";
 import { useUserCards } from "@/hooks/useUserCards";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
-import { Loader2, TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus, RefreshCw, Sparkles } from "lucide-react";
+import { TrendingUp, Heart, FileText, Upload, AlertCircle, CreditCard as CreditCardIcon, Plus, RefreshCw, Sparkles } from "lucide-react";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 import { Badge } from "@/components/ui/badge";
@@ -227,16 +228,10 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading your dashboard...</p>
-          <p className="text-sm text-muted-foreground">
-            {snapshotLoading && 'Fetching recommendations... '}
-            {shortlistLoading && 'Loading shortlist... '}
-            {appsLoading && 'Loading applications... '}
-            {cardsLoading && 'Loading cards... '}
-          </p>
-        </div>
+        <CardLoadingScreen
+          message="Preparing your dashboard..."
+          variant="inline"
+        />
       </div>
     );
   }
