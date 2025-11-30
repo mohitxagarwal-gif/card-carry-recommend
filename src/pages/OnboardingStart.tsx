@@ -12,7 +12,7 @@ import { TrustBadge } from "@/components/onboarding/TrustBadge";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-const AGE_RANGES = ["18-25", "26-35", "36-45", "46-60", "60+"];
+const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55+"];
 const INCOME_BANDS = [
   { value: "0-25000", label: "< ₹25K/month" },
   { value: "25000-50000", label: "₹25K - ₹50K" },
