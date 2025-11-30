@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,6 +27,7 @@ interface SpendSplit {
 
 export default function OnboardingQuickSpends() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
@@ -202,7 +204,14 @@ export default function OnboardingQuickSpends() {
       localStorage.removeItem('quickSpends_draft');
 
       toast.success("Recommendations generated successfully!");
-      navigate("/recs?from=onboarding");
+      
+      // Force refresh auth session cache to prevent navigation race condition
+      queryClient.invalidateQueries({ queryKey: ['auth-session'] });
+      
+      // Small delay to ensure cache invalidation propagates
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      navigate("/recs?from=onboarding", { replace: true });
     } catch (error: any) {
       console.error("[QuickSpends] Error:", error);
       toast.error(error.message || "Failed to generate recommendations");
