@@ -149,8 +149,20 @@ serve(async (req) => {
 
     // 3. Calculate derived features (with option overrides)
     const pifScore = options?.pif_score ?? calculatePIFScore(profile.pay_in_full_habit);
-    const feeToleranceMax = options?.fee_tolerance_numeric ?? calculateFeeToleranceMax(prefs?.fee_tolerance_band);
+    
+    // Map fee_sensitivity to fee_tolerance_numeric if fee_tolerance_band not set
+    const feeToleranceMax = options?.fee_tolerance_numeric ?? (
+      prefs?.fee_tolerance_band 
+        ? calculateFeeToleranceMax(prefs.fee_tolerance_band)
+        : mapFeeSensitivity(prefs?.fee_sensitivity, profile.income_band_inr)
+    );
+    
     const acceptanceRiskAmex = options?.acceptance_risk_amex ?? calculateAmexRisk(profile.pincode, profile.city);
+    
+    // Map new preference fields to numeric scores
+    const travelNumeric = mapTravelFrequency(prefs?.travel_frequency);
+    const loungeNumeric = mapLoungeImportance(prefs?.lounge_importance);
+    const rewardPreference = prefs?.reward_preference || 'both';
 
     // Normalize category shares
     const onlineShare = spendSplit['online'] || spendSplit['online shopping'] || 0;
@@ -196,6 +208,9 @@ serve(async (req) => {
         pif_score: pifScore,
         fee_tolerance_numeric: feeToleranceMax,
         acceptance_risk_amex: acceptanceRiskAmex,
+        travel_numeric: travelNumeric,
+        lounge_numeric: loungeNumeric,
+        reward_preference: rewardPreference,
         data_source: featureSource,
         months_coverage: monthsCoverage,
         last_statement_date: lastStmtEnd,
@@ -266,4 +281,43 @@ function calculateAmexRisk(pincode: string | null, city: string | null): number 
   
   // Tier 2/3 cities: higher risk
   return 0.6;
+}
+
+// Map fee_sensitivity to fee_tolerance_numeric based on income
+function mapFeeSensitivity(sensitivity: string | null, incomeBand: string | null): number {
+  const incomeMultipliers: Record<string, number> = {
+    '0-25000': 500,
+    '25000-50000': 1000,
+    '50000-100000': 2500,
+    '100000-200000': 5000,
+    '200000+': 10000,
+  };
+  
+  const base = incomeMultipliers[incomeBand || '50000-100000'] || 2500;
+  
+  switch (sensitivity) {
+    case 'low': return base * 2;      // Willing to pay higher fees
+    case 'high': return base * 0.3;   // Very fee-conscious
+    default: return base;             // Medium - standard tolerance
+  }
+}
+
+// Map travel_frequency to travel_numeric (0-10)
+function mapTravelFrequency(frequency: string | null): number {
+  const mapping: Record<string, number> = {
+    'rarely': 2,
+    'occasional': 5,
+    'frequent': 8,
+  };
+  return mapping[frequency || 'occasional'] || 5;
+}
+
+// Map lounge_importance to lounge_numeric (0-10)
+function mapLoungeImportance(importance: string | null): number {
+  const mapping: Record<string, number> = {
+    'not_important': 2,
+    'nice_to_have': 5,
+    'very_important': 9,
+  };
+  return mapping[importance || 'nice_to_have'] || 5;
 }

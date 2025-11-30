@@ -28,6 +28,7 @@ const GenerateRecommendationsSchema = z.object({
     fee_sensitivity: z.string().nullish(),
     travel_frequency: z.string().nullish(),
     lounge_importance: z.string().nullish(),
+    reward_preference: z.string().nullish(),
     preference_type: z.string().nullish()
   }).nullish(),
   customWeights: z.record(z.number()).optional(),
@@ -85,7 +86,7 @@ serve(async (req) => {
     if (!userPreferences) {
       const { data: fetchedPreferences } = await supabaseClient
         .from('user_preferences')
-        .select('fee_sensitivity, travel_frequency, lounge_importance, preference_type')
+        .select('fee_sensitivity, travel_frequency, lounge_importance, reward_preference, preference_type')
         .eq('user_id', user.id)
         .maybeSingle();
       
@@ -293,7 +294,10 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         entertainment_share: userFeaturesData.entertainment_share || 0,
         online_share: userFeaturesData.online_share || 0,
         forex_share: userFeaturesData.forex_share || 0,
-        category_spend: Object.keys(categoryTotals).length > 0 ? categoryTotals : {}
+        category_spend: Object.keys(categoryTotals).length > 0 ? categoryTotals : {},
+        travel_numeric: userFeaturesData.travel_numeric || 5,
+        lounge_numeric: userFeaturesData.lounge_numeric || 5,
+        reward_preference: userFeaturesData.reward_preference || 'both'
       };
       
       // Apply custom weights if provided (for goal-based flows)
@@ -364,6 +368,8 @@ USER PROFILE:
 - Location: ${normalizedProfile.city}${userProfile?.city ? '' : ' (assumed metro)'}
 - Fee Sensitivity: ${normalizedPreferences.fee_sensitivity}${userPreferences?.fee_sensitivity ? '' : ' (default)'}
 - Travel Frequency: ${normalizedPreferences.travel_frequency}${userPreferences?.travel_frequency ? '' : ' (default)'}
+- Lounge Importance: ${normalizedPreferences.lounge_importance}${userPreferences?.lounge_importance ? '' : ' (default)'}
+- Reward Preference: ${userPreferences?.reward_preference || 'both'}${userPreferences?.reward_preference ? '' : ' (default)'}
 
 TOP-RANKED CARDS (by AI match score):
 ${cardContext}
@@ -376,6 +382,9 @@ CRITICAL RULES:
 - Consider fee vs benefits tradeoff for each income band
 - For travel frequency 'frequent', emphasize lounge/forex benefits
 - For fee_sensitivity 'high', prioritize cards with scores 75+ AND fees under ₹1500
+- For lounge_importance 'very_important', prioritize cards with domestic/international lounge access
+- For reward_preference 'cashback', favor cashback cards over points cards
+- For reward_preference 'points', favor points/miles cards over cashback
 ${snapshotType === 'goal_based' ? '- User has specific goals - prioritize cards matching their stated goals' : ''}
 
 Return ONLY valid JSON with this EXACT structure (no markdown):
