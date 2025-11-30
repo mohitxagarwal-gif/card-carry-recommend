@@ -27,6 +27,8 @@ export const ProtectedRoute = ({
     if (hasChecked.current) return;
     hasChecked.current = true;
     
+    let isMounted = true;
+    
     const checkAccess = async () => {
       try {
         console.log('[ProtectedRoute] Checking access for:', location.pathname);
@@ -36,6 +38,7 @@ export const ProtectedRoute = ({
         // Not authenticated
         if (!session) {
           console.log('[ProtectedRoute] No session, redirecting to /auth');
+          if (isMounted) setChecking(false);
           const returnTo = location.pathname + location.search;
           navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
           return;
@@ -48,7 +51,10 @@ export const ProtectedRoute = ({
         
         if (!profile) {
           console.log('[ProtectedRoute] Profile not found, signing out');
-          toast.error('Profile not found. Please try logging in again.');
+          if (isMounted) {
+            toast.error('Profile not found. Please try logging in again.');
+            setChecking(false);
+          }
           await supabase.auth.signOut();
           navigate('/auth', { replace: true });
           return;
@@ -75,6 +81,7 @@ export const ProtectedRoute = ({
             
             trackOnboardingGateTriggered(missingFields);
             
+            if (isMounted) setChecking(false);
             const returnTo = location.pathname + location.search;
             navigate(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
             return;
@@ -82,10 +89,13 @@ export const ProtectedRoute = ({
         }
         
         console.log('[ProtectedRoute] Access granted');
-        setChecking(false);
+        if (isMounted) setChecking(false);
       } catch (error) {
         console.error('[ProtectedRoute] Error checking access:', error);
-        toast.error('Error verifying access. Please try again.');
+        if (isMounted) {
+          toast.error('Error verifying access. Please try again.');
+          setChecking(false);
+        }
         navigate('/auth', { replace: true });
       }
     };
@@ -98,6 +108,10 @@ export const ProtectedRoute = ({
     }, 10000);
 
     checkAccess().finally(() => clearTimeout(timeoutId));
+    
+    return () => {
+      isMounted = false;
+    };
   }, [requireOnboarding]);
 
   if (checking) {

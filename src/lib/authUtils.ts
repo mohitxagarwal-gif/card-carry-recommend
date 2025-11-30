@@ -171,8 +171,10 @@ export const afterAuthRedirect = async (
     destination = '/dashboard';
     reason = 'has_recommendations';
   } else {
-    destination = '/onboarding';
-    reason = 'fallback';
+    // Changed: Send to dashboard instead of onboarding
+    // User can upload statements from dashboard
+    destination = '/dashboard';
+    reason = 'new_user';
   }
   
   console.log('[authUtils.ts:157] Redirect destination:', destination, 'reason:', reason);

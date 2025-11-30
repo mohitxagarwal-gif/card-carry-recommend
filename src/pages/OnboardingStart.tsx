@@ -55,13 +55,9 @@ export default function OnboardingStart() {
         .eq("id", user.id)
         .single();
 
-      if (profile && isOnboardingComplete(profile)) {
-        navigate('/dashboard', { replace: true });
-        return;
-      }
-
-      // If profile has age and income, skip to path selection
+      // If user has profile data, show path selection instead of redirecting
       if (profile?.age_range && profile?.income_band_inr) {
+        console.log('[OnboardingStart] Pre-filling existing profile data');
         setAgeRange(profile.age_range);
         setIncomeBand(profile.income_band_inr);
         setCity(profile.city || "");
@@ -87,15 +83,17 @@ export default function OnboardingStart() {
     setSavingProfile(true);
     
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          age_range: ageRange,
-          income_band_inr: incomeBand,
-          city: city || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", userId);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        age_range: ageRange,
+        income_band_inr: incomeBand,
+        city: city || null,
+        onboarding_completed: true,
+        onboarding_completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", userId);
 
       if (error) throw error;
 
