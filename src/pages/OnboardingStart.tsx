@@ -118,14 +118,26 @@ export default function OnboardingStart() {
     trackEvent("onboarding.path_selected", { path });
     
     const returnTo = searchParams.get('returnTo');
-    const queryString = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
     
+    // If returnTo exists and matches the selected path, navigate directly to it
+    if (returnTo) {
+      if (
+        (path === 'quick-spends' && returnTo.includes('/onboarding/quick-spends')) ||
+        (path === 'goal-based' && returnTo.includes('/onboarding/goal-based')) ||
+        (path === 'upload' && returnTo.includes('/upload'))
+      ) {
+        navigate(returnTo, { replace: true });
+        return;
+      }
+    }
+    
+    // Otherwise navigate to the selected path normally
     if (path === 'upload') {
-      navigate(`/upload${queryString}`);
+      navigate('/upload');
     } else if (path === 'quick-spends') {
-      navigate(`/onboarding/quick-spends${queryString}`);
+      navigate('/onboarding/quick-spends');
     } else {
-      navigate(`/onboarding/goal-based${queryString}`);
+      navigate('/onboarding/goal-based');
     }
   };
 

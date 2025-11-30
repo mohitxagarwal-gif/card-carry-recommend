@@ -46,15 +46,31 @@ export default function OnboardingQuickSpends() {
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        setChecking(false);
+      if (!user) {
+        navigate('/auth');
+        return;
       }
+      
+      // Check if basic profile exists
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('age_range, income_band_inr')
+        .eq('id', user.id)
+        .single();
+      
+      // If missing basic profile, redirect to onboarding start with returnTo
+      if (!profile?.age_range || !profile?.income_band_inr) {
+        navigate(`/onboarding?returnTo=${encodeURIComponent('/onboarding/quick-spends')}`, { replace: true });
+        return;
+      }
+      
+      setUserId(user.id);
+      setChecking(false);
     };
 
     init();
     trackEvent("onboarding.path_selected", { path: "quick_spends" });
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = async () => {
     if (!userId) return;

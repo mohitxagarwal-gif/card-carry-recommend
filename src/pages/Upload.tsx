@@ -717,6 +717,20 @@ const Upload = () => {
       setAnalysisProgress(100);
       await new Promise(resolve => setTimeout(resolve, 300));
       
+      // Mark onboarding as complete after successful analysis
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            onboarding_completed: true,
+            onboarding_completed_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+      } catch (profileError) {
+        console.error('[Upload] Failed to update profile (non-critical):', profileError);
+        // Don't block navigation if profile update fails
+      }
+      
       toast.success('Analysis complete!');
       navigate(`/results?analysisId=${data.analysis.id}`, {
         state: { analysisId: data.analysis.id }
