@@ -1,6 +1,6 @@
 import { safeTrackEvent as trackEvent } from "./safeAnalytics";
 
-export const trackAuthSuccess = (provider: 'google' | 'email') => {
+export const trackAuthSuccess = (provider: 'google') => {
   trackEvent('auth_success', { provider });
 };
 
