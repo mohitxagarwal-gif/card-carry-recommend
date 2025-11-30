@@ -7,6 +7,8 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { ExternalLink, ExternalLinkIcon, FileText } from "lucide-react";
 import { CardApplication } from "@/types/dashboard";
+import { trackEvent } from "@/lib/analytics";
+import { useEffect } from "react";
 
 interface CardDetailsModalProps {
   card: CreditCard | null;
@@ -29,6 +31,19 @@ export const CardDetailsModal = ({
 
   if (!card) return null;
 
+  // Track modal open
+  useEffect(() => {
+    if (open && card) {
+      trackEvent('card.details_viewed', {
+        cardId: card.id,
+        cardName: card.name,
+        issuer: card.issuer,
+        network: card.network,
+        annualFee: card.annual_fee
+      });
+    }
+  }, [open, card]);
+
   // Determine which button to show
   const renderActionButton = () => {
     // If already applied/approved/rejected → Track Application
@@ -44,7 +59,14 @@ export const CardDetailsModal = ({
     // If has application URL → Apply Now
     if (card.application_url && onApplyClick) {
       return (
-        <Button onClick={() => onApplyClick(card)} className="font-sans">
+        <Button onClick={() => {
+          trackEvent('card.apply_clicked', {
+            cardId: card.id,
+            cardName: card.name,
+            source: 'card_details_modal'
+          });
+          onApplyClick(card);
+        }} className="font-sans">
           <ExternalLink className="w-4 h-4 mr-2" />
           Apply Now
         </Button>
@@ -118,7 +140,12 @@ export const CardDetailsModal = ({
             </div>
 
             {/* Tabs */}
-            <Tabs defaultValue="benefits" className="w-full">
+            <Tabs defaultValue="benefits" className="w-full" onValueChange={(tab) => {
+              trackEvent('card.details_tab_viewed', {
+                cardId: card?.id,
+                tab
+              });
+            }}>
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="benefits" className="font-sans text-xs md:text-sm">Benefits</TabsTrigger>
                 <TabsTrigger value="fees" className="font-sans text-xs md:text-sm">Fees & Rewards</TabsTrigger>
@@ -231,6 +258,7 @@ export const CardDetailsModal = ({
                       href={card.tnc_url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => trackEvent('card.tnc_clicked', { cardId: card.id })}
                       className="inline-flex items-center text-sm font-sans text-primary hover:underline"
                     >
                       View official T&Cs

@@ -18,6 +18,7 @@ import { FilterIcon, XIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
+import { trackEvent } from "@/lib/analytics";
 
 const CardsPage = () => {
   const navigate = useNavigate();
@@ -52,6 +53,14 @@ const CardsPage = () => {
       setUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Track page view
+  useEffect(() => {
+    trackEvent('cards.page_view', {
+      source: searchParams.get('source') || 'direct',
+      isLoggedIn: !!user
+    });
   }, []);
 
   // Update URL when filters change
@@ -155,6 +164,39 @@ const CardsPage = () => {
     return cards;
   }, [search, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, sortBy, creditCards]);
 
+  // Track filter changes (debounced)
+  useEffect(() => {
+    if (!hasAppliedFilters) return;
+    
+    const timeout = setTimeout(() => {
+      trackEvent('cards.filters_applied', {
+        issuers: selectedIssuers,
+        feeRange: selectedFeeRange,
+        rewardTypes: selectedRewardTypes,
+        perks: selectedPerks,
+        networks: selectedNetworks,
+        forexRange: selectedForexRange,
+        welcomeBonusOnly,
+        resultCount: filteredCards.length
+      });
+    }, 1000);
+    
+    return () => clearTimeout(timeout);
+  }, [hasAppliedFilters, selectedIssuers, selectedFeeRange, selectedRewardTypes, selectedPerks, selectedNetworks, selectedForexRange, welcomeBonusOnly, filteredCards.length]);
+
+  // Track search queries (debounced)
+  useEffect(() => {
+    if (search.length > 2) {
+      const timeout = setTimeout(() => {
+        trackEvent('cards.search', {
+          query: search,
+          resultCount: filteredCards.length
+        });
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [search, filteredCards.length]);
+
   // Show nudge after filters applied (only for non-logged-in users)
   useEffect(() => {
     if (user) return; // Skip toast for logged-in users
@@ -187,6 +229,7 @@ const CardsPage = () => {
   }
 
   const clearAllFilters = () => {
+    trackEvent('cards.filters_cleared');
     setSearch("");
     setSelectedIssuers([]);
     setSelectedFeeRange("");
@@ -197,6 +240,11 @@ const CardsPage = () => {
     setWelcomeBonusOnly(false);
     setSortBy("");
     setSearchParams(new URLSearchParams());
+  };
+
+  const handleSortChange = (value: string) => {
+    trackEvent('cards.sort_changed', { sortBy: value });
+    setSortBy(value);
   };
 
   const toggleArrayFilter = (value: string, array: string[], setter: (arr: string[]) => void) => {
@@ -452,7 +500,7 @@ const CardsPage = () => {
                     </div>
 
                     {/* Sort Dropdown */}
-                    <Select value={sortBy} onValueChange={setSortBy}>
+                    <Select value={sortBy} onValueChange={handleSortChange}>
                       <SelectTrigger className="w-full md:w-[180px] font-sans">
                         <SelectValue placeholder="Sort" />
                       </SelectTrigger>
