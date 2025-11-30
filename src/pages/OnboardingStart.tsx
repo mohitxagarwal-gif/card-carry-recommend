@@ -252,25 +252,41 @@ export default function OnboardingStart() {
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Progress Indicator */}
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <div className={`flex items-center gap-2 ${!profileComplete ? 'text-primary font-medium' : ''}`}>
-              {profileComplete ? <Check className="w-4 h-4 text-primary" /> : <div className="w-4 h-4 rounded-full border-2 border-primary" />}
-              <span>Profile</span>
+          <div className="flex items-center justify-center gap-2 sm:gap-4">
+            {/* Mobile: Simple dots with current step indicator */}
+            <div className="sm:hidden flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full transition-colors ${!profileComplete ? 'bg-primary' : 'bg-primary/50'}`} />
+                <div className={`w-2 h-2 rounded-full transition-colors ${showPreferences && profileComplete ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                <div className={`w-2 h-2 rounded-full transition-colors ${showPathSelection ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                <div className={`w-2 h-2 rounded-full bg-muted-foreground/30`} />
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Step {!showPreferences && !showPathSelection ? '1' : showPreferences ? '2' : showPathSelection ? '3' : '4'} of 4
+              </span>
             </div>
-            <ArrowRight className="w-4 h-4" />
-            <div className={`flex items-center gap-2 ${showPreferences && profileComplete ? 'text-primary font-medium' : ''}`}>
-              {showPathSelection ? <Check className="w-4 h-4 text-primary" /> : <div className="w-4 h-4 rounded-full border-2 border-current" />}
-              <span>Preferences</span>
-            </div>
-            <ArrowRight className="w-4 h-4" />
-            <div className={`flex items-center gap-2 ${showPathSelection ? 'text-primary font-medium' : ''}`}>
-              <div className="w-4 h-4 rounded-full border-2 border-current" />
-              <span>Choose Path</span>
-            </div>
-            <ArrowRight className="w-4 h-4" />
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full border-2 border-current" />
-              <span>Get Recommendations</span>
+
+            {/* Desktop: Full labels with icons */}
+            <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+              <div className={`flex items-center gap-2 ${!profileComplete ? 'text-primary font-medium' : ''}`}>
+                {profileComplete ? <Check className="w-4 h-4 text-primary" /> : <div className="w-4 h-4 rounded-full border-2 border-primary" />}
+                <span>Profile</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+              <div className={`flex items-center gap-2 ${showPreferences && profileComplete ? 'text-primary font-medium' : ''}`}>
+                {showPathSelection ? <Check className="w-4 h-4 text-primary" /> : <div className="w-4 h-4 rounded-full border-2 border-current" />}
+                <span>Preferences</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+              <div className={`flex items-center gap-2 ${showPathSelection ? 'text-primary font-medium' : ''}`}>
+                <div className="w-4 h-4 rounded-full border-2 border-current" />
+                <span>Choose Path</span>
+              </div>
+              <ArrowRight className="w-4 h-4" />
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full border-2 border-current" />
+                <span>Get Recommendations</span>
+              </div>
             </div>
           </div>
 
