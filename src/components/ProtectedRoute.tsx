@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForProfile, isOnboardingComplete } from "@/lib/authUtils";
 import { trackOnboardingGateTriggered } from "@/lib/authAnalytics";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,10 +17,16 @@ export const ProtectedRoute = ({
   requireOnboarding = false 
 }: ProtectedRouteProps) => {
   const [checking, setChecking] = useState(true);
+  const [showRetry, setShowRetry] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const hasChecked = useRef(false);
 
   useEffect(() => {
+    // Only run once on mount
+    if (hasChecked.current) return;
+    hasChecked.current = true;
+    
     const checkAccess = async () => {
       try {
         console.log('[ProtectedRoute] Checking access for:', location.pathname);
@@ -83,8 +90,15 @@ export const ProtectedRoute = ({
       }
     };
 
-    checkAccess();
-  }, [navigate, location, requireOnboarding]);
+    // Set timeout to show retry button after 10 seconds
+    const timeoutId = setTimeout(() => {
+      if (checking) {
+        setShowRetry(true);
+      }
+    }, 10000);
+
+    checkAccess().finally(() => clearTimeout(timeoutId));
+  }, [requireOnboarding]);
 
   if (checking) {
     return (
@@ -92,6 +106,15 @@ export const ProtectedRoute = ({
         <div className="text-center space-y-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
           <p className="text-sm text-muted-foreground">Checking access...</p>
+          {showRetry && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.reload()}
+            >
+              Taking too long? Click to retry
+            </Button>
+          )}
         </div>
       </div>
     );
