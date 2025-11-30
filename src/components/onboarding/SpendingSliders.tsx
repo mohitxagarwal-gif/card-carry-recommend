@@ -35,8 +35,24 @@ export function SpendingSliders({ spendSplit, onChange }: SpendingSlidersProps) 
     onChange(newSplit);
   };
 
+  const total = Object.values(spendSplit).reduce((sum, val) => sum + val, 0);
+  
+  const getTotalColor = () => {
+    if (total === 100) return "text-green-600";
+    if (total >= 95 && total <= 105) return "text-yellow-600";
+    return "text-red-600";
+  };
+
   return (
     <div className="space-y-4">
+      {/* Total Display */}
+      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+        <Label className="font-semibold">Total Percentage</Label>
+        <span className={`text-lg font-bold ${getTotalColor()}`}>
+          {total.toFixed(0)}%
+        </span>
+      </div>
+      
       {categories.map(({ key, label, icon: Icon, color }) => (
         <div key={key} className="space-y-2">
           <div className="flex items-center justify-between">
