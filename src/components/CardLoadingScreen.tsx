@@ -12,7 +12,9 @@ interface CardLoadingScreenProps {
   message?: string;
   showRetry?: boolean;
   onRetry?: () => void;
+  onCancel?: () => void;
   variant?: "fullPage" | "inline";
+  timeout?: number; // milliseconds until timeout, default 15000
 }
 
 const LOADING_ICONS = [
@@ -26,10 +28,13 @@ export const CardLoadingScreen = ({
   message = "Loading...",
   showRetry = false,
   onRetry,
+  onCancel,
   variant = "fullPage",
+  timeout = 15000,
 }: CardLoadingScreenProps) => {
   const [iconIndex, setIconIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -42,6 +47,15 @@ export const CardLoadingScreen = ({
 
     return () => clearInterval(interval);
   }, []);
+
+  // Timeout handler
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setTimedOut(true);
+    }, timeout);
+
+    return () => clearTimeout(timeoutId);
+  }, [timeout]);
 
   const CurrentIcon = LOADING_ICONS[iconIndex];
 
@@ -72,25 +86,39 @@ export const CardLoadingScreen = ({
         {/* Message */}
         <div className="space-y-2">
           <p className="text-lg font-medium text-foreground">
-            {message}
+            {timedOut ? "This is taking longer than expected..." : message}
           </p>
-          <div className="flex items-center justify-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
-            <div className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
-            <div className="w-2 h-2 rounded-full bg-primary animate-bounce" />
-          </div>
+          {!timedOut && (
+            <div className="flex items-center justify-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+              <div className="w-2 h-2 rounded-full bg-primary animate-bounce" />
+            </div>
+          )}
         </div>
 
-        {/* Optional retry button */}
-        {showRetry && onRetry && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRetry}
-            className="mt-4"
-          >
-            Taking too long? Click to retry
-          </Button>
+        {/* Timeout or retry actions */}
+        {(timedOut || showRetry) && (
+          <div className="flex gap-2 mt-4">
+            {onRetry && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={onRetry}
+              >
+                Retry
+              </Button>
+            )}
+            {onCancel && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onCancel}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>

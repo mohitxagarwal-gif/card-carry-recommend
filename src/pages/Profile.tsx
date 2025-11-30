@@ -16,51 +16,112 @@ import { User, Bell, Shield, FileText, Upload, Download, Trash2, LogOut, Trendin
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { PreferencesModal } from "@/components/profile/PreferencesModal";
 import { CardLoadingScreen } from "@/components/CardLoadingScreen";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { preferences, isLoading, updatePreferences } = useUserPreferences();
+  const { preferences, isLoading: prefsLoading, updatePreferences } = useUserPreferences();
   const [profile, setProfile] = useState<any>(null);
   const [userFeatures, setUserFeatures] = useState<any>(null);
   const [preferencesModalOpen, setPreferencesModalOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isMountedRef = useIsMounted();
 
   useEffect(() => {
+    const abortController = new AbortController();
+    
     trackEvent("profile_view");
-    loadProfile();
-    loadUserFeatures();
+    loadProfile(abortController.signal);
+    loadUserFeatures(abortController.signal);
+
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
-  const loadProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
+  const loadProfile = async (signal?: AbortSignal) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || signal?.aborted) return;
+
+      const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
-      setProfile(data);
+
+      if (signal?.aborted) return;
+
+      if (error) throw error;
+
+      if (isMountedRef.current) {
+        setProfile(data);
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError' && isMountedRef.current) {
+        console.error("Failed to load profile:", err);
+        setError("Failed to load profile data");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setProfileLoading(false);
+      }
     }
   };
 
-  const loadUserFeatures = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+  const loadUserFeatures = async (signal?: AbortSignal) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || signal?.aborted) return;
+
       const { data } = await supabase
         .from("user_features")
         .select("*")
         .eq("user_id", user.id)
         .single();
-      setUserFeatures(data);
+
+      if (signal?.aborted) return;
+
+      if (isMountedRef.current) {
+        setUserFeatures(data);
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error("Failed to load user features:", err);
+      }
     }
   };
 
-  if (isLoading || !profile) {
+  const handleRetry = () => {
+    setError(null);
+    setProfileLoading(true);
+    loadProfile();
+    loadUserFeatures();
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <AlertCircle className="w-12 h-12 text-destructive" />
+          <p className="text-foreground font-semibold">{error}</p>
+          <Button onClick={handleRetry}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (prefsLoading || profileLoading || !profile) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <CardLoadingScreen
           message="Loading your profile..."
           variant="inline"
+          onRetry={handleRetry}
+          onCancel={() => navigate('/dashboard')}
         />
       </div>
     );
