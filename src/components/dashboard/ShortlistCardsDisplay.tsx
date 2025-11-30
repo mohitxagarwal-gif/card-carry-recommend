@@ -118,11 +118,11 @@ export const ShortlistCardsDisplay = ({ shortlistIds, navigate }: ShortlistCards
 
                 {/* Card Info */}
                 <div className="flex-1 min-w-0 space-y-2">
-                  <div>
-                    <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                       {card.name}
                     </h4>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground truncate">
                       {card.issuer}
                     </p>
                   </div>

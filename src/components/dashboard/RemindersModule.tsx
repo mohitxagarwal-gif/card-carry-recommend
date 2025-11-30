@@ -160,21 +160,21 @@ export const RemindersModule = () => {
                   key={reminder.id}
                   className="flex items-start gap-3 p-3 border border-border rounded-lg hover:border-primary/50 transition-colors"
                 >
-                  <Icon className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <Icon className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="font-medium text-sm">{reminder.title}</div>
+                      <div className="font-medium text-sm flex-1 min-w-0 break-words">{reminder.title}</div>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => dismissReminder(reminder.id)}
-                        className="h-6 w-6 p-0 shrink-0"
+                        className="h-6 w-6 p-0 flex-shrink-0"
                       >
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant={getUrgencyColor(urgency)} className="text-xs">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <Badge variant={getUrgencyColor(urgency)} className="text-xs whitespace-nowrap">
                         {new Date(reminder.reminder_date).toLocaleDateString('en-IN', { 
                           month: 'short', 
                           day: 'numeric' 

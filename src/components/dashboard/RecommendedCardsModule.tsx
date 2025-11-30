@@ -136,8 +136,8 @@ export const RecommendedCardsModule = () => {
 
                     {/* Card Info */}
                     <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                             {card.name}
                           </h4>
@@ -146,7 +146,7 @@ export const RecommendedCardsModule = () => {
                           </p>
                         </div>
                         {estimatedSavings && (
-                          <Badge variant="secondary" className="flex-shrink-0">
+                          <Badge variant="secondary" className="flex-shrink sm:flex-shrink-0 whitespace-nowrap">
                             Save ₹{estimatedSavings.toLocaleString()}/year
                           </Badge>
                         )}
