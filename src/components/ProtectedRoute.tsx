@@ -25,17 +25,37 @@ export const ProtectedRoute = ({
 
     // Not authenticated
     if (!isAuthenticated) {
-      // Check for saved progress to give auth state time to load
-      const hasSavedProgress = 
-        localStorage.getItem('smartscan_progress_') ||
-        localStorage.getItem('goalpick_progress_') ||
-        localStorage.getItem('quickSpends_draft');
+      // Check for saved progress using proper pattern matching
+      const hasSavedProgress = Object.keys(localStorage).some(key => 
+        key.startsWith('smartscan_progress_') ||
+        key.startsWith('goalpick_progress_') ||
+        key.startsWith('generating_recommendations_') ||
+        key === 'quickSpends_draft'
+      );
       
-      // If user has progress, they might have just refreshed
-      // Give the auth state a moment to resolve before redirecting
+      // If user has progress, give auth state a grace period (500ms) to resolve
       if (hasSavedProgress) {
         console.log('[ProtectedRoute] Progress detected, allowing auth to resolve...');
-        return;
+        
+        // Only wait on first mount, not on every re-render
+        const waitKey = `protectedroute_wait_${location.pathname}`;
+        const hasWaited = sessionStorage.getItem(waitKey);
+        
+        if (!hasWaited) {
+          sessionStorage.setItem(waitKey, 'true');
+          setTimeout(() => {
+            // Re-check auth after grace period
+            const recheckAuth = async () => {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) {
+                const returnTo = location.pathname + location.search;
+                navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+              }
+            };
+            recheckAuth();
+          }, 500);
+          return;
+        }
       }
       
       const returnTo = location.pathname + location.search;

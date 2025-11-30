@@ -44,7 +44,7 @@ export const useAuthSession = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: true,
+    refetchOnMount: false, // Prevent race conditions during fast navigation
     retry: 1,
   });
 };

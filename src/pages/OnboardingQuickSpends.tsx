@@ -61,11 +61,26 @@ export default function OnboardingQuickSpends() {
         .eq('id', user.id)
         .single();
       
-      // If onboarding already completed, redirect to recommendations
+      // If onboarding already completed, check if snapshot exists
       if (profile?.onboarding_completed) {
-        console.log('[QuickSpends] Onboarding already completed, redirecting to /recs');
-        navigate('/recs', { replace: true });
-        return;
+        console.log('[QuickSpends] Onboarding completed, checking for snapshot...');
+        
+        const { data: snapshot } = await supabase
+          .from('recommendation_snapshots')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        
+        if (snapshot) {
+          console.log('[QuickSpends] Snapshot exists, redirecting to /recs');
+          navigate('/recs', { replace: true });
+          return;
+        }
+        
+        // Completed but no snapshot - allow retry
+        console.warn('[QuickSpends] Onboarding completed but no snapshot - user in broken state, allowing retry');
+        toast.info("Let's regenerate your recommendations");
       }
       
       // If missing basic profile, redirect to onboarding start with returnTo
@@ -121,29 +136,19 @@ export default function OnboardingQuickSpends() {
       console.log('[QuickSpends] Monthly spend:', monthlySpend);
       console.log('[QuickSpends] Spend split:', spendSplit);
       
+      // Save "in progress" flag to localStorage for recovery
+      localStorage.setItem(`generating_recommendations_${userId}`, JSON.stringify({
+        started_at: Date.now(),
+        flow: 'quick_spends'
+      }));
+      
       trackEvent("onboarding.quick_spends_completed", {
         monthly_spend: monthlySpend,
         categories: Object.keys(spendSplit).filter(k => spendSplit[k] > 0)
       });
 
-      // Step 1: Mark onboarding as complete
-      console.log("[QuickSpends] Step 1: Marking onboarding complete...");
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          onboarding_completed: true,
-          onboarding_completed_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
-
-      if (profileError) {
-        console.error("[QuickSpends] Profile update failed:", profileError);
-        throw profileError;
-      }
-      console.log("[QuickSpends] ✓ Onboarding marked complete");
-
-      // Step 2: Derive features from manual input
-      console.log("[QuickSpends] Step 2: Deriving features...");
+      // Step 1: Derive features from manual input
+      console.log("[QuickSpends] Step 1: Deriving features...");
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
@@ -161,7 +166,7 @@ export default function OnboardingQuickSpends() {
         data_source: "self_report",
       });
 
-      // Step 3: Generate recommendations
+      // Step 2: Generate recommendations
       console.log("[QuickSpends] Step 3: Generating recommendations...");
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
@@ -235,6 +240,15 @@ export default function OnboardingQuickSpends() {
     } catch (error: any) {
       console.error("[QuickSpends] === ERROR ===", error);
       toast.error(error.message || "Failed to generate recommendations");
+      
+      // Clear generating flag on error
+      localStorage.removeItem(`generating_recommendations_${userId}`);
+      
+      trackEvent("quick_spends.error", {
+        userId,
+        error: error.message,
+      });
+      
       setLoading(false);
     }
   };
