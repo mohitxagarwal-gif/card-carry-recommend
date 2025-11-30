@@ -4,6 +4,7 @@ import { isOnboardingComplete } from "@/lib/authUtils";
 import { trackOnboardingGateTriggered } from "@/lib/authAnalytics";
 import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
