@@ -128,33 +128,17 @@ export default function OnboardingGoalBased() {
   const { createSnapshot } = useRecommendationSnapshot();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/auth");
-        return;
+      if (user) {
+        setUserId(user.id);
+        setChecking(false);
       }
-      
-      // Verify profile is complete (age and income)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("age_range, income_band_inr")
-        .eq("id", user.id)
-        .single();
-      
-      if (!profile?.age_range || !profile?.income_band_inr) {
-        toast.error("Please complete your profile first");
-        navigate('/onboarding');
-        return;
-      }
-      
-      setUserId(user.id);
-      setChecking(false);
     };
 
-    checkAuth();
+    init();
     trackEvent("onboarding.path_selected", { path: "goal_based" });
-  }, [navigate]);
+  }, []);
 
   const handleGoalSelect = (preset: GoalPreset) => {
     if (!userId) return;

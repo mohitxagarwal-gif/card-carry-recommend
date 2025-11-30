@@ -11,6 +11,7 @@ import { CityCombobox } from "@/components/onboarding/CityCombobox";
 import { TrustBadge } from "@/components/onboarding/TrustBadge";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { isOnboardingComplete } from "@/lib/authUtils";
 
 const AGE_RANGES = ["18-24", "25-34", "35-44", "45-54", "55+"];
 const INCOME_BANDS = [
@@ -38,7 +39,7 @@ export default function OnboardingStart() {
   const [showPathSelection, setShowPathSelection] = useState(false);
 
   useEffect(() => {
-    const checkProfile = async () => {
+    const initProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -50,11 +51,11 @@ export default function OnboardingStart() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_completed, age_range, income_band_inr, city")
+        .select("*")
         .eq("id", user.id)
         .single();
 
-      if (profile?.onboarding_completed) {
+      if (profile && isOnboardingComplete(profile)) {
         navigate('/dashboard', { replace: true });
         return;
       }
@@ -71,7 +72,7 @@ export default function OnboardingStart() {
       setChecking(false);
     };
 
-    checkProfile();
+    initProfile();
     trackEvent("onboarding.start_viewed");
   }, [navigate]);
 
