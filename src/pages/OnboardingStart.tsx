@@ -152,7 +152,7 @@ export default function OnboardingStart() {
         fee_sensitivity: skip ? "medium" : feeSensitivity || "medium",
         travel_frequency: skip ? "occasional" : travelFrequency || "occasional",
         lounge_importance: skip ? "medium" : loungeImportance || "medium",
-        reward_preference: skip ? "both" : rewardPreference || "both",
+        reward_preference: skip ? "either" : rewardPreference || "either",
         // Map fee_sensitivity to fee_tolerance_band for backward compatibility
         fee_tolerance_band: ({
           'low': 'any_2x_roi',    // Willing to pay any fee if worth it
@@ -395,7 +395,7 @@ export default function OnboardingStart() {
                   <Label className="text-base font-medium">✈️ How often do you travel?</Label>
                   <SegmentedControl
                     options={[
-                      { value: "rarely", label: "Rarely" },
+                      { value: "never", label: "Rarely" },
                       { value: "occasional", label: "2-5 times/year" },
                       { value: "frequent", label: "6+ times/year" }
                     ]}
@@ -425,7 +425,7 @@ export default function OnboardingStart() {
                     options={[
                       { value: "cashback", label: "Cashback" },
                       { value: "points", label: "Reward Points" },
-                      { value: "both", label: "Open to both" }
+                      { value: "either", label: "Open to both" }
                     ]}
                     value={rewardPreference}
                     onValueChange={setRewardPreference}
