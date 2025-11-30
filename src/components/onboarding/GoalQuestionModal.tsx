@@ -11,6 +11,7 @@ interface GoalQuestionModalProps {
   goalId: string;
   goalTitle: string;
   defaultSpend: number;
+  loading?: boolean;
   onComplete: (data: {
     monthlySpend: number;
     spendSplit: Record<string, number>;
@@ -24,6 +25,7 @@ export function GoalQuestionModal({
   goalId,
   goalTitle,
   defaultSpend,
+  loading = false,
   onComplete,
   onCancel,
 }: GoalQuestionModalProps) {
@@ -357,11 +359,18 @@ export function GoalQuestionModal({
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel}>
+          <Button variant="ghost" onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleComplete}>
-            Generate Recommendations
+          <Button onClick={handleComplete} disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              "Generate Recommendations"
+            )}
           </Button>
         </div>
       </DialogContent>
