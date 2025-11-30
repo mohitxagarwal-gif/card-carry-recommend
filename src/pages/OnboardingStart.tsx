@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, Calculator, Target, ArrowRight, Loader2, Check, Info } from "lucide-react";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { RadioGrid } from "@/components/onboarding/RadioGrid";
+import { SegmentedControl } from "@/components/onboarding/SegmentedControl";
 import { CityCombobox } from "@/components/onboarding/CityCombobox";
 import { TrustBadge } from "@/components/onboarding/TrustBadge";
 import { toast } from "sonner";
@@ -35,6 +36,14 @@ export default function OnboardingStart() {
   const [city, setCity] = useState<string>("");
   const [savingProfile, setSavingProfile] = useState(false);
   
+  // Preferences state
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [feeSensitivity, setFeeSensitivity] = useState<string>("");
+  const [travelFrequency, setTravelFrequency] = useState<string>("");
+  const [loungeImportance, setLoungeImportance] = useState<string>("");
+  const [rewardPreference, setRewardPreference] = useState<string>("");
+  const [savingPreferences, setSavingPreferences] = useState(false);
+  
   // Step state
   const [showPathSelection, setShowPathSelection] = useState(false);
 
@@ -55,14 +64,32 @@ export default function OnboardingStart() {
         .eq("id", user.id)
         .single();
 
-      // If user has profile data, show path selection instead of redirecting
+      // If user has profile data, check preferences
       if (profile?.age_range && profile?.income_band_inr) {
         console.log('[OnboardingStart] Pre-filling existing profile data');
         setAgeRange(profile.age_range);
         setIncomeBand(profile.income_band_inr);
         setCity(profile.city || "");
         setProfileComplete(true);
-        setShowPathSelection(true);
+
+        // Check if user has preferences
+        const { data: prefs } = await supabase
+          .from("user_preferences")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (prefs) {
+          // User has preferences, show path selection
+          setFeeSensitivity(prefs.fee_sensitivity || "");
+          setTravelFrequency(prefs.travel_frequency || "");
+          setLoungeImportance(prefs.lounge_importance || "");
+          setRewardPreference(prefs.reward_preference || "");
+          setShowPathSelection(true);
+        } else {
+          // User needs to fill preferences
+          setShowPreferences(true);
+        }
       }
 
       setChecking(false);
@@ -83,17 +110,15 @@ export default function OnboardingStart() {
     setSavingProfile(true);
     
     try {
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        age_range: ageRange,
-        income_band_inr: incomeBand,
-        city: city || null,
-        onboarding_completed: true,
-        onboarding_completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", userId);
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          age_range: ageRange,
+          income_band_inr: incomeBand,
+          city: city || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", userId);
 
       if (error) throw error;
 
@@ -104,13 +129,78 @@ export default function OnboardingStart() {
       });
 
       setProfileComplete(true);
-      setShowPathSelection(true);
-      toast.success("Profile saved! Now choose your onboarding path.");
+      setShowPreferences(true);
+      toast.success("Profile saved! Now let's personalize your recommendations.");
     } catch (error) {
       console.error("Error saving profile:", error);
       toast.error("Failed to save profile");
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handlePreferencesSubmit = async (skip: boolean = false) => {
+    if (!userId) return;
+
+    setSavingPreferences(true);
+
+    try {
+      // Use smart defaults if skipping
+      const prefsData = {
+        user_id: userId,
+        fee_sensitivity: skip ? "medium" : feeSensitivity || "medium",
+        travel_frequency: skip ? "occasional" : travelFrequency || "occasional",
+        lounge_importance: skip ? "medium" : loungeImportance || "medium",
+        reward_preference: skip ? "both" : rewardPreference || "both",
+      };
+
+      // Check if preferences already exist
+      const { data: existingPrefs } = await supabase
+        .from("user_preferences")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (existingPrefs) {
+        const { error } = await supabase
+          .from("user_preferences")
+          .update(prefsData)
+          .eq("user_id", userId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("user_preferences")
+          .insert(prefsData);
+        if (error) throw error;
+      }
+
+      // Now mark onboarding as complete
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (profileError) throw profileError;
+
+      trackEvent("onboarding.preferences_collected", {
+        fee_sensitivity: prefsData.fee_sensitivity,
+        travel_frequency: prefsData.travel_frequency,
+        lounge_importance: prefsData.lounge_importance,
+        reward_preference: prefsData.reward_preference,
+        skipped: skip,
+      });
+
+      setShowPreferences(false);
+      setShowPathSelection(true);
+      toast.success("Preferences saved! Now choose your onboarding path.");
+    } catch (error) {
+      console.error("Error saving preferences:", error);
+      toast.error("Failed to save preferences");
+    } finally {
+      setSavingPreferences(false);
     }
   };
 
@@ -155,9 +245,14 @@ export default function OnboardingStart() {
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Progress Indicator */}
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <div className={`flex items-center gap-2 ${!showPathSelection ? 'text-primary font-medium' : ''}`}>
+            <div className={`flex items-center gap-2 ${!profileComplete ? 'text-primary font-medium' : ''}`}>
               {profileComplete ? <Check className="w-4 h-4 text-primary" /> : <div className="w-4 h-4 rounded-full border-2 border-primary" />}
               <span>Profile</span>
+            </div>
+            <ArrowRight className="w-4 h-4" />
+            <div className={`flex items-center gap-2 ${showPreferences && profileComplete ? 'text-primary font-medium' : ''}`}>
+              {showPathSelection ? <Check className="w-4 h-4 text-primary" /> : <div className="w-4 h-4 rounded-full border-2 border-current" />}
+              <span>Preferences</span>
             </div>
             <ArrowRight className="w-4 h-4" />
             <div className={`flex items-center gap-2 ${showPathSelection ? 'text-primary font-medium' : ''}`}>
@@ -174,17 +269,23 @@ export default function OnboardingStart() {
           {/* Header */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-heading font-bold">
-              {showPathSelection ? "How would you like to get started?" : "Let's get to know you"}
+              {showPathSelection 
+                ? "How would you like to get started?" 
+                : showPreferences 
+                  ? "Tell us about your preferences" 
+                  : "Let's get to know you"}
             </h1>
             <p className="text-lg text-muted-foreground">
               {showPathSelection 
                 ? "Choose the path that works best for you" 
-                : "We'll use this to filter cards you're eligible for"}
+                : showPreferences
+                  ? "This helps us personalize your card recommendations"
+                  : "We'll use this to filter cards you're eligible for"}
             </p>
           </div>
 
           {/* Step 1: Profile Collection */}
-          {!showPathSelection && (
+          {!showPreferences && !showPathSelection && (
             <Card className="p-8 space-y-6">
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -264,7 +365,100 @@ export default function OnboardingStart() {
             </Card>
           )}
 
-          {/* Step 2: Path Selection */}
+          {/* Step 2: Preferences Collection */}
+          {showPreferences && !showPathSelection && (
+            <Card className="p-8 space-y-6">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">💰 How do you feel about annual fees?</Label>
+                  <SegmentedControl
+                    options={[
+                      { value: "low", label: "Avoid fees" },
+                      { value: "medium", label: "Okay if worth it" },
+                      { value: "high", label: "Premium is fine" }
+                    ]}
+                    value={feeSensitivity}
+                    onValueChange={setFeeSensitivity}
+                    name="fee_sensitivity"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">✈️ How often do you travel?</Label>
+                  <SegmentedControl
+                    options={[
+                      { value: "rarely", label: "Rarely" },
+                      { value: "occasional", label: "2-5 times/year" },
+                      { value: "frequent", label: "6+ times/year" }
+                    ]}
+                    value={travelFrequency}
+                    onValueChange={setTravelFrequency}
+                    name="travel_frequency"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">🛋️ How important is lounge access?</Label>
+                  <SegmentedControl
+                    options={[
+                      { value: "low", label: "Don't care" },
+                      { value: "medium", label: "Nice to have" },
+                      { value: "high", label: "Very important" }
+                    ]}
+                    value={loungeImportance}
+                    onValueChange={setLoungeImportance}
+                    name="lounge_importance"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">🎁 What type of rewards do you prefer?</Label>
+                  <SegmentedControl
+                    options={[
+                      { value: "cashback", label: "Cashback" },
+                      { value: "points", label: "Reward Points" },
+                      { value: "both", label: "Open to both" }
+                    ]}
+                    value={rewardPreference}
+                    onValueChange={setRewardPreference}
+                    name="reward_preference"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  onClick={() => handlePreferencesSubmit(false)}
+                  className="w-full"
+                  size="lg"
+                  disabled={!feeSensitivity || !travelFrequency || !loungeImportance || !rewardPreference || savingPreferences}
+                >
+                  {savingPreferences ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={() => handlePreferencesSubmit(true)}
+                  variant="ghost"
+                  className="w-full"
+                  size="lg"
+                  disabled={savingPreferences}
+                >
+                  Skip for now (use defaults)
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Step 3: Path Selection */}
           {showPathSelection && (
             <>
               <div className="grid md:grid-cols-3 gap-6">
