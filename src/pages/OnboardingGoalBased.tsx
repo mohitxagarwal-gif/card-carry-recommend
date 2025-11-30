@@ -145,11 +145,26 @@ export default function OnboardingGoalBased() {
         .eq('id', user.id)
         .single();
       
-      // If onboarding already completed, redirect to recommendations
+      // If onboarding already completed, check if snapshot exists
       if (profile?.onboarding_completed) {
-        console.log('[Goal-Based] Onboarding already completed, redirecting to /recs');
-        navigate('/recs', { replace: true });
-        return;
+        console.log('[Goal-Based] Onboarding completed, checking for snapshot...');
+        
+        const { data: snapshot } = await supabase
+          .from('recommendation_snapshots')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        
+        if (snapshot) {
+          console.log('[Goal-Based] Snapshot exists, redirecting to /recs');
+          navigate('/recs', { replace: true });
+          return;
+        }
+        
+        // Completed but no snapshot - allow retry
+        console.warn('[Goal-Based] Onboarding completed but no snapshot - user in broken state, allowing retry');
+        toast.info("Let's regenerate your recommendations");
       }
       
       // If missing basic profile, redirect to onboarding start with returnTo
@@ -230,28 +245,19 @@ export default function OnboardingGoalBased() {
       console.log('[Goal-Based] Goal:', { goalId, goalTitle });
       console.log('[Goal-Based] Monthly spend:', goalData.monthlySpend);
       
+      // Save "in progress" flag to localStorage for recovery
+      localStorage.setItem(`generating_recommendations_${userId}`, JSON.stringify({
+        started_at: Date.now(),
+        flow: 'goal_based',
+        goal: goalId
+      }));
+      
       trackEvent("onboarding.goal_selected", {
         goal_id: goalId,
         goal_title: goalTitle,
       });
 
-      // Step 1: Mark onboarding as complete
-      console.log("[Goal-Based] Step 1: Marking onboarding complete...");
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          onboarding_completed: true,
-          onboarding_completed_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
-
-      if (profileError) {
-        console.error("[Goal-Based] Profile update failed:", profileError);
-        throw profileError;
-      }
-      console.log("[Goal-Based] ✓ Onboarding marked complete");
-
-      // Step 2: Derive features
+      // Step 1: Derive features
       console.log("[Goal-Based] Step 2: Deriving features...");
       await deriveFeatures.mutateAsync({
         userId,
@@ -272,8 +278,8 @@ export default function OnboardingGoalBased() {
         goal: goalId,
       });
 
-      // Step 3: Generate recommendations
-      console.log("[Goal-Based] Step 3: Generating recommendations...");
+      // Step 2: Generate recommendations
+      console.log("[Goal-Based] Step 2: Generating recommendations...");
       const { data, error } = await supabase.functions.invoke(
         "generate-recommendations",
         {
@@ -297,9 +303,9 @@ export default function OnboardingGoalBased() {
       
       console.log("[Goal-Based] ✓ Recommendations generated, count:", data.recommendations.recommendedCards?.length || 0);
 
-      // Step 4: Create snapshot
-      console.log("[Goal-Based] Step 4: Creating snapshot...");
-      await createSnapshot({
+      // Step 3: Create snapshot
+      console.log("[Goal-Based] Step 3: Creating snapshot...");
+      const snapshot = await createSnapshot({
         analysisId: null,
         savingsMin: 0,
         savingsMax: 50000,
@@ -307,7 +313,11 @@ export default function OnboardingGoalBased() {
         recommendedCards: data.recommendations.recommendedCards || [],
         snapshotType: "goal_based",
       });
-      console.log("[Goal-Based] ✓ Snapshot created");
+      
+      if (!snapshot) {
+        throw new Error("Failed to create snapshot");
+      }
+      console.log("[Goal-Based] ✓ Snapshot created:", snapshot.id);
 
       trackEvent("snapshot_created", {
         userId,
@@ -316,10 +326,27 @@ export default function OnboardingGoalBased() {
         confidence: data?.confidence || "medium",
       });
 
-      // Clear saved progress
+      // Step 4: NOW mark onboarding as complete (AFTER snapshot)
+      console.log("[Goal-Based] Step 4: Marking onboarding complete...");
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (profileError) {
+        console.error("[Goal-Based] Profile update failed:", profileError);
+        throw profileError;
+      }
+      console.log("[Goal-Based] ✓ Onboarding marked complete");
+
+      // Clear saved progress and generating flag
       console.log("[Goal-Based] Clearing saved progress...");
       if (userId) {
         localStorage.removeItem(`goalpick_progress_${userId}`);
+        localStorage.removeItem(`generating_recommendations_${userId}`);
       }
       
       // Close modal and reset states BEFORE navigation
@@ -343,18 +370,15 @@ export default function OnboardingGoalBased() {
       console.log("[Goal-Based] === NAVIGATING TO RECOMMENDATIONS ===");
       navigate("/recs?from=onboarding", { replace: true });
       
-      // Safety: Force navigation if React Router fails
-      setTimeout(() => {
-        if (window.location.pathname !== '/recs') {
-          console.warn('[Goal-Based] React Router navigation failed, forcing with window.location');
-          window.location.href = '/recs?from=onboarding';
-        }
-      }, 2000);
-      
     } catch (error: any) {
       console.error("[Goal-Based] === ERROR ===", error);
       const errorMessage = error.message || "Failed to generate recommendations. Please try again.";
       toast.error(errorMessage);
+      
+      // Clear generating flag on error
+      if (userId) {
+        localStorage.removeItem(`generating_recommendations_${userId}`);
+      }
       
       trackEvent("goal_based.error", {
         userId,
