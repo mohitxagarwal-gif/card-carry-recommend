@@ -153,6 +153,23 @@ export default function OnboardingGoalBased() {
       
       setUserId(user.id);
       setChecking(false);
+
+      // Restore progress if exists
+      const saved = localStorage.getItem(`goalpick_progress_${user.id}`);
+      if (saved) {
+        try {
+          const { step, timestamp } = JSON.parse(saved);
+          // Only restore if less than 30 minutes old
+          if (Date.now() - timestamp < 30 * 60 * 1000) {
+            console.log('[Goal-Based] Restored progress:', step);
+          } else {
+            localStorage.removeItem(`goalpick_progress_${user.id}`);
+          }
+        } catch (e) {
+          console.error('Error restoring progress:', e);
+          localStorage.removeItem(`goalpick_progress_${user.id}`);
+        }
+      }
     };
 
     init();
@@ -163,11 +180,24 @@ export default function OnboardingGoalBased() {
     if (!userId) return;
     setCurrentPreset(preset);
     setShowQuestionModal(true);
+    
+    // Save progress
+    localStorage.setItem(`goalpick_progress_${userId}`, JSON.stringify({
+      step: 'goal_selected',
+      goalId: preset.id,
+      timestamp: Date.now()
+    }));
   };
 
   const handleCustomGoalSelect = () => {
     if (!userId) return;
     setShowCustomChat(true);
+    
+    // Save progress
+    localStorage.setItem(`goalpick_progress_${userId}`, JSON.stringify({
+      step: 'custom_goal',
+      timestamp: Date.now()
+    }));
   };
 
   const processGoalRecommendations = async (
@@ -286,6 +316,11 @@ export default function OnboardingGoalBased() {
 
       console.log('[Goal-Based] Recommendations generated successfully');
       toast.success(`Recommendations tailored for ${goalTitle}!`);
+      
+      // Clear saved progress after completion
+      if (userId) {
+        localStorage.removeItem(`goalpick_progress_${userId}`);
+      }
       
       // Force refresh auth session cache to prevent navigation race condition
       queryClient.invalidateQueries({ queryKey: ['auth-session'] });

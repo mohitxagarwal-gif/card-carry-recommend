@@ -125,36 +125,21 @@ serve(async (req) => {
       hasPreferenceType: !!userPreferences?.preference_type
     });
 
-    // Fetch user features with retry logic (critical for manual flows)
+    // Fetch user features (single fetch, no retries)
     console.log('[generate-recommendations] Fetching user features...');
-    let userFeaturesData: any = null;
-    let fetchRetries = 3;
+    const { data: userFeaturesData, error: featuresError } = await supabaseClient
+      .from('user_features')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
     
-    while (fetchRetries > 0 && !userFeaturesData) {
-      const { data, error } = await supabaseClient
-        .from('user_features')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (data) {
-        userFeaturesData = data;
-        console.log('[generate-recommendations] User features found:', {
-          monthlySpend: data.monthly_spend_estimate,
-          dataSource: data.data_source
-        });
-        break;
-      }
-      
-      if (error) {
-        console.error('[generate-recommendations] Error fetching features:', error);
-      }
-      
-      fetchRetries--;
-      if (fetchRetries > 0) {
-        console.log(`[generate-recommendations] Features not found, retrying... (${fetchRetries} attempts left)`);
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
+    if (userFeaturesData) {
+      console.log('[generate-recommendations] User features found:', {
+        monthlySpend: userFeaturesData.monthly_spend_estimate,
+        dataSource: userFeaturesData.data_source
+      });
+    } else {
+      console.warn('[generate-recommendations] No user features found');
     }
     
     if (!userFeaturesData && !transactions?.length) {
@@ -269,6 +254,16 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
     // Phase 5: Fetch card earn rates and use scoring
     console.log('[generate-recommendations] Fetching card earn rates...');
     
+    // Pre-filter cards by income band to reduce DB load
+    const incomeBand = normalizedProfile.income_band_inr || 'not_specified';
+    let maxFee = 10000; // default
+    if (incomeBand === '0-25000' || incomeBand === 'below_25k') maxFee = 500;
+    else if (incomeBand === '25000-50000' || incomeBand === '25k_50k') maxFee = 2000;
+    else if (incomeBand === '50000-100000' || incomeBand === '50k_1L') maxFee = 5000;
+    else if (incomeBand === '100000-200000' || incomeBand === '1L_2L') maxFee = 8000;
+    
+    console.log('[generate-recommendations] Pre-filtering cards:', { incomeBand, maxFee });
+    
     // If no features, try to derive them
     if (!userFeaturesData && transactions && transactions.length > 0) {
       console.log('[generate-recommendations] Deriving features from transactions...');
@@ -277,7 +272,7 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
       });
     }
     
-    // Fetch all active cards with their earn rates
+    // Fetch filtered active cards with their earn rates (reduced to 25 cards)
     const { data: allCards, error: cardsError } = await supabaseClient
       .from('credit_cards')
       .select(`
@@ -294,7 +289,8 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
         key_perks
       `)
       .eq('is_active', true)
-      .limit(50);
+      .lte('annual_fee', maxFee)
+      .limit(25);
     
     if (cardsError) throw cardsError;
     
@@ -368,7 +364,7 @@ ${categories.map((cat) => `- ${cat.name}: ₹${cat.amount.toLocaleString('en-IN'
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const topScoredCards = scoredCards.slice(0, 10);
+    const topScoredCards = scoredCards.slice(0, 5); // Reduced from 10 to 5
     const cardContext = topScoredCards.length > 0 
       ? topScoredCards.map(c => 
           `${c.name} (${c.issuer})${c.matchScore ? ` - Match: ${c.matchScore}/100` : ''}, Fee: ₹${c.annual_fee}`
