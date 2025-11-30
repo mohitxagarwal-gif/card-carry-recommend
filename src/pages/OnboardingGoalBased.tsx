@@ -432,6 +432,7 @@ export default function OnboardingGoalBased() {
               goalId={currentPreset.id}
               goalTitle={currentPreset.title}
               defaultSpend={currentPreset.estimatedSpend}
+              loading={loading}
               onComplete={(data) =>
                 processGoalRecommendations(data, currentPreset)
               }
