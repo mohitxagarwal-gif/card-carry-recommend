@@ -138,12 +138,19 @@ export default function OnboardingGoalBased() {
         return;
       }
       
-      // Check if basic profile exists
+      // Check if basic profile exists and onboarding status
       const { data: profile } = await supabase
         .from('profiles')
-        .select('age_range, income_band_inr')
+        .select('age_range, income_band_inr, onboarding_completed')
         .eq('id', user.id)
         .single();
+      
+      // If onboarding already completed, redirect to recommendations
+      if (profile?.onboarding_completed) {
+        console.log('[Goal-Based] Onboarding already completed, redirecting to /recs');
+        navigate('/recs', { replace: true });
+        return;
+      }
       
       // If missing basic profile, redirect to onboarding start with returnTo
       if (!profile?.age_range || !profile?.income_band_inr) {
