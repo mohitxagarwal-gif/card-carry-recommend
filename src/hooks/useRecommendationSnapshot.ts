@@ -9,7 +9,7 @@ export const useRecommendationSnapshot = () => {
 
   const { data: latestSnapshot, isLoading } = useQuery({
     queryKey: ["latest-recommendation-snapshot"],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
@@ -18,6 +18,7 @@ export const useRecommendationSnapshot = () => {
         .select("*")
         .order("created_at", { ascending: false })
         .limit(1)
+        .abortSignal(signal)
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;

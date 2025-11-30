@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { DashboardTourModal } from "@/components/dashboard/DashboardTourModal";
 import { Progress } from "@/components/ui/progress";
 import { EligibilityCenter } from "@/components/dashboard/EligibilityCenter";
+import { useIsMounted } from "@/hooks/useIsMounted";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -42,6 +43,8 @@ const Dashboard = () => {
   const [preferences, setPreferences] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const tourChecked = useRef(false);
+  const isMountedRef = useIsMounted();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     console.log('[Dashboard] Component mounted');
@@ -52,8 +55,16 @@ const Dashboard = () => {
       cardsLoading
     });
     
+    abortControllerRef.current = new AbortController();
+    
     trackEvent("dash_view");
-    loadProfileData();
+    loadProfileData(abortControllerRef.current.signal);
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
   
   // Track dashboard view with aggregate stats when all data loads
@@ -95,24 +106,38 @@ const Dashboard = () => {
     return () => clearTimeout(timeout);
   }, [snapshotLoading, shortlistLoading, appsLoading, cardsLoading]);
 
-  const loadProfileData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  const loadProfileData = async (signal?: AbortSignal) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || signal?.aborted) return;
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .abortSignal(signal)
+        .single();
 
-    const { data: prefsData } = await supabase
-      .from("user_preferences")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
+      if (signal?.aborted) return;
 
-    setProfile(profileData);
-    setPreferences(prefsData);
+      const { data: prefsData } = await supabase
+        .from("user_preferences")
+        .select("*")
+        .eq("user_id", user.id)
+        .abortSignal(signal)
+        .maybeSingle();
+
+      if (signal?.aborted) return;
+
+      if (isMountedRef.current) {
+        setProfile(profileData);
+        setPreferences(prefsData);
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError' && isMountedRef.current) {
+        console.error("Failed to load profile data:", err);
+      }
+    }
   };
 
   useEffect(() => {
@@ -231,6 +256,8 @@ const Dashboard = () => {
         <CardLoadingScreen
           message="Preparing your dashboard..."
           variant="inline"
+          onRetry={() => window.location.reload()}
+          onCancel={() => navigate('/profile')}
         />
       </div>
     );
