@@ -316,9 +316,9 @@ function mapTravelFrequency(frequency: string | null): number {
 // Map lounge_importance to lounge_numeric (0-10)
 function mapLoungeImportance(importance: string | null): number {
   const mapping: Record<string, number> = {
-    'not_important': 2,
-    'nice_to_have': 5,
-    'very_important': 9,
+    'not_important': 2, 'low': 2,
+    'nice_to_have': 5, 'medium': 5,
+    'very_important': 9, 'high': 9,
   };
-  return mapping[importance || 'nice_to_have'] || 5;
+  return mapping[importance || 'medium'] || 5;
 }

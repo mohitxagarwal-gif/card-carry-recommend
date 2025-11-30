@@ -91,9 +91,9 @@ export interface UserPreferences {
   id: string;
   user_id: string;
   fee_sensitivity: 'low' | 'medium' | 'high' | null;
-  travel_frequency: 'never' | 'occasional' | 'frequent' | null;
+  travel_frequency: 'rarely' | 'occasional' | 'frequent' | null;
   lounge_importance: 'low' | 'medium' | 'high' | null;
-  preference_type: 'cashback' | 'points' | 'both' | null;
+  reward_preference: 'cashback' | 'points' | 'both' | null;
   email_reminders: boolean;
   email_marketing: boolean;
   created_at: string;

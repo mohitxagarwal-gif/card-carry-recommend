@@ -255,7 +255,7 @@ const Profile = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="never">Never</SelectItem>
+                    <SelectItem value="rarely">Rarely</SelectItem>
                     <SelectItem value="occasional">Occasional (1-2 times/year)</SelectItem>
                     <SelectItem value="frequent">Frequent (3+ times/year)</SelectItem>
                   </SelectContent>
@@ -282,8 +282,8 @@ const Profile = () => {
               <div className="space-y-2">
                 <Label>Reward Preference</Label>
                 <Select 
-                  value={preferences?.preference_type || 'both'}
-                  onValueChange={(value) => updatePreferences({ preference_type: value as any })}
+                  value={preferences?.reward_preference || 'both'}
+                  onValueChange={(value) => updatePreferences({ reward_preference: value as any })}
                 >
                   <SelectTrigger>
                     <SelectValue />
