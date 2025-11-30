@@ -24,12 +24,14 @@ import { generateNextSteps } from "@/lib/nextStepsGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { DashboardTourModal } from "@/components/dashboard/DashboardTourModal";
-import { Progress } from "@/components/ui/progress";
 import { EligibilityCenter } from "@/components/dashboard/EligibilityCenter";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import { useQuery } from "@tanstack/react-query";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { data: authData } = useAuthSession();
   const { latestSnapshot, isLoading: snapshotLoading, createSnapshot } = useRecommendationSnapshot();
   const { shortlist, isLoading: shortlistLoading } = useShortlist();
   const { applications, isLoading: appsLoading } = useApplications();
@@ -39,32 +41,29 @@ const Dashboard = () => {
   const [addCardDialogOpen, setAddCardDialogOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showTour, setShowTour] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
-  const [preferences, setPreferences] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
   const tourChecked = useRef(false);
   const isMountedRef = useIsMounted();
-  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Use cached profile from auth session
+  const { data: preferences } = useQuery({
+    queryKey: ["user-preferences", authData?.session?.user?.id],
+    queryFn: async () => {
+      if (!authData?.session?.user?.id) return null;
+      const { data } = await supabase
+        .from("user_preferences")
+        .select("*")
+        .eq("user_id", authData.session.user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!authData?.session?.user?.id,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
+  const profile = authData?.profile;
 
   useEffect(() => {
-    console.log('[Dashboard] Component mounted');
-    console.log('[Dashboard] Loading states:', {
-      snapshotLoading,
-      shortlistLoading,
-      appsLoading,
-      cardsLoading
-    });
-    
-    abortControllerRef.current = new AbortController();
-    
     trackEvent("dash_view");
-    loadProfileData(abortControllerRef.current.signal);
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
   }, []);
   
   // Track dashboard view with aggregate stats when all data loads
@@ -95,50 +94,6 @@ const Dashboard = () => {
     }
   }, [snapshotLoading, shortlistLoading, appsLoading, cardsLoading, latestSnapshot, shortlist, applications]);
 
-  // Error timeout
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (snapshotLoading || shortlistLoading || appsLoading || cardsLoading) {
-        setError('Dashboard is taking longer than expected to load. Please refresh the page.');
-      }
-    }, 10000);
-    
-    return () => clearTimeout(timeout);
-  }, [snapshotLoading, shortlistLoading, appsLoading, cardsLoading]);
-
-  const loadProfileData = async (signal?: AbortSignal) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || signal?.aborted) return;
-
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .abortSignal(signal)
-        .single();
-
-      if (signal?.aborted) return;
-
-      const { data: prefsData } = await supabase
-        .from("user_preferences")
-        .select("*")
-        .eq("user_id", user.id)
-        .abortSignal(signal)
-        .maybeSingle();
-
-      if (signal?.aborted) return;
-
-      if (isMountedRef.current) {
-        setProfile(profileData);
-        setPreferences(prefsData);
-      }
-    } catch (err: any) {
-      if (err.name !== 'AbortError' && isMountedRef.current) {
-        console.error("Failed to load profile data:", err);
-      }
-    }
-  };
 
   useEffect(() => {
     const checkIncompleteAnalysis = async () => {
@@ -234,30 +189,16 @@ const Dashboard = () => {
     }
   };
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-          <AlertCircle className="w-12 h-12 text-destructive" />
-          <p className="text-foreground font-semibold">{error}</p>
-          <Button onClick={() => window.location.reload()}>
-            Refresh Page
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (snapshotLoading || shortlistLoading || appsLoading || cardsLoading) {
+  // Only show loading on initial data fetch, not on navigation
+  const isInitialLoad = snapshotLoading || shortlistLoading || appsLoading || cardsLoading;
+  
+  if (isInitialLoad) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <CardLoadingScreen
           message="Preparing your dashboard..."
           variant="inline"
-          onRetry={() => window.location.reload()}
-          onCancel={() => navigate('/profile')}
         />
       </div>
     );
