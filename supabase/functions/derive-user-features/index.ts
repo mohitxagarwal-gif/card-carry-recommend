@@ -222,10 +222,10 @@ serve(async (req) => {
 
     if (featuresError) {
       console.error('[derive-user-features] Error upserting features:', featuresError);
-      throw featuresError;
+      throw new Error(`Database error: ${featuresError.message}`);
     }
 
-    console.log(`[derive-user-features] Success! Confidence: ${featureConfidence.toFixed(2)}`);
+    console.log(`[derive-user-features] ✅ Success! Confidence: ${featureConfidence.toFixed(2)}, Source: ${featureSource}, Monthly Spend: ₹${monthlySpendEstimate}`);
 
     return new Response(
       JSON.stringify({
@@ -234,6 +234,7 @@ serve(async (req) => {
         source: featureSource,
         monthsCoverage,
         monthlySpend: monthlySpendEstimate,
+        message: 'User features derived and saved successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

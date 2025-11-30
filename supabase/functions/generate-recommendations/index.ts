@@ -125,13 +125,41 @@ serve(async (req) => {
       hasPreferenceType: !!userPreferences?.preference_type
     });
 
-    // Fetch user features early (needed for manual flows)
+    // Fetch user features with retry logic (critical for manual flows)
     console.log('[generate-recommendations] Fetching user features...');
-    const { data: userFeaturesData } = await supabaseClient
-      .from('user_features')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    let userFeaturesData: any = null;
+    let fetchRetries = 3;
+    
+    while (fetchRetries > 0 && !userFeaturesData) {
+      const { data, error } = await supabaseClient
+        .from('user_features')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data) {
+        userFeaturesData = data;
+        console.log('[generate-recommendations] User features found:', {
+          monthlySpend: data.monthly_spend_estimate,
+          dataSource: data.data_source
+        });
+        break;
+      }
+      
+      if (error) {
+        console.error('[generate-recommendations] Error fetching features:', error);
+      }
+      
+      fetchRetries--;
+      if (fetchRetries > 0) {
+        console.log(`[generate-recommendations] Features not found, retrying... (${fetchRetries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+    
+    if (!userFeaturesData && !transactions?.length) {
+      console.warn('[generate-recommendations] No user features and no transactions - will use profile defaults');
+    }
 
     // Calculate spending summary from transactions (only debits = actual spending)
     // For manual flows without transactions, fetch from user_features
