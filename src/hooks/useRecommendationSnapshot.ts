@@ -165,7 +165,7 @@ export const useRecommendationSnapshot = () => {
   return {
     latestSnapshot,
     isLoading,
-    createSnapshot: createSnapshot.mutate,
+    createSnapshot: createSnapshot.mutateAsync,
     refreshRecommendations: refreshRecommendations.mutate,
     isRefreshing: refreshRecommendations.isPending,
   };

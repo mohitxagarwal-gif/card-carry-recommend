@@ -238,9 +238,9 @@ export default function OnboardingGoalBased() {
         throw error;
       }
 
-      // Step 4: Create snapshot
+      // Step 4: Create snapshot - AWAIT IT
       if (data?.recommendations) {
-        createSnapshot({
+        await createSnapshot({
           analysisId: null,
           savingsMin: 0,
           savingsMax: 50000,

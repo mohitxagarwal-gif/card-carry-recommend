@@ -33,14 +33,14 @@ export default function OnboardingQuickSpends() {
   
   const [monthlySpend, setMonthlySpend] = useState(50000);
   const [spendSplit, setSpendSplit] = useState<SpendSplit>({
-    online: 20,
-    dining: 15,
-    groceries: 20,
-    travel: 5,
-    fuel: 10,
-    bills: 10,
-    entertainment: 10,
-    forex: 10,
+    online: 0,
+    dining: 0,
+    groceries: 0,
+    travel: 0,
+    fuel: 0,
+    bills: 0,
+    entertainment: 0,
+    forex: 0,
   });
 
   useEffect(() => {
@@ -64,6 +64,18 @@ export default function OnboardingQuickSpends() {
         return;
       }
       
+      // Restore from localStorage if exists
+      const saved = localStorage.getItem('quickSpends_draft');
+      if (saved) {
+        try {
+          const { monthlySpend: savedSpend, spendSplit: savedSplit } = JSON.parse(saved);
+          setMonthlySpend(savedSpend);
+          setSpendSplit(savedSplit);
+        } catch (e) {
+          console.error('Failed to restore saved data:', e);
+        }
+      }
+      
       setUserId(user.id);
       setChecking(false);
     };
@@ -72,10 +84,24 @@ export default function OnboardingQuickSpends() {
     trackEvent("onboarding.path_selected", { path: "quick_spends" });
   }, [navigate]);
 
+  // Save to localStorage on changes
+  useEffect(() => {
+    if (userId) {
+      localStorage.setItem('quickSpends_draft', JSON.stringify({ monthlySpend, spendSplit }));
+    }
+  }, [monthlySpend, spendSplit, userId]);
+
   const handleSubmit = async () => {
     if (!userId) return;
     if (monthlySpend < 5000) {
       toast.error("Please enter a monthly spend of at least ₹5,000");
+      return;
+    }
+
+    // Validate total percentage
+    const total = Object.values(spendSplit).reduce((sum, val) => sum + val, 0);
+    if (total < 95 || total > 105) {
+      toast.error(`Please adjust percentages to total 100% (currently ${total.toFixed(0)}%)`);
       return;
     }
 
@@ -128,9 +154,9 @@ export default function OnboardingQuickSpends() {
 
       if (error) throw error;
 
-      // Step 4: Create snapshot
+      // Step 4: Create snapshot - AWAIT IT
       if (data?.recommendations) {
-        createSnapshot({
+        await createSnapshot({
           analysisId: null,
           savingsMin: 0,
           savingsMax: 50000,
@@ -145,6 +171,9 @@ export default function OnboardingQuickSpends() {
         snapshot_type: "quick_spends",
         confidence: data?.confidence || "medium",
       });
+
+      // Clear localStorage after success
+      localStorage.removeItem('quickSpends_draft');
 
       toast.success("Recommendations generated successfully!");
       navigate("/recs");
@@ -208,16 +237,35 @@ export default function OnboardingQuickSpends() {
 
             {/* Spending Distribution */}
             <div className="space-y-4">
-              <Label className="text-lg font-semibold">
-                How do you spend? (adjust percentages)
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-lg font-semibold">
+                  How do you spend? (adjust percentages)
+                </Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const total = Object.values(spendSplit).reduce((sum, val) => sum + val, 0);
+                    if (total === 0) return;
+                    const factor = 100 / total;
+                    const balanced = Object.keys(spendSplit).reduce((acc, key) => {
+                      acc[key] = Math.round(spendSplit[key] * factor);
+                      return acc;
+                    }, {} as SpendSplit);
+                    setSpendSplit(balanced);
+                    toast.success("Percentages balanced to 100%");
+                  }}
+                  disabled={Object.values(spendSplit).reduce((sum, val) => sum + val, 0) === 0}
+                >
+                  Auto-balance to 100%
+                </Button>
+              </div>
               <SpendingSliders
                 spendSplit={spendSplit}
                 onChange={setSpendSplit}
               />
               <p className="text-xs text-muted-foreground">
-                Tip: Focus on your top 3-4 categories. Small spending doesn't
-                need to be precise.
+                Tip: Adjust sliders to total 100%. Use auto-balance if needed.
               </p>
             </div>
 
