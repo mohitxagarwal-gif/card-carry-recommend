@@ -139,48 +139,26 @@ export default function OnboardingQuickSpends() {
         },
       });
 
-      // Wait for features to be written
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
       trackEvent("derive_features_called", {
         userId,
         data_source: "self_report",
       });
 
-      // Step 3: Generate recommendations with retry logic
+      // Step 3: Generate recommendations
       console.log("[QuickSpends] Generating recommendations...");
-      let retries = 3;
-      let lastError: any = null;
-      let data: any = null;
-
-      while (retries > 0) {
-        const { data: responseData, error } = await supabase.functions.invoke(
-          "generate-recommendations",
-          {
-            body: {
-              analysisId: null,
-              snapshotType: "quick_spends",
-            },
-          }
-        );
-
-        if (!error) {
-          data = responseData;
-          break;
+      const { data, error } = await supabase.functions.invoke(
+        "generate-recommendations",
+        {
+          body: {
+            analysisId: null,
+            snapshotType: "quick_spends",
+          },
         }
+      );
 
-        lastError = error;
-        console.warn(`[QuickSpends] Attempt failed, ${retries - 1} retries left:`, error);
-        
-        retries--;
-        if (retries > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (4 - retries)));
-        }
-      }
-
-      if (lastError) {
-        console.error("[QuickSpends] All retries failed:", lastError);
-        throw new Error("Failed to generate recommendations after multiple attempts");
+      if (error) {
+        console.error("[QuickSpends] Failed to generate recommendations:", error);
+        throw new Error(error.message || "Failed to generate recommendations");
       }
 
       // Step 4: Create snapshot

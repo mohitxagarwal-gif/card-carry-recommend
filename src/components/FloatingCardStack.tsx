@@ -5,36 +5,39 @@ const FloatingCardStack = () => {
       <div 
         className="absolute top-8 left-1/2 -translate-x-1/2 w-64 h-40 rounded-xl shadow-lg animate-[float_6s_ease-in-out_infinite]"
         style={{
-          background: 'linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.05) 100%)',
+          background: 'linear-gradient(135deg, hsl(var(--primary) / 0.2) 0%, hsl(var(--primary) / 0.12) 100%)',
           transform: 'translateX(-50%) rotate(-6deg) translateY(0px)',
-          animationDelay: '0s'
+          animationDelay: '0s',
+          boxShadow: '0 8px 24px hsl(var(--primary) / 0.15)'
         }}
       >
-        <div className="w-full h-full rounded-xl border border-primary/20 backdrop-blur-sm" />
+        <div className="w-full h-full rounded-xl border-2 border-primary/30 backdrop-blur-sm" />
       </div>
 
       {/* Card 2 - Middle */}
       <div 
         className="absolute top-4 left-1/2 -translate-x-1/2 w-64 h-40 rounded-xl shadow-lg animate-[float_6s_ease-in-out_infinite]"
         style={{
-          background: 'linear-gradient(135deg, hsl(var(--primary) / 0.2) 0%, hsl(var(--primary) / 0.1) 100%)',
+          background: 'linear-gradient(135deg, hsl(var(--primary) / 0.25) 0%, hsl(var(--primary) / 0.15) 100%)',
           transform: 'translateX(-50%) rotate(-3deg) translateY(0px)',
-          animationDelay: '0.5s'
+          animationDelay: '0.5s',
+          boxShadow: '0 10px 28px hsl(var(--primary) / 0.2)'
         }}
       >
-        <div className="w-full h-full rounded-xl border border-primary/30 backdrop-blur-sm" />
+        <div className="w-full h-full rounded-xl border-2 border-primary/40 backdrop-blur-sm" />
       </div>
 
       {/* Card 3 - Front (Featured) */}
       <div 
         className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-40 rounded-xl shadow-xl animate-[float_6s_ease-in-out_infinite]"
         style={{
-          background: 'linear-gradient(135deg, hsl(var(--primary) / 0.25) 0%, hsl(var(--primary) / 0.15) 100%)',
+          background: 'linear-gradient(135deg, hsl(var(--primary) / 0.3) 0%, hsl(var(--primary) / 0.2) 100%)',
           transform: 'translateX(-50%) rotate(0deg) translateY(0px)',
-          animationDelay: '1s'
+          animationDelay: '1s',
+          boxShadow: '0 12px 32px hsl(var(--primary) / 0.25)'
         }}
       >
-        <div className="w-full h-full rounded-xl border border-primary/40 backdrop-blur-sm p-6 flex flex-col justify-between">
+        <div className="w-full h-full rounded-xl border-2 border-primary/50 backdrop-blur-sm p-6 flex flex-col justify-between">
           {/* Card chip */}
           <div className="flex justify-between items-start">
             <div className="w-10 h-8 rounded bg-primary/20 border border-primary/30" />

@@ -249,50 +249,28 @@ export default function OnboardingGoalBased() {
         },
       });
 
-      // Wait for features to be written
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
       trackEvent("derive_features_called", {
         userId,
         data_source: "goal_based",
         goal: goalId,
       });
 
-      // Step 3: Generate recommendations with retry logic
+      // Step 3: Generate recommendations
       console.log("[Goal-Based] Generating recommendations...");
-      let retries = 3;
-      let lastError: any = null;
-      let data: any = null;
-
-      while (retries > 0) {
-        const { data: responseData, error } = await supabase.functions.invoke(
-          "generate-recommendations",
-          {
-            body: {
-              analysisId: null,
-              customWeights: weights,
-              snapshotType: "goal_based",
-            },
-          }
-        );
-
-        if (!error) {
-          data = responseData;
-          break;
+      const { data, error } = await supabase.functions.invoke(
+        "generate-recommendations",
+        {
+          body: {
+            analysisId: null,
+            customWeights: weights,
+            snapshotType: "goal_based",
+          },
         }
+      );
 
-        lastError = error;
-        console.warn(`[Goal-Based] Attempt failed, ${retries - 1} retries left:`, error);
-        
-        retries--;
-        if (retries > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (4 - retries)));
-        }
-      }
-
-      if (lastError) {
-        console.error("[Goal-Based] All retries failed:", lastError);
-        throw new Error("Failed to generate recommendations after multiple attempts");
+      if (error) {
+        console.error("[Goal-Based] Failed to generate recommendations:", error);
+        throw new Error(error.message || "Failed to generate recommendations");
       }
 
       // Step 4: Create snapshot

@@ -135,7 +135,7 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 sm:pb-6">
       {/* Header */}
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
@@ -322,6 +322,61 @@ export function TransactionReview({ extractedData, onSubmit, onCancel }: Transac
             
             onSubmit(localData);
           }} className="flex-1">
+            Get Recommendations →
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Sticky Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[env(safe-area-inset-bottom,1rem)] pt-3
+                      backdrop-blur-xl bg-card/90 border-t border-border/30 
+                      shadow-[0_-4px_20px_rgba(0,0,0,0.1)]
+                      sm:hidden">
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            className="flex-1 min-h-[48px]"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              // Validate all transactions have categories
+              const allHaveCategories = localData.every(ed => 
+                ed.transactions.every(t => t.category && t.category.length > 0)
+              );
+              
+              const allHaveTypes = localData.every(ed =>
+                ed.transactions.every(t => t.transactionType === 'debit' || t.transactionType === 'credit')
+              );
+              
+              console.log('[TransactionReview] Submitting edited data:', {
+                totalTransactions: localData.reduce((sum, ed) => sum + ed.transactions.length, 0),
+                filesCount: localData.length,
+                allHaveCategories,
+                allHaveTypes,
+                sampleTransaction: localData[0]?.transactions[0]
+              });
+              
+              if (!allHaveCategories) {
+                console.warn('[TransactionReview] Some transactions missing categories');
+              }
+              
+              if (!allHaveTypes) {
+                console.warn('[TransactionReview] Some transactions missing type');
+              }
+              
+              // Mixpanel event - review submitted
+              trackEvent('transactions.review_submitted', {
+                fileCount: localData.length,
+                totalTransactions: localData.reduce((sum, file) => sum + file.transactions.length, 0),
+              });
+              
+              onSubmit(localData);
+            }}
+            className="flex-1 min-h-[48px]"
+          >
             Get Recommendations →
           </Button>
         </div>

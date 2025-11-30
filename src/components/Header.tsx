@@ -211,12 +211,15 @@ const Header = () => {
               </>
             ) : (
               <>
-                <a 
-                  href="/#how-it-works" 
+                <button
+                  onClick={() => {
+                    const section = document.getElementById('how-it-works');
+                    section?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   className="px-4 py-2 rounded-pill text-sm font-body underline-from-center text-subtle hover:bg-muted hover:text-ink transition-all duration-140 border border-transparent focus-ring"
                 >
                   how it works
-                </a>
+                </button>
                 <button
                   onClick={() => navigate("/cards")}
                   className="px-4 py-2 rounded-pill text-sm font-body underline-from-center text-subtle hover:bg-muted hover:text-ink transition-all duration-140 border border-transparent focus-ring"
@@ -231,12 +234,15 @@ const Header = () => {
                 >
                   about us
                 </button>
-                <a 
-                  href="/#faqs" 
+                <button
+                  onClick={() => {
+                    const section = document.getElementById('faqs');
+                    section?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   className="px-4 py-2 rounded-pill text-sm font-body underline-from-center text-subtle hover:bg-muted hover:text-ink transition-all duration-140 border border-transparent focus-ring"
                 >
                   faqs
-                </a>
+                </button>
                 <Button 
                   size="sm"
                   onClick={() => navigate("/auth")}
