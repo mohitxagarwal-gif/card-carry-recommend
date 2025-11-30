@@ -217,7 +217,7 @@ const AppContent = () => {
         </ProtectedRoute>
       } />
       <Route path="/upload" element={
-        <ProtectedRoute requireOnboarding={true}>
+        <ProtectedRoute requireOnboarding={false}>
           <Upload />
         </ProtectedRoute>
       } />
