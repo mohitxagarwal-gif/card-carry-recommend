@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import { useApplications } from "@/hooks/useApplications";
 import { useCards } from "@/hooks/useCards";
-import { Loader2, FileText, ExternalLink } from "lucide-react";
+import { FileText, ExternalLink } from "lucide-react";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { CardStatusDropdown } from "@/components/CardStatusDropdown";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 const Applications = () => {
   const { applications, isLoading } = useApplications();
@@ -21,9 +22,10 @@ const Applications = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+        <CardLoadingScreen
+          message="Fetching your applications..."
+          variant="inline"
+        />
       </div>
     );
   }

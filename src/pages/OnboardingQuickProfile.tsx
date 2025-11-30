@@ -13,6 +13,7 @@ import { CityCombobox } from "@/components/onboarding/CityCombobox";
 import { QuickSpendingHints } from "@/components/onboarding/QuickSpendingHints";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { useDeriveFeatures } from "@/hooks/useDeriveFeatures";
+import { CardLoadingScreen } from "@/components/CardLoadingScreen";
 
 const AGE_OPTIONS = [
   { value: "18-24", label: "18-24" },
@@ -179,9 +180,10 @@ export default function OnboardingQuickProfile() {
 
   if (checking) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <CardLoadingScreen
+        message="Preparing your profile..."
+        variant="fullPage"
+      />
     );
   }
 
