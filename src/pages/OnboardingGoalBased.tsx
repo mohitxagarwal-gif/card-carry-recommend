@@ -203,6 +203,7 @@ export default function OnboardingGoalBased() {
       if (profileError) throw profileError;
 
       // Step 2: Derive features
+      console.log("[Goal-Based] Deriving features...");
       await deriveFeatures.mutateAsync({
         userId,
         spendData: {
@@ -215,30 +216,53 @@ export default function OnboardingGoalBased() {
         },
       });
 
+      // Wait for features to be written
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       trackEvent("derive_features_called", {
         userId,
         data_source: "goal_based",
         goal: goalId,
       });
 
-      // Step 3: Generate recommendations
-      const { data, error } = await supabase.functions.invoke(
-        "generate-recommendations",
-        {
-          body: {
-            analysisId: null,
-            customWeights: weights,
-            snapshotType: "goal_based",
-          },
-        }
-      );
+      // Step 3: Generate recommendations with retry logic
+      console.log("[Goal-Based] Generating recommendations...");
+      let retries = 3;
+      let lastError: any = null;
+      let data: any = null;
 
-      if (error) {
-        console.error("Recommendation generation error:", error);
-        throw error;
+      while (retries > 0) {
+        const { data: responseData, error } = await supabase.functions.invoke(
+          "generate-recommendations",
+          {
+            body: {
+              analysisId: null,
+              customWeights: weights,
+              snapshotType: "goal_based",
+            },
+          }
+        );
+
+        if (!error) {
+          data = responseData;
+          break;
+        }
+
+        lastError = error;
+        console.warn(`[Goal-Based] Attempt failed, ${retries - 1} retries left:`, error);
+        
+        retries--;
+        if (retries > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (4 - retries)));
+        }
       }
 
-      // Step 4: Create snapshot - AWAIT IT
+      if (lastError) {
+        console.error("[Goal-Based] All retries failed:", lastError);
+        throw new Error("Failed to generate recommendations after multiple attempts");
+      }
+
+      // Step 4: Create snapshot
       if (data?.recommendations) {
         await createSnapshot({
           analysisId: null,
@@ -258,10 +282,10 @@ export default function OnboardingGoalBased() {
       });
 
       toast.success(`Recommendations tailored for ${goalTitle}!`);
-      navigate("/recs");
+      navigate("/recs?from=onboarding");
     } catch (error: any) {
-      console.error("Goal-based error:", error);
-      toast.error("Failed to generate recommendations. Please try again.");
+      console.error("[Goal-Based] Error:", error);
+      toast.error(error.message || "Failed to generate recommendations. Please try again.");
     } finally {
       setLoading(false);
       setSelectedGoal(null);

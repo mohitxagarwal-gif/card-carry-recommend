@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, PartyPopper, LayoutDashboard, Sparkles } from "lucide-react";
 import Header from "@/components/Header";
 import { RecommendationsHero } from "@/components/recommendations/RecommendationsHero";
 import { SpendingInsightsPanel } from "@/components/recommendations/SpendingInsightsPanel";
@@ -12,6 +12,7 @@ import { ActionBar } from "@/components/recommendations/ActionBar";
 import { useRecommendationSnapshot } from "@/hooks/useRecommendationSnapshot";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { safeTrackEvent as trackEvent } from "@/lib/safeAnalytics";
 import { trackEvent as trackMixpanelEvent } from "@/lib/analytics";
 
@@ -30,6 +31,7 @@ interface UserPreferences {
 
 const Recommendations = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { latestSnapshot, isLoading: snapshotLoading } = useRecommendationSnapshot();
   const [loading, setLoading] = useState(true);
   const [analysisData, setAnalysisData] = useState<any>(null);
@@ -39,6 +41,7 @@ const Recommendations = () => {
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [filterIssuer, setFilterIssuer] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'match' | 'savings' | 'fee'>('match');
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,6 +50,14 @@ const Recommendations = () => {
         if (!user) {
           navigate("/auth");
           return;
+        }
+
+        // Check if coming from onboarding
+        const fromOnboarding = searchParams.get('from') === 'onboarding';
+        if (fromOnboarding) {
+          setShowSuccessBanner(true);
+          // Auto-hide banner after 10 seconds
+          setTimeout(() => setShowSuccessBanner(false), 10000);
         }
 
         // Fetch user profile
@@ -89,7 +100,8 @@ const Recommendations = () => {
 
         trackEvent("recommendations_page_view", {
           hasSnapshot: !!latestSnapshot,
-          hasAnalysis: !!analysisData
+          hasAnalysis: !!analysisData,
+          fromOnboarding
         });
         
         // Mixpanel event
@@ -107,7 +119,7 @@ const Recommendations = () => {
     if (!snapshotLoading) {
       loadData();
     }
-  }, [navigate, latestSnapshot, snapshotLoading]);
+  }, [navigate, latestSnapshot, snapshotLoading, searchParams]);
 
 
   const handleRefresh = () => {
@@ -186,6 +198,46 @@ const Recommendations = () => {
 
       <main className="container mx-auto px-6 lg:px-12 py-12">
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Success Banner for Post-Onboarding */}
+          {showSuccessBanner && (
+            <Alert className="border-primary bg-primary/5">
+              <PartyPopper className="h-5 w-5 text-primary" />
+              <AlertDescription className="ml-2">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground mb-1">
+                      🎉 Your personalized recommendations are ready!
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      We've analyzed your spending and found the best cards for you. Explore them below or save them to your dashboard.
+                    </p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Button
+                      onClick={() => {
+                        navigate('/dashboard');
+                        trackEvent('onboarding_success_dashboard_click');
+                      }}
+                      variant="default"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Go to Dashboard
+                    </Button>
+                    <Button
+                      onClick={() => setShowSuccessBanner(false)}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Hero Section */}
           <RecommendationsHero
             snapshot={latestSnapshot}
