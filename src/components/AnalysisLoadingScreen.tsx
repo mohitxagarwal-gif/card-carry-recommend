@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { GlassCard } from "@/components/ui/glass-card";
-import { FileText, Bot, Target, Star, CheckCircle2 } from "lucide-react";
+import { FileText, Bot, Target, Star, CheckCircle2, Clock } from "lucide-react";
 
 interface AnalysisLoadingScreenProps {
   currentStep: number;
@@ -15,34 +15,37 @@ const STEPS = [
     icon: FileText,
     title: "Creating analysis snapshot",
     description: "Organizing your transaction data",
+    estimatedTime: "~2 seconds",
   },
   {
     id: 2,
     icon: Bot,
-    title: "Analyzing transactions with AI",
+    title: "Analyzing transactions",
     description: "Processing spending patterns and categories",
+    estimatedTime: "~5-10 seconds",
   },
   {
     id: 3,
     icon: Target,
-    title: "Deriving spending insights",
+    title: "Building your profile",
     description: "Calculating your financial profile",
+    estimatedTime: "~3 seconds",
   },
   {
     id: 4,
     icon: Star,
-    title: "Generating card recommendations",
-    description: "Finding your perfect credit card matches",
+    title: "Finding best cards",
+    description: "Matching cards to your spending",
+    estimatedTime: "~5-10 seconds",
   },
 ];
 
 const TIPS = [
-  "We analyze 15+ factors to match you with the perfect card",
-  "Comparing your spending against 50+ credit cards",
-  "Finding cards with fee waivers for your profile",
-  "Matching rewards to your lifestyle and spending habits",
-  "Calculating potential annual savings for each card",
-  "Our AI considers seasonal spending patterns",
+  "Our AI compares your spending against 50+ cards",
+  "Finding cards with fee waivers that match your spend",
+  "Matching rewards to your top spending categories",
+  "Calculating potential savings for each card match",
+  "Looking for the best cashback and points earning rates",
 ];
 
 export const AnalysisLoadingScreen = ({
@@ -51,6 +54,8 @@ export const AnalysisLoadingScreen = ({
   totalTransactions = 0,
 }: AnalysisLoadingScreenProps) => {
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [showSlowMessage, setShowSlowMessage] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -59,6 +64,20 @@ export const AnalysisLoadingScreen = ({
 
     return () => clearInterval(interval);
   }, []);
+  
+  // Track elapsed time and show slow message if needed
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
+      if (elapsed > 20 && !showSlowMessage) {
+        setShowSlowMessage(true);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [showSlowMessage]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4 animate-fade-in">
@@ -76,7 +95,16 @@ export const AnalysisLoadingScreen = ({
             <p className="text-muted-foreground">
               {totalTransactions > 0
                 ? `Processing ${totalTransactions} transactions`
-                : "This will take just a moment"}
+                : "Finding your best card matches"}
+            </p>
+            {showSlowMessage && (
+              <p className="text-sm text-amber-600 flex items-center justify-center gap-1 mt-2">
+                <Clock className="w-4 h-4" />
+                Taking longer than usual. Please wait...
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {elapsedTime}s elapsed
             </p>
           </div>
 
