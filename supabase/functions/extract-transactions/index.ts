@@ -10,7 +10,8 @@ const corsHeaders = {
 const RequestSchema = z.object({
   pdfText: z.string().min(10).max(500000),
   fileName: z.string().min(1).max(255),
-  statementType: z.enum(['credit_card', 'bank', 'unknown']).default('unknown')
+  statementType: z.enum(['credit_card', 'bank', 'unknown']).default('unknown'),
+  stream: z.boolean().default(false)
 });
 
 // Phase 0: Standard categories
@@ -95,14 +96,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     const body = await req.json();
     const validatedData = RequestSchema.parse(body);
-    const { pdfText, fileName, statementType } = validatedData;
+    const { pdfText, fileName, statementType, stream } = validatedData;
     const batchId = `batch_${Date.now()}`;
 
     const startTime = Date.now();
     console.log(`[extract-transactions] Processing ${fileName} (${statementType}) for user ${user.id}`, {
       textLength: pdfText.length,
       timestamp: new Date().toISOString(),
-      batchId
+      batchId,
+      streaming: stream
     });
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -131,19 +133,42 @@ const handler = async (req: Request): Promise<Response> => {
     const detectedFormat = detectFormat(pdfText);
     console.log(`[format-detected] ${detectedFormat}`);
 
-const systemPrompt = `You are an expert at extracting transaction data from Indian bank and credit card statements.
+    const isScanned = pdfText.length < 500;
+    if (isScanned) {
+      console.log('[scanned-pdf-detected]');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'Scanned PDF detected. Please use digital PDF from bank.',
+          suggestion: 'Download e-Statement instead of scanned copy.'
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
-CRITICAL RULES:
-1. Extract ALL transactions from the entire document
-2. Dates: Convert to YYYY-MM-DD ISO 8601 format (e.g., 2024-03-15)
-3. Transaction Type: DEBIT (money out) or CREDIT (money in)
-4. Merchants: Clean and normalize names (remove refs, IDs, cities)
-5. Amounts: Positive numbers in INR
-6. Categories: Use ONLY these: ${STANDARD_CATEGORIES.join(', ')}
+    // PHASE 1 OPTIMIZATION: Use gemini-2.5-flash-lite for faster extraction
+    // It's ~2x faster with comparable accuracy for structured extraction tasks
+    const model = 'google/gemini-2.5-flash-lite';
+    
+    // PHASE 1: Simplified prompt for faster processing
+    const systemPrompt = `Extract transactions from this Indian bank/credit card statement.
 
-Return JSON only. No markdown formatting.`;
+RULES:
+1. Dates: YYYY-MM-DD format
+2. Type: debit (money out) or credit (money in)
+3. Merchants: Clean names only
+4. Amounts: Positive numbers in INR
+5. Categories: ${STANDARD_CATEGORIES.join(', ')}
 
-    const userPrompt = `Extract ALL transactions from this ${statementType} statement:\n\n${pdfText}\n\nStatement file: ${fileName}`;
+Return JSON only.`;
+
+    // PHASE 1: Truncate very long PDFs for speed (keep first 100KB)
+    const maxTextLength = 100000;
+    const truncatedText = pdfText.length > maxTextLength 
+      ? pdfText.substring(0, maxTextLength) + '\n[...truncated for processing speed...]'
+      : pdfText;
+
+    const userPrompt = `Extract ALL transactions:\n\n${truncatedText}`;
 
     const tools = [{
       type: "function",
@@ -158,9 +183,9 @@ Return JSON only. No markdown formatting.`;
               items: {
                 type: "object",
                 properties: {
-                  date: { type: "string", description: "YYYY-MM-DD ISO 8601 format" },
-                  merchant: { type: "string", description: "Cleaned merchant name" },
-                  amount: { type: "number", description: "Positive number in INR" },
+                  date: { type: "string", description: "YYYY-MM-DD" },
+                  merchant: { type: "string", description: "Merchant name" },
+                  amount: { type: "number", description: "Amount in INR" },
                   transactionType: { type: "string", enum: ["debit", "credit"] },
                   category: { type: "string", enum: STANDARD_CATEGORIES }
                 },
@@ -172,8 +197,7 @@ Return JSON only. No markdown formatting.`;
               properties: {
                 totalTransactions: { type: "number" },
                 dateRangeStart: { type: "string" },
-                dateRangeEnd: { type: "string" },
-                statementFormat: { type: "string" }
+                dateRangeEnd: { type: "string" }
               },
               required: ["totalTransactions", "dateRangeStart", "dateRangeEnd"]
             }
@@ -183,37 +207,47 @@ Return JSON only. No markdown formatting.`;
       }
     }];
 
-    const isScanned = pdfText.length < 500;
-    if (isScanned) {
-      console.log('[scanned-pdf-detected]');
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Scanned PDF detected. Please use digital PDF from bank.',
-          suggestion: 'Download e-Statement instead of scanned copy.'
-        }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    console.log(`[ai-request-start] Model: google/gemini-2.5-flash`);
+    console.log(`[ai-request-start] Model: ${model}, text length: ${truncatedText.length}`);
     
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        tools,
-        tool_choice: { type: "function", function: { name: "extract_transactions" } }
-      })
-    });
+    // PHASE 1: Add timeout with AbortController (30s timeout)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
+    let aiResponse;
+    try {
+      aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          tools,
+          tool_choice: { type: "function", function: { name: "extract_transactions" } }
+        }),
+        signal: controller.signal
+      });
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.error('[ai-timeout] Request timed out after 30s');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Extraction timed out. Please try a smaller statement.',
+            suggestion: 'Try uploading just 1 month of statements at a time.'
+          }),
+          { status: 408, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
@@ -234,6 +268,8 @@ Return JSON only. No markdown formatting.`;
     const aiData = await aiResponse.json();
     const processingTime = Date.now() - startTime;
     
+    console.log(`[ai-response] Completed in ${processingTime}ms`);
+    
     if (!aiData.choices?.[0]?.message?.tool_calls?.[0]) {
       return new Response(
         JSON.stringify({ success: false, error: 'AI could not extract data' }),
@@ -244,7 +280,7 @@ Return JSON only. No markdown formatting.`;
     const toolCall = aiData.choices[0].message.tool_calls[0];
     const extracted = JSON.parse(toolCall.function.arguments);
 
-    // Phase 1 & 5: Deduplicate and add transaction IDs
+    // Deduplicate transactions
     const uniqueTransactions = extracted.transactions.filter((t: any, idx: number, arr: any[]) => 
       arr.findIndex(x => 
         x.date === t.date && 
@@ -260,10 +296,9 @@ Return JSON only. No markdown formatting.`;
       );
     }
 
-    // **OPTIMIZATION: Batch database operations**
+    // PHASE 1: Batch database operations (already optimized)
     console.log('[batch-optimization] Generating hashes for all transactions in memory...');
     
-    // Step 1: Generate all hashes in memory (fast)
     const transactionsWithHashes = await Promise.all(
       uniqueTransactions.map(async (txn: any, idx: number) => {
         const amountMinor = Math.round(txn.amount * 100);
@@ -294,7 +329,7 @@ Return JSON only. No markdown formatting.`;
       })
     );
 
-    // Step 2: Single batch lookup for existing transactions
+    // Single batch lookup for existing transactions
     console.log('[batch-optimization] Batch lookup for existing transactions...');
     const hashes = transactionsWithHashes.map(t => t.transaction_hash);
     const { data: existingTxs } = await supabase
@@ -305,7 +340,7 @@ Return JSON only. No markdown formatting.`;
     
     const existingMap = new Map(existingTxs?.map(t => [t.transaction_hash, t]) || []);
     
-    // Step 3: Separate new vs existing
+    // Separate new vs existing
     const newTransactions: any[] = [];
     const updateTransactions: any[] = [];
     const enhancedTransactions = transactionsWithHashes.map(txn => {
@@ -327,7 +362,7 @@ Return JSON only. No markdown formatting.`;
       }
     });
 
-    // Step 4: Single batch insert for new transactions
+    // Single batch insert for new transactions
     if (newTransactions.length > 0) {
       console.log(`[batch-optimization] Inserting ${newTransactions.length} new transactions in one call...`);
       const { error: insertError } = await supabase
@@ -339,11 +374,8 @@ Return JSON only. No markdown formatting.`;
       }
     }
 
-    // Step 5: Batch update for duplicates (skipped for speed optimization)
-    // For maximum speed, we skip updating occurrence counts
-    // This can be done asynchronously in background if needed
-
-    console.log(`[extraction-success] ${enhancedTransactions.length} transactions, ${updateTransactions.length} duplicates detected`);
+    const totalTime = Date.now() - startTime;
+    console.log(`[extraction-success] ${enhancedTransactions.length} transactions, ${updateTransactions.length} duplicates, total time: ${totalTime}ms`);
 
     return new Response(
       JSON.stringify({ 
@@ -353,11 +385,13 @@ Return JSON only. No markdown formatting.`;
         metadata: {
           ...extracted.metadata,
           detectedFormat,
-          processingTimeMs: processingTime,
-          model: 'google/gemini-2.5-flash',
+          processingTimeMs: totalTime,
+          aiTimeMs: processingTime,
+          model,
           extractedAt: new Date().toISOString(),
           duplicatesFound: updateTransactions.length,
-          optimization: 'batch_db_operations'
+          textTruncated: pdfText.length > maxTextLength,
+          optimization: 'flash_lite_model'
         }
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

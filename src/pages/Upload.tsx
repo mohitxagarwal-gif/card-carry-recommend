@@ -416,6 +416,27 @@ const Upload = () => {
 
       try {
         const extractionStart = Date.now();
+        
+        // PHASE 1: Show progress updates during extraction
+        const progressInterval = setInterval(() => {
+          const elapsed = Date.now() - extractionStart;
+          // Simulate progress: 40 -> 85 over 15 seconds
+          const simulatedProgress = Math.min(85, 40 + (elapsed / 15000) * 45);
+          setFilesWithStatus(prev => prev.map(f => 
+            f.file.name === file.name && f.status === 'processing' 
+              ? { ...f, progress: simulatedProgress } 
+              : f
+          ));
+          
+          // Show "taking longer" toast after 10 seconds
+          if (elapsed > 10000 && elapsed < 11000) {
+            toast.info(`Still processing ${file.name}...`, {
+              description: 'Large statements take a bit longer',
+              duration: 3000
+            });
+          }
+        }, 500);
+        
         const { data: extractData, error: extractError } = await supabase.functions.invoke(
           'extract-transactions',
           {
@@ -426,6 +447,8 @@ const Upload = () => {
             }
           }
         );
+        
+        clearInterval(progressInterval);
 
         // PHASE 2: Better error handling with specific messages
         if (extractError) {
@@ -806,9 +829,9 @@ const Upload = () => {
       case 'decrypting':
         return 'decrypting PDF...';
       case 'processing':
-        return 'extracting with AI...';
+        return 'extracting transactions...';
       case 'success':
-        return 'processed';
+        return 'done!';
       case 'error':
         return 'error';
       default:
